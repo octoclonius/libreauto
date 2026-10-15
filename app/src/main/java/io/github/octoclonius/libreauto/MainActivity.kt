@@ -14,8 +14,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            Scaffold { innerPadding ->
-                Text("LibreAuto", Modifier.padding(innerPadding))
+            PhoneTheme {
+                Scaffold { innerPadding ->
+                    Text("LibreAuto", Modifier.padding(innerPadding))
+                }
             }
         }
     }
