@@ -4,15 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import java.io.ByteArrayInputStream
-import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PrivateKey
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
-import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
@@ -29,8 +23,6 @@ class CertificateProvider(private val context: Context) {
         const val KEY_KEY = "key"
         const val KEY_ERROR = "error"
 
-        private const val MAX_BYTES = 16 * 1024
-        private const val MAX_ERROR_CHARS = 256
         private const val CALL_TIMEOUT_MS = 5_000L
 
         private const val PREFS = "certificate_provider"
@@ -109,38 +101,22 @@ class CertificateProvider(private val context: Context) {
             FetchResult.Error(e.message)
         }
 
-    private fun request(choice: Choice): FetchResult.Success {
+    private fun request(choice: Choice): FetchResult {
         val packageName = choice.packageName
         val authority = authority(packageName) ?: unavailable("Doesn't provide a certificate")
         if (!isSignedWith(packageName, choice.signer)) unavailable("Signed with another key")
         val reply = call(authority)
-        val (certBytes, keyBytes) =
+        val (error, certBytes, keyBytes) =
             try {
-                reply.getString(KEY_ERROR)?.let { unavailable(it.take(MAX_ERROR_CHARS)) }
-                reply.getByteArray(KEY_CERT) to reply.getByteArray(KEY_KEY)
+                Triple(
+                    reply.getString(KEY_ERROR),
+                    reply.getByteArray(KEY_CERT),
+                    reply.getByteArray(KEY_KEY),
+                )
             } catch (e: RuntimeException) {
                 unavailable(describe(e))
             }
-        if (certBytes == null || keyBytes == null) unavailable("No certificate in its answer")
-        if (certBytes.size > MAX_BYTES || keyBytes.size > MAX_BYTES) unavailable("Answer too large")
-        val certificate =
-            try {
-                CertificateFactory.getInstance("X.509")
-                    .generateCertificate(ByteArrayInputStream(certBytes)) as X509Certificate
-            } catch (e: Exception) {
-                unavailable(describe(e))
-            }
-        val key =
-            try {
-                KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(keyBytes))
-                    as RSAPrivateKey
-            } catch (e: Exception) {
-                unavailable(describe(e))
-            }
-        if ((certificate.publicKey as? RSAPublicKey)?.modulus != key.modulus) {
-            unavailable("Key doesn't match the certificate")
-        }
-        return FetchResult.Success(certificate, key)
+        return checkAnswer(error, certBytes, keyBytes)
     }
 
     private fun call(authority: String): Bundle {
@@ -190,9 +166,6 @@ class CertificateProvider(private val context: Context) {
 
     private fun isSignedWith(packageName: String, signer: ByteArray): Boolean =
         packageManager.hasSigningCertificate(packageName, signer, PackageManager.CERT_INPUT_SHA256)
-
-    private fun describe(e: Throwable): String =
-        listOfNotNull(e.javaClass.simpleName, e.message).joinToString(": ").take(MAX_ERROR_CHARS)
 
     private fun unavailable(message: String): Nothing = throw UnavailableException(message)
 }
