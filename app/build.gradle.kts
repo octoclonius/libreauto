@@ -23,4 +23,5 @@ android {
 
 dependencies {
     implementation(project(":phone"))
+    debugImplementation(project(":session"))
 }

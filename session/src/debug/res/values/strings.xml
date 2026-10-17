@@ -1,0 +1,5 @@
+<resources>
+    <string name="debug_car_channel">Debug car</string>
+    <string name="debug_car_title">Waiting for a debug car</string>
+    <string name="debug_car_text">Listening on the local socket @libreauto</string>
+</resources>
