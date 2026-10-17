@@ -41,8 +41,4 @@ class VersionResponse(val version: ProtocolVersion, val status: Int) {
             .putShort(version.minor.toShort())
             .putShort(status.toShort())
             .array()
-
-    companion object {
-        const val STATUS_SUCCESS = 0
-    }
 }

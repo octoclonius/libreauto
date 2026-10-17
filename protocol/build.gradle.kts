@@ -1,5 +1,6 @@
 plugins {
     id("libreauto.jvm.library")
+    id("libreauto.wire")
 }
 
 dependencies {

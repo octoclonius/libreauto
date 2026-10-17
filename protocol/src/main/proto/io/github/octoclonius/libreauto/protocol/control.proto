@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+package io.github.octoclonius.libreauto.protocol;
+
+message AuthComplete {
+  optional int32 status = 1;
+}

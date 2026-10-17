@@ -31,7 +31,7 @@ class VersionTest {
 
     @Test
     fun aVersionResponseIsMajorMinorThenStatus() {
-        val response = VersionResponse(ProtocolVersion(6, 1), VersionResponse.STATUS_SUCCESS)
+        val response = VersionResponse(ProtocolVersion(6, 1), MessageStatus.SUCCESS)
         assertArrayEquals(byteArrayOf(0, 6, 0, 1, 0, 0), response.toBody())
     }
 

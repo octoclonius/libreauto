@@ -5,6 +5,7 @@ plugins {
 dependencies {
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
+    compileOnly(libs.wire.gradlePlugin)
 }
 
 gradlePlugin {
@@ -24,6 +25,10 @@ gradlePlugin {
         register("androidCompose") {
             id = "libreauto.android.compose"
             implementationClass = "io.github.octoclonius.libreauto.buildlogic.AndroidComposeConventionPlugin"
+        }
+        register("wire") {
+            id = "libreauto.wire"
+            implementationClass = "io.github.octoclonius.libreauto.buildlogic.WireConventionPlugin"
         }
     }
 }
