@@ -7,4 +7,6 @@ class ChannelMessage(
     val body: ByteArray,
 )
 
+const val CONTROL_CHANNEL = 0
+
 internal const val MESSAGE_TYPE_SIZE = 2

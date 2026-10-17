@@ -3,7 +3,7 @@ package io.github.octoclonius.libreauto.protocol
 import java.net.ProtocolException
 import java.nio.ByteBuffer
 
-private const val VERSION_REQUEST_SIZE = 4
+internal const val VERSION_REQUEST_SIZE = 4
 private const val VERSION_RESPONSE_SIZE = 6
 
 data class ProtocolVersion(val major: Int, val minor: Int) : Comparable<ProtocolVersion> {
