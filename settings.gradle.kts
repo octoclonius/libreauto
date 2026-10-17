@@ -33,3 +33,4 @@ rootProject.name = "LibreAuto"
 include(":app")
 include(":phone")
 include(":session")
+include(":protocol")

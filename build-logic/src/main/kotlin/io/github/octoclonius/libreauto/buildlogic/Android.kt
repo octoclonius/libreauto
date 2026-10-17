@@ -1,11 +1,8 @@
 package io.github.octoclonius.libreauto.buildlogic
 
 import com.android.build.api.dsl.CommonExtension
-import org.gradle.api.JavaVersion
 import org.gradle.api.Project
-import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 
 internal const val SDK = 37
@@ -15,11 +12,11 @@ internal fun Project.configureAndroid(android: CommonExtension) {
         compileSdk { version = release(SDK) }
         buildToolsVersion = "37.0.0"
         defaultConfig.minSdk = SDK
-        compileOptions.sourceCompatibility = JavaVersion.VERSION_21
-        compileOptions.targetCompatibility = JavaVersion.VERSION_21
+        compileOptions.sourceCompatibility = JAVA_VERSION
+        compileOptions.targetCompatibility = JAVA_VERSION
     }
     extensions.configure<KotlinAndroidProjectExtension> {
         compilerOptions { allWarningsAsErrors.set(true) }
     }
-    tasks.withType<Test>().configureEach { useJUnitPlatform() }
+    configureTests()
 }
