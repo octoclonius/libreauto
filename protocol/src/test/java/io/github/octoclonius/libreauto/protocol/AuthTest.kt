@@ -9,12 +9,12 @@ class AuthTest {
 
     @Test
     fun anEmptyAuthCompleteIsASuccess() {
-        assertEquals(MessageStatus.SUCCESS, parseAuthComplete(byteArrayOf()))
+        assertEquals(0, parseAuthComplete(byteArrayOf()))
     }
 
     @Test
     fun theStatusIsField1() {
-        assertEquals(MessageStatus.SUCCESS, parseAuthComplete(byteArrayOf(0x08, 0)))
+        assertEquals(0, parseAuthComplete(byteArrayOf(0x08, 0)))
         assertEquals(1, parseAuthComplete(byteArrayOf(0x08, 1)))
     }
 

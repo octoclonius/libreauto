@@ -49,7 +49,7 @@ class ServiceDiscoveryTest {
 
     @Test
     fun aChannelOutside1To255IsRefused() {
-        assertThrows<ProtocolException> { parse(Service(id = CONTROL_CHANNEL)) }
+        assertThrows<ProtocolException> { parse(Service(id = 0)) }
         assertThrows<ProtocolException> { parse(Service(id = 0x100)) }
     }
 

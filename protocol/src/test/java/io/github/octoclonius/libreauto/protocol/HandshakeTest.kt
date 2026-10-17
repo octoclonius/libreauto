@@ -5,7 +5,6 @@ import java.io.OutputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.net.ProtocolException
-import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -22,11 +21,11 @@ class HandshakeTest {
     @Test
     fun aCarFromTheRootGetsThroughVersionTlsAndAuthComplete() {
         val tls = phoneTlsServer()
-        val car = CarSide(TestCar("car"), MessageStatus.SUCCESS)
+        val car = CarSide(TestCar("car"), authStatus = 0)
         val version = car.connect { input, output -> handshake(input, output, tls).run() }
         assertEquals(CAR_VERSION, version)
         assertArrayEquals(
-            VersionResponse(ProtocolVersion(1, 7), MessageStatus.SUCCESS).toBody(),
+            byteArrayOf(0, 1, 0, 7, 0, 0),
             car.versionResponse,
         )
         assertTrue(tls.isEstablished)
@@ -77,35 +76,34 @@ class HandshakeTest {
         }
 
         private fun run(reader: FrameReader, writer: FrameWriter) {
-            val request =
-                ByteBuffer.allocate(VERSION_REQUEST_SIZE)
-                    .putShort(CAR_VERSION.major.toShort())
-                    .putShort(CAR_VERSION.minor.toShort())
-                    .array()
-            writer.send(MessageType.VERSION_REQUEST, request)
-            versionResponse = reader.receive(MessageType.VERSION_RESPONSE)
-            writer.send(MessageType.TLS_HANDSHAKE, tls.step(ByteArray(0)))
+            writer.send(VERSION_REQUEST, byteArrayOf(0, 1, 0, 7))
+            versionResponse = reader.receive(VERSION_RESPONSE)
+            writer.send(TLS_HANDSHAKE, tls.step(ByteArray(0)))
             while (!tls.isEstablished) {
-                val toPhone = tls.step(reader.receive(MessageType.TLS_HANDSHAKE))
-                if (toPhone.isNotEmpty()) writer.send(MessageType.TLS_HANDSHAKE, toPhone)
+                val toPhone = tls.step(reader.receive(TLS_HANDSHAKE))
+                if (toPhone.isNotEmpty()) writer.send(TLS_HANDSHAKE, toPhone)
             }
-            writer.send(MessageType.AUTH_COMPLETE, AuthComplete(status = authStatus).encode())
+            writer.send(AUTH_COMPLETE, byteArrayOf(0x08, authStatus.toByte()))
         }
 
         private fun FrameReader.receive(type: Int): ByteArray {
             val message = readMessage()
-            assertEquals(CONTROL_CHANNEL, message.channel)
+            assertEquals(0, message.channel)
             assertEquals(type, message.type)
             assertFalse(message.isEncrypted)
             return message.body
         }
 
         private fun FrameWriter.send(type: Int, body: ByteArray) =
-            write(CONTROL_CHANNEL, isControl = false, type, body)
+            write(0, isControl = false, type, body)
     }
 
     private companion object {
         val CAR_VERSION = ProtocolVersion(1, 7)
         const val PIPE_SIZE = 64 * 1024
+        const val VERSION_REQUEST = 0x0001
+        const val VERSION_RESPONSE = 0x0002
+        const val TLS_HANDSHAKE = 0x0003
+        const val AUTH_COMPLETE = 0x0004
     }
 }
