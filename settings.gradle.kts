@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             content {
@@ -30,3 +31,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "LibreAuto"
 include(":app")
+include(":phone")
+include(":session")

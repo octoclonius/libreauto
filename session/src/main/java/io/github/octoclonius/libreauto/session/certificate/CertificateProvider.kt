@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.certificate
+package io.github.octoclonius.libreauto.session.certificate
 
 import android.content.Context
 import android.content.Intent

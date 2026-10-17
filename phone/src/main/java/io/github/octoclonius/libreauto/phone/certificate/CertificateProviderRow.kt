@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.certificate
+package io.github.octoclonius.libreauto.phone.certificate
 
 import android.icu.text.DateFormat
 import android.icu.text.RelativeDateTimeFormatter
@@ -27,10 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.CertificateState
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.Picker
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.Selection
-import io.github.octoclonius.libreauto.ui.StatusRow
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
+import io.github.octoclonius.libreauto.phone.ui.StatusRow
+import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit

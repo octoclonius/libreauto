@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto
+package io.github.octoclonius.libreauto.phone
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.octoclonius.libreauto.ui.theme.PhoneTheme
+import io.github.octoclonius.libreauto.phone.ui.theme.PhoneTheme
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels { MainViewModel.Factory }

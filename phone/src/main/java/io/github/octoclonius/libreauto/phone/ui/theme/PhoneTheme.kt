@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.ui.theme
+package io.github.octoclonius.libreauto.phone.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

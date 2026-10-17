@@ -1,5 +1,6 @@
-package io.github.octoclonius.libreauto.certificate
+package io.github.octoclonius.libreauto.phone.certificate
 
+import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import java.time.Instant
 
 data class CertificateProviderUiState(

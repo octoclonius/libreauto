@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto
+package io.github.octoclonius.libreauto.phone
 
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -9,11 +9,11 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.github.octoclonius.libreauto.certificate.CertificateProvider
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.CertificateState
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.Picker
-import io.github.octoclonius.libreauto.certificate.CertificateProviderUiState.Selection
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
+import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

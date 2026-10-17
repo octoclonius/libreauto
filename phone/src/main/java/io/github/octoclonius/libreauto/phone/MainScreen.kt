@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto
+package io.github.octoclonius.libreauto.phone
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +13,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import io.github.octoclonius.libreauto.certificate.CertificateProvider
-import io.github.octoclonius.libreauto.certificate.CertificateProviderRow
+import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderRow
+import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
