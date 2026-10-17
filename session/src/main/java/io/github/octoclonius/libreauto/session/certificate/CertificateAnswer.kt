@@ -9,8 +9,8 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 
-private const val MAX_BYTES = 16 * 1024
-private const val MAX_ERROR_CHARS = 256
+internal const val MAX_BYTES = 16 * 1024
+internal const val MAX_ERROR_CHARS = 256
 
 internal fun checkAnswer(error: String?, certBytes: ByteArray?, keyBytes: ByteArray?): FetchResult {
     if (error != null) return FetchResult.Error(error.take(MAX_ERROR_CHARS))
