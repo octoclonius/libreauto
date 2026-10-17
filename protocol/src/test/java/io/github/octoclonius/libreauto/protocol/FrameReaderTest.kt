@@ -14,41 +14,72 @@ class FrameReaderTest {
 
     @Test
     fun writtenMessagesReadBack() {
-        val payloads = listOf(byteArrayOf(7), ByteArray(MAX_FRAME_DATA_SIZE + 1) { (it % 251).toByte() })
+        val bodies =
+            listOf(
+                byteArrayOf(),
+                byteArrayOf(7),
+                ByteArray(MAX_FRAME_DATA_SIZE + 1) { (it % 251).toByte() },
+            )
         for (encrypt in listOf(null, TestCipher::encrypt)) {
             val output = ByteArrayOutputStream()
             val writer = FrameWriter(output)
-            for (payload in payloads) writer.write(5, isControl = false, payload, encrypt)
+            for (body in bodies) writer.write(5, isControl = false, 0x8001, body, encrypt)
             val messages = readAll(output.toByteArray())
-            assertEquals(payloads.map { it.toList() }, messages.map { it.payload.toList() })
-            assertTrue(messages.all { it.channel == 5 && it.isEncrypted == (encrypt != null) })
+            assertEquals(bodies.map { it.toList() }, messages.map { it.body.toList() })
+            assertTrue(
+                messages.all {
+                    it.channel == 5 && it.type == 0x8001 && it.isEncrypted == (encrypt != null)
+                }
+            )
         }
+    }
+
+    @Test
+    fun theFirstTwoBytesAreTheType() {
+        val flags = FrameFlags.FIRST or FrameFlags.LAST
+        val message = readAll(frame(1, flags, bytes(0x80, 0x01, 9))).single()
+        assertEquals(0x8001, message.type)
+        assertEquals(listOf<Byte>(9), message.body.toList())
     }
 
     @Test
     fun framesOfDifferentChannelsInterleave() {
         val bytes =
-            frame(1, FrameFlags.FIRST, byteArrayOf(1), totalSize = 2) +
-                frame(2, FrameFlags.FIRST, byteArrayOf(2), totalSize = 2) +
-                frame(1, FrameFlags.LAST, byteArrayOf(1)) +
-                frame(2, FrameFlags.LAST, byteArrayOf(2))
+            frame(1, FrameFlags.FIRST, bytes(0, 1, 1), totalSize = 4) +
+                frame(2, FrameFlags.FIRST, bytes(0, 2, 2), totalSize = 4) +
+                frame(1, FrameFlags.LAST, bytes(1)) +
+                frame(2, FrameFlags.LAST, bytes(2))
         val messages = readAll(bytes)
         assertEquals(listOf(1, 2), messages.map { it.channel })
-        assertEquals(listOf<Byte>(2, 2), messages[1].payload.toList())
+        assertEquals(listOf(1, 2), messages.map { it.type })
+        assertEquals(listOf<Byte>(2, 2), messages[1].body.toList())
     }
 
     @Test
     fun aMessageWithAPlaintextFrameIsNotEncrypted() {
-        val encrypted = TestCipher.encrypt(byteArrayOf(1))
+        val encrypted = TestCipher.encrypt(bytes(0, 1, 1))
         val bytes =
-            frame(4, FrameFlags.FIRST or FrameFlags.ENCRYPTED, encrypted, totalSize = 2) +
-                frame(4, FrameFlags.LAST, byteArrayOf(2))
+            frame(4, FrameFlags.FIRST or FrameFlags.ENCRYPTED, encrypted, totalSize = 4) +
+                frame(4, FrameFlags.LAST, bytes(2))
         assertFalse(readAll(bytes).single().isEncrypted)
     }
 
     @Test
+    fun aMessageShorterThanItsTypeBreaksTheFraming() {
+        assertThrows<ProtocolException> {
+            readAll(frame(1, FrameFlags.FIRST or FrameFlags.LAST, bytes(1)))
+        }
+        assertThrows<ProtocolException> {
+            readAll(
+                frame(1, FrameFlags.FIRST, bytes(1), totalSize = 3) +
+                    frame(1, FrameFlags.LAST, bytes(1, 2))
+            )
+        }
+    }
+
+    @Test
     fun aSecondFirstFrameOnAChannelBreaksTheFraming() {
-        val first = frame(1, FrameFlags.FIRST, ByteArray(1), totalSize = 2)
+        val first = frame(1, FrameFlags.FIRST, ByteArray(2), totalSize = 3)
         assertThrows<ProtocolException> { readAll(first + first) }
     }
 
@@ -68,16 +99,16 @@ class FrameReaderTest {
     @Test
     fun lessDataThanTheTotalBreaksTheFraming() {
         val bytes =
-            frame(1, FrameFlags.FIRST, ByteArray(1), totalSize = 3) +
+            frame(1, FrameFlags.FIRST, ByteArray(2), totalSize = 4) +
                 frame(1, FrameFlags.LAST, ByteArray(1))
         assertThrows<ProtocolException> { readAll(bytes) }
     }
 
     @Test
     fun totalsOutsideTheLimitBreakTheFraming() {
-        for (totalSize in listOf(-1, FrameReader.MAX_MESSAGE_SIZE + 1)) {
+        for (totalSize in listOf(-1, MESSAGE_TYPE_SIZE - 1, FrameReader.MAX_MESSAGE_SIZE + 1)) {
             assertThrows<ProtocolException> {
-                readAll(frame(1, FrameFlags.FIRST, ByteArray(1), totalSize = totalSize))
+                readAll(frame(1, FrameFlags.FIRST, ByteArray(2), totalSize = totalSize))
             }
         }
     }
@@ -87,6 +118,8 @@ class FrameReaderTest {
         val flags = FrameFlags.FIRST or FrameFlags.LAST or FrameFlags.ENCRYPTED
         assertThrows<ProtocolException> { readAll(frame(1, flags, byteArrayOf(1, 2))) }
     }
+
+    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 
     private fun frame(
         channel: Int,

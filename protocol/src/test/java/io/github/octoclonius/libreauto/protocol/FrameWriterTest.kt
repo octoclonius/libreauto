@@ -12,28 +12,36 @@ class FrameWriterTest {
 
     @Test
     fun aShortMessageIsOneFrame() {
-        val frames = write(3, isControl = true, payload = byteArrayOf(1, 2, 3))
+        val frames = write(3, isControl = true, type = 0x8001, body = byteArrayOf(1, 2, 3))
         val flags = FrameFlags.FIRST or FrameFlags.LAST or FrameFlags.CONTROL
-        assertArrayEquals(byteArrayOf(3, flags.toByte(), 0, 3, 1, 2, 3), frames.single())
+        assertArrayEquals(
+            byteArrayOf(3, flags.toByte(), 0, 5, 0x80.toByte(), 0x01, 1, 2, 3),
+            frames.single(),
+        )
     }
 
     @Test
-    fun theFirstOfSeveralFramesCarriesTheTotalSize() {
-        val payload = ByteArray(MAX_FRAME_DATA_SIZE + 10)
-        val frames = write(1, isControl = false, payload = payload)
+    fun theFirstOfSeveralFramesCarriesTheTotalSizeWithTheType() {
+        val body = ByteArray(MAX_FRAME_DATA_SIZE + 10)
+        val frames = write(1, isControl = false, type = 1, body = body)
         assertEquals(2, frames.size)
         val first = ByteBuffer.wrap(frames[0])
         assertEquals(FrameFlags.FIRST, first.get(1).toInt())
-        assertEquals(payload.size, first.getInt(FRAME_HEADER_SIZE))
+        assertEquals(MESSAGE_TYPE_SIZE + body.size, first.getInt(FRAME_HEADER_SIZE))
+        assertEquals(1, first.getShort(FRAME_HEADER_SIZE + TOTAL_SIZE_FIELD_SIZE).toInt())
         assertEquals(FrameFlags.LAST, frames[1][1].toInt())
     }
 
     @Test
     fun encryptedFramesHoldOneRecordEachAndCountPlaintextInTheTotal() {
-        val payload = ByteArray(MAX_RECORD_PLAINTEXT_SIZE * 2 + 1)
-        val frames = write(2, isControl = false, payload = payload, encrypt = TestCipher::encrypt)
+        val body = ByteArray(MAX_RECORD_PLAINTEXT_SIZE * 2 + 1)
+        val frames =
+            write(2, isControl = false, type = 1, body = body, encrypt = TestCipher::encrypt)
         assertEquals(3, frames.size)
-        assertEquals(payload.size, ByteBuffer.wrap(frames[0]).getInt(FRAME_HEADER_SIZE))
+        assertEquals(
+            MESSAGE_TYPE_SIZE + body.size,
+            ByteBuffer.wrap(frames[0]).getInt(FRAME_HEADER_SIZE),
+        )
         assertTrue(frames.all { it[1].toInt() and FrameFlags.ENCRYPTED != 0 })
     }
 
@@ -44,14 +52,14 @@ class FrameWriterTest {
         var nextRecord = 0
         val encrypt = { plaintext: ByteArray -> byteArrayOf(nextRecord++.toByte()) + plaintext }
         val framesPerMessage = 3
-        val payload = ByteArray(MAX_RECORD_PLAINTEXT_SIZE * (framesPerMessage - 1) + 1)
+        val body = ByteArray(MAX_RECORD_PLAINTEXT_SIZE * (framesPerMessage - 1) + 1)
         val threads = 4
         val messagesPerThread = 20
         (0 until threads)
             .map { channel ->
                 thread {
                     repeat(messagesPerThread) {
-                        writer.write(channel, isControl = false, payload, encrypt)
+                        writer.write(channel, isControl = false, 1, body, encrypt)
                     }
                 }
             }
@@ -74,11 +82,12 @@ class FrameWriterTest {
     private fun write(
         channel: Int,
         isControl: Boolean,
-        payload: ByteArray,
+        type: Int,
+        body: ByteArray,
         encrypt: ((ByteArray) -> ByteArray)? = null,
     ): List<ByteArray> {
         val writes = mutableListOf<ByteArray>()
-        FrameWriter(recording(writes)).write(channel, isControl, payload, encrypt)
+        FrameWriter(recording(writes)).write(channel, isControl, type, body, encrypt)
         return writes
     }
 

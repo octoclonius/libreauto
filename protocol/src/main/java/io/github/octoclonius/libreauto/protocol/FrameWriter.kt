@@ -11,11 +11,13 @@ class FrameWriter(private val output: OutputStream) {
     fun write(
         channel: Int,
         isControl: Boolean,
-        payload: ByteArray,
+        type: Int,
+        body: ByteArray,
         encrypt: ((ByteArray) -> ByteArray)? = null,
     ) {
+        val payloadSize = MESSAGE_TYPE_SIZE + body.size
         val chunkSize = if (encrypt != null) MAX_RECORD_PLAINTEXT_SIZE else MAX_FRAME_DATA_SIZE
-        val frameCount = maxOf(1, (payload.size + chunkSize - 1) / chunkSize)
+        val frameCount = (payloadSize + chunkSize - 1) / chunkSize
         var baseFlags = 0
         if (isControl) baseFlags = baseFlags or FrameFlags.CONTROL
         if (encrypt != null) baseFlags = baseFlags or FrameFlags.ENCRYPTED
@@ -23,7 +25,15 @@ class FrameWriter(private val output: OutputStream) {
         synchronized(lock) {
             for (index in 0 until frameCount) {
                 val start = index * chunkSize
-                val chunk = payload.copyOfRange(start, minOf(payload.size, start + chunkSize))
+                val chunk = ByteArray(minOf(payloadSize, start + chunkSize) - start)
+                val bodyOffset = if (index == 0) MESSAGE_TYPE_SIZE else 0
+                if (index == 0) ByteBuffer.wrap(chunk).putShort(type.toShort())
+                body.copyInto(
+                    chunk,
+                    destinationOffset = bodyOffset,
+                    startIndex = start + bodyOffset - MESSAGE_TYPE_SIZE,
+                    endIndex = start + chunk.size - MESSAGE_TYPE_SIZE,
+                )
                 val data = encrypt?.invoke(chunk) ?: chunk
 
                 var flags = baseFlags
@@ -40,7 +50,7 @@ class FrameWriter(private val output: OutputStream) {
                 frame.put(channel.toByte())
                 frame.put(flags.toByte())
                 frame.putShort(data.size.toShort())
-                if (hasTotalSize) frame.putInt(payload.size)
+                if (hasTotalSize) frame.putInt(payloadSize)
                 frame.put(data)
                 output.write(frame.array())
             }

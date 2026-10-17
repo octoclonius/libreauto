@@ -31,35 +31,48 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
     }
 
     private fun onFrame(frame: Frame): ChannelMessage? {
+        val bytes = plaintext(frame)
         if (frame.isFirst && frame.isLast) {
-            return ChannelMessage(frame.channel, frame.isEncrypted, plaintext(frame))
+            val type = typeOf(frame, bytes)
+            return ChannelMessage(
+                frame.channel,
+                frame.isEncrypted,
+                type,
+                bytes.copyOfRange(MESSAGE_TYPE_SIZE, bytes.size),
+            )
+        }
+        if (frame.isFirst) {
+            startMessage(frame, bytes)
+            return null
         }
 
-        val message = if (frame.isFirst) startMessage(frame) else continueMessage(frame)
-        append(message, frame)
+        val message = continueMessage(frame)
+        append(message, frame, bytes, from = 0)
         if (!frame.isLast) return null
 
         pendingMessages.remove(frame.channel)
-        if (message.filled != message.data.size) {
+        if (message.filled != message.body.size) {
             throw ProtocolException(
                 "Message on channel ${frame.channel} is shorter than its total size"
             )
         }
-        return ChannelMessage(frame.channel, message.isEncrypted, message.data)
+        return ChannelMessage(frame.channel, message.isEncrypted, message.type, message.body)
     }
 
-    private fun startMessage(frame: Frame): PendingMessage {
+    private fun startMessage(frame: Frame, bytes: ByteArray) {
         if (frame.channel in pendingMessages) {
             throw ProtocolException("Second first frame on channel ${frame.channel}")
         }
-        if (frame.totalSize !in 0..MAX_MESSAGE_SIZE) {
+        if (frame.totalSize !in MESSAGE_TYPE_SIZE..MAX_MESSAGE_SIZE) {
             throw ProtocolException(
-                "Message of ${frame.totalSize} bytes on channel ${frame.channel} is too large"
+                "Message of ${frame.totalSize} bytes on channel ${frame.channel} is outside " +
+                    "$MESSAGE_TYPE_SIZE..$MAX_MESSAGE_SIZE"
             )
         }
-        val message = PendingMessage(ByteArray(frame.totalSize))
+        val message =
+            PendingMessage(typeOf(frame, bytes), ByteArray(frame.totalSize - MESSAGE_TYPE_SIZE))
         pendingMessages[frame.channel] = message
-        return message
+        append(message, frame, bytes, from = MESSAGE_TYPE_SIZE)
     }
 
     private fun continueMessage(frame: Frame): PendingMessage =
@@ -68,16 +81,22 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
                 "Continuation frame on channel ${frame.channel} without a first frame"
             )
 
-    private fun append(message: PendingMessage, frame: Frame) {
+    private fun typeOf(frame: Frame, bytes: ByteArray): Int {
+        if (bytes.size < MESSAGE_TYPE_SIZE) {
+            throw ProtocolException("Message on channel ${frame.channel} starts without a type")
+        }
+        return (bytes[0].toInt() and 0xFF shl 8) or (bytes[1].toInt() and 0xFF)
+    }
+
+    private fun append(message: PendingMessage, frame: Frame, bytes: ByteArray, from: Int) {
         if (!frame.isEncrypted) message.isEncrypted = false
-        val bytes = plaintext(frame)
-        if (bytes.size > message.data.size - message.filled) {
+        if (bytes.size - from > message.body.size - message.filled) {
             throw ProtocolException(
                 "Message on channel ${frame.channel} is longer than its total size"
             )
         }
-        bytes.copyInto(message.data, destinationOffset = message.filled)
-        message.filled += bytes.size
+        bytes.copyInto(message.body, destinationOffset = message.filled, startIndex = from)
+        message.filled += bytes.size - from
     }
 
     private fun plaintext(frame: Frame): ByteArray {
@@ -92,7 +111,7 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
         val isEncrypted get() = flags and FrameFlags.ENCRYPTED != 0
     }
 
-    private class PendingMessage(val data: ByteArray) {
+    private class PendingMessage(val type: Int, val body: ByteArray) {
         var filled = 0
         var isEncrypted = true
     }
