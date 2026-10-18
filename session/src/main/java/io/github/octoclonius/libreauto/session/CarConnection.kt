@@ -8,16 +8,20 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.Handshake
+import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.MessageType
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.carName
+import io.github.octoclonius.libreauto.protocol.channelOpenRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
+import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.parseServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
+import io.github.octoclonius.libreauto.protocol.videoChannel
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import java.io.Closeable
@@ -74,6 +78,7 @@ class CarConnection(context: Context) {
     }
 
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
+        var openingVideoChannel: Int? = null
         while (true) {
             val message = reader.readMessage()
             if (!message.isEncrypted) {
@@ -81,6 +86,22 @@ class CarConnection(context: Context) {
                     "Plaintext message 0x%04x on channel %d after the handshake"
                         .format(message.type, message.channel)
                 )
+            }
+            if (
+                message.channel == openingVideoChannel &&
+                    message.type == MessageType.CHANNEL_OPEN_RESPONSE
+            ) {
+                val status = parseChannelOpenResponse(message.body)
+                if (status == MessageStatus.SUCCESS) {
+                    Log.i(TAG, "The car opened the video channel $openingVideoChannel")
+                } else {
+                    Log.w(
+                        TAG,
+                        "The car refused the video channel $openingVideoChannel: status $status",
+                    )
+                }
+                openingVideoChannel = null
+                continue
             }
             if (message.channel != CONTROL_CHANNEL) {
                 logUnhandled(message)
@@ -91,6 +112,20 @@ class CarConnection(context: Context) {
                     val response = parseServiceDiscoveryResponse(message.body)
                     response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
                     _state.value = CarConnectionState.Connected(carName(response))
+                    openingVideoChannel = videoChannel(response)
+                    if (openingVideoChannel == null) {
+                        Log.w(TAG, "The car has no video channel for its main display")
+                    } else {
+                        Log.i(TAG, "Opening the video channel $openingVideoChannel")
+                        send(
+                            writer,
+                            tls,
+                            MessageType.CHANNEL_OPEN_REQUEST,
+                            channelOpenRequest(openingVideoChannel),
+                            openingVideoChannel,
+                            isControl = true,
+                        )
+                    }
                 }
                 MessageType.PING_REQUEST ->
                     send(
@@ -110,8 +145,14 @@ class CarConnection(context: Context) {
         }
     }
 
-    private fun send(writer: FrameWriter, tls: TlsServer, type: Int, body: ByteArray) =
-        writer.write(CONTROL_CHANNEL, isControl = false, type, body, tls::encrypt)
+    private fun send(
+        writer: FrameWriter,
+        tls: TlsServer,
+        type: Int,
+        body: ByteArray,
+        channel: Int = CONTROL_CHANNEL,
+        isControl: Boolean = false,
+    ) = writer.write(channel, isControl, type, body, tls::encrypt)
 
     private fun logUnhandled(message: ChannelMessage) {
         Log.i(TAG, "Message 0x%04x on channel %d".format(message.type, message.channel))

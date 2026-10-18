@@ -6,6 +6,15 @@ message AuthComplete {
   optional int32 status = 1;
 }
 
+message ChannelOpenRequest {
+  optional int32 priority = 1;
+  optional int32 channel_id = 2;
+}
+
+message ChannelOpenResponse {
+  optional int32 status = 1;
+}
+
 message PingRequest {
   optional int64 timestamp = 1;
 }

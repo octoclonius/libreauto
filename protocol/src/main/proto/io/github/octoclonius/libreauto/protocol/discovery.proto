@@ -33,7 +33,12 @@ message Service {
 
 message SensorSourceService {}
 
-message MediaSinkService {}
+message MediaSinkService {
+  repeated VideoConfig video_configs = 4;
+  optional int32 display_type = 7;
+}
+
+message VideoConfig {}
 
 message InputSourceService {}
 
