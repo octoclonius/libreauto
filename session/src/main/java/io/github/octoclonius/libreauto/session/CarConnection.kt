@@ -4,18 +4,23 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
+import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.Handshake
 import io.github.octoclonius.libreauto.protocol.MessageType
-import io.github.octoclonius.libreauto.protocol.ServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.TlsServer
+import io.github.octoclonius.libreauto.protocol.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
+import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
+import io.github.octoclonius.libreauto.protocol.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.parseServiceDiscoveryResponse
+import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import java.io.Closeable
+import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -37,8 +42,15 @@ class CarConnection(context: Context) {
             val writer = FrameWriter(output)
             val version = Handshake(reader, writer, tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")
-            val discovery = discoverServices(reader, writer, tls)
-            discovery.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
+            send(
+                writer,
+                tls,
+                MessageType.SERVICE_DISCOVERY_REQUEST,
+                serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
+            )
+            serve(reader, writer, tls)
+        } catch (_: EOFException) {
+            Log.i(TAG, "The car closed the connection")
         } catch (e: IOException) {
             Log.w(TAG, "Connection to the car failed", e)
         } finally {
@@ -47,18 +59,7 @@ class CarConnection(context: Context) {
         }
     }
 
-    private fun discoverServices(
-        reader: FrameReader,
-        writer: FrameWriter,
-        tls: TlsServer,
-    ): ServiceDiscoveryResponse {
-        writer.write(
-            CONTROL_CHANNEL,
-            isControl = false,
-            MessageType.SERVICE_DISCOVERY_REQUEST,
-            serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
-            tls::encrypt,
-        )
+    private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
         while (true) {
             val message = reader.readMessage()
             if (!message.isEncrypted) {
@@ -67,18 +68,38 @@ class CarConnection(context: Context) {
                         .format(message.type, message.channel)
                 )
             }
-            if (
-                message.channel == CONTROL_CHANNEL &&
-                    message.type == MessageType.SERVICE_DISCOVERY_RESPONSE
-            ) {
-                return parseServiceDiscoveryResponse(message.body)
+            if (message.channel != CONTROL_CHANNEL) {
+                logUnhandled(message)
+                continue
             }
-            Log.i(
-                TAG,
-                "Message 0x%04x on channel %d before the service discovery response"
-                    .format(message.type, message.channel),
-            )
+            when (message.type) {
+                MessageType.SERVICE_DISCOVERY_RESPONSE ->
+                    parseServiceDiscoveryResponse(message.body).services.forEach {
+                        Log.i(TAG, "Service on channel ${it.id}: $it")
+                    }
+                MessageType.PING_REQUEST ->
+                    send(
+                        writer,
+                        tls,
+                        MessageType.PING_RESPONSE,
+                        pingResponse(parsePingRequest(message.body)),
+                    )
+                MessageType.BYE_BYE_REQUEST -> {
+                    val reason = parseByeByeRequest(message.body)
+                    Log.i(TAG, "The car says bye-bye with reason $reason")
+                    send(writer, tls, MessageType.BYE_BYE_RESPONSE, byeByeResponse())
+                    return
+                }
+                else -> logUnhandled(message)
+            }
         }
+    }
+
+    private fun send(writer: FrameWriter, tls: TlsServer, type: Int, body: ByteArray) =
+        writer.write(CONTROL_CHANNEL, isControl = false, type, body, tls::encrypt)
+
+    private fun logUnhandled(message: ChannelMessage) {
+        Log.i(TAG, "Message 0x%04x on channel %d".format(message.type, message.channel))
     }
 
     private fun credentials(): FetchResult.Success? {

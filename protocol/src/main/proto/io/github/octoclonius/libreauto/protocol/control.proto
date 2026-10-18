@@ -5,3 +5,18 @@ package io.github.octoclonius.libreauto.protocol;
 message AuthComplete {
   optional int32 status = 1;
 }
+
+message PingRequest {
+  optional int64 timestamp = 1;
+}
+
+message PingResponse {
+  optional int64 timestamp = 1;
+}
+
+message ByeByeRequest {
+  optional int32 reason = 1;
+}
+
+message ByeByeResponse {
+}
