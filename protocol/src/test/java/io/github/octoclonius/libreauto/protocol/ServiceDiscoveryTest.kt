@@ -5,6 +5,7 @@ import okio.ByteString.Companion.toByteString
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -57,6 +58,29 @@ class ServiceDiscoveryTest {
     fun twoServicesOnOneChannelAreRefused() {
         val refusal = assertThrows<ProtocolException> { parse(Service(id = 3), Service(id = 3)) }
         assertEquals("Second service on channel 3", refusal.message)
+    }
+
+    @Test
+    fun theCarIsNamedByItsDisplayName() {
+        val body =
+            message(2, "Make".toByteArray()) +
+                message(3, "Model".toByteArray()) +
+                message(14, "My car".toByteArray())
+        assertEquals("My car", carName(parseServiceDiscoveryResponse(body)))
+    }
+
+    @Test
+    fun aCarWithoutADisplayNameIsNamedByItsMakeAndModel() {
+        val body =
+            message(2, "Make".toByteArray()) +
+                message(3, "Model".toByteArray()) +
+                message(14)
+        assertEquals("Make Model", carName(parseServiceDiscoveryResponse(body)))
+    }
+
+    @Test
+    fun aCarWithoutANameHasNone() {
+        assertNull(carName(parseServiceDiscoveryResponse(message(2) + message(3))))
     }
 
     private fun parse(vararg services: Service) =

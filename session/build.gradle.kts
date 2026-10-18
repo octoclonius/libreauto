@@ -8,6 +8,7 @@ android {
 
 dependencies {
     implementation(project(":protocol"))
+    implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

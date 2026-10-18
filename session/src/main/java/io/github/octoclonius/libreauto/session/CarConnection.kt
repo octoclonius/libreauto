@@ -11,6 +11,7 @@ import io.github.octoclonius.libreauto.protocol.Handshake
 import io.github.octoclonius.libreauto.protocol.MessageType
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.byeByeResponse
+import io.github.octoclonius.libreauto.protocol.carName
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
@@ -25,16 +26,23 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ProtocolException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class CarConnection(context: Context) {
 
     companion object {
         private const val TAG = "CarConnection"
+
+        private val _state = MutableStateFlow<CarConnectionState>(CarConnectionState.Disconnected)
+        val state: StateFlow<CarConnectionState> = _state.asStateFlow()
     }
 
     private val certificateProvider = CertificateProvider(context.applicationContext)
 
     fun run(input: InputStream, output: OutputStream) {
+        _state.value = CarConnectionState.Connecting
         try {
             val credentials = credentials() ?: return
             val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
@@ -54,6 +62,12 @@ class CarConnection(context: Context) {
         } catch (e: IOException) {
             Log.w(TAG, "Connection to the car failed", e)
         } finally {
+            _state.value =
+                if (_state.value is CarConnectionState.Connected) {
+                    CarConnectionState.Disconnected
+                } else {
+                    CarConnectionState.Failed
+                }
             input.closeQuietly()
             output.closeQuietly()
         }
@@ -73,10 +87,11 @@ class CarConnection(context: Context) {
                 continue
             }
             when (message.type) {
-                MessageType.SERVICE_DISCOVERY_RESPONSE ->
-                    parseServiceDiscoveryResponse(message.body).services.forEach {
-                        Log.i(TAG, "Service on channel ${it.id}: $it")
-                    }
+                MessageType.SERVICE_DISCOVERY_RESPONSE -> {
+                    val response = parseServiceDiscoveryResponse(message.body)
+                    response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
+                    _state.value = CarConnectionState.Connected(carName(response))
+                }
                 MessageType.PING_REQUEST ->
                     send(
                         writer,

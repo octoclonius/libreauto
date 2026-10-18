@@ -9,6 +9,9 @@ message ServiceDiscoveryRequest {
 
 message ServiceDiscoveryResponse {
   repeated Service services = 1;
+  optional string make = 2;
+  optional string model = 3;
+  optional string display_name = 14;
 }
 
 message Service {

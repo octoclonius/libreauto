@@ -10,13 +10,15 @@ import androidx.compose.ui.Modifier
 fun StatusRow(
     title: String,
     status: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
 ) {
     ListItem(
         headlineContent = { Text(title) },
-        modifier = modifier.clickable(enabled = enabled, onClick = onClick),
+        modifier =
+            if (onClick != null) modifier.clickable(enabled = enabled, onClick = onClick)
+            else modifier,
         supportingContent = { Text(status) },
     )
 }

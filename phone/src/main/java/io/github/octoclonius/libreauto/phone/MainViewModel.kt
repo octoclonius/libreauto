@@ -13,6 +13,8 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
+import io.github.octoclonius.libreauto.session.CarConnection
+import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,15 +26,24 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class MainUiState(
+    val car: CarConnectionState = CarConnectionState.Disconnected,
     val certificateProvider: CertificateProviderUiState = CertificateProviderUiState(),
     val isRefreshing: Boolean = false,
 )
 
-class MainViewModel(private val certificateProvider: CertificateProvider) : ViewModel() {
+class MainViewModel(
+    private val certificateProvider: CertificateProvider,
+    carConnectionState: StateFlow<CarConnectionState>,
+) : ViewModel() {
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { MainViewModel(CertificateProvider(checkNotNull(this[APPLICATION_KEY]))) }
+            initializer {
+                MainViewModel(
+                    CertificateProvider(checkNotNull(this[APPLICATION_KEY])),
+                    CarConnection.state,
+                )
+            }
         }
     }
 
@@ -49,6 +60,9 @@ class MainViewModel(private val certificateProvider: CertificateProvider) : View
 
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(foreground)
+        viewModelScope.launch {
+            carConnectionState.collect { car -> _uiState.update { it.copy(car = car) } }
+        }
     }
 
     override fun onCleared() {

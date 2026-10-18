@@ -22,3 +22,10 @@ fun parseServiceDiscoveryResponse(body: ByteArray): ServiceDiscoveryResponse {
     }
     return response
 }
+
+fun carName(response: ServiceDiscoveryResponse): String? =
+    response.display_name?.takeIf { it.isNotBlank() }
+        ?: listOfNotNull(response.make, response.model)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+            .ifEmpty { null }
