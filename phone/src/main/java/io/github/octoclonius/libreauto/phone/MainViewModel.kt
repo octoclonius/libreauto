@@ -16,6 +16,8 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +29,7 @@ import kotlinx.coroutines.withContext
 
 data class MainUiState(
     val car: CarConnectionState = CarConnectionState.Disconnected,
+    val privilegedService: PrivilegedServiceState = PrivilegedServiceState.Stopped,
     val certificateProvider: CertificateProviderUiState = CertificateProviderUiState(),
     val isRefreshing: Boolean = false,
 )
@@ -34,6 +37,7 @@ data class MainUiState(
 class MainViewModel(
     private val certificateProvider: CertificateProvider,
     carConnectionState: StateFlow<CarConnectionState>,
+    privilegedServiceState: StateFlow<PrivilegedServiceState>,
 ) : ViewModel() {
 
     companion object {
@@ -42,6 +46,7 @@ class MainViewModel(
                 MainViewModel(
                     CertificateProvider(checkNotNull(this[APPLICATION_KEY])),
                     CarConnection.state,
+                    PrivilegedServiceConnection.state,
                 )
             }
         }
@@ -55,13 +60,21 @@ class MainViewModel(
 
     private val foreground =
         object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = checkCertificate()
+            override fun onStart(owner: LifecycleOwner) {
+                PrivilegedServiceConnection.refresh()
+                checkCertificate()
+            }
         }
 
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(foreground)
         viewModelScope.launch {
             carConnectionState.collect { car -> _uiState.update { it.copy(car = car) } }
+        }
+        viewModelScope.launch {
+            privilegedServiceState.collect { service ->
+                _uiState.update { it.copy(privilegedService = service) }
+            }
         }
     }
 
@@ -71,7 +84,12 @@ class MainViewModel(
 
     fun refresh() {
         _uiState.update { it.copy(isRefreshing = true) }
+        PrivilegedServiceConnection.retry()
         checkCertificate()
+    }
+
+    fun requestShizukuPermission() {
+        PrivilegedServiceConnection.requestPermission()
     }
 
     fun openCertificatePicker() {

@@ -22,6 +22,10 @@ gradlePlugin {
             id = "libreauto.jvm.library"
             implementationClass = "io.github.octoclonius.libreauto.buildlogic.JvmLibraryConventionPlugin"
         }
+        register("androidAidl") {
+            id = "libreauto.android.aidl"
+            implementationClass = "io.github.octoclonius.libreauto.buildlogic.AndroidAidlConventionPlugin"
+        }
         register("androidCompose") {
             id = "libreauto.android.compose"
             implementationClass = "io.github.octoclonius.libreauto.buildlogic.AndroidComposeConventionPlugin"

@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.session.certificate
 
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.describe
 import java.io.ByteArrayInputStream
 import java.security.KeyFactory
 import java.security.cert.CertificateFactory
@@ -39,6 +40,3 @@ internal fun checkAnswer(error: String?, certBytes: ByteArray?, keyBytes: ByteAr
     }
     return FetchResult.Success(certificate, key)
 }
-
-internal fun describe(e: Throwable): String =
-    listOfNotNull(e.javaClass.simpleName, e.message).joinToString(": ").take(MAX_ERROR_CHARS)

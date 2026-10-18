@@ -1,10 +1,9 @@
 package io.github.octoclonius.libreauto
 
-import android.app.Application
 import io.github.octoclonius.libreauto.car.CarScreenPresenter
 import io.github.octoclonius.libreauto.session.DebugCarService
 
-class DebugApplication : Application() {
+class DebugApplication : LibreAutoApplication() {
     override fun onCreate() {
         super.onCreate()
         CarScreenPresenter(this, isTouchIndicatorEnabled = true).start()

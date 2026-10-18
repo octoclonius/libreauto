@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.connection.CarRow
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderRow
+import io.github.octoclonius.libreauto.phone.privileged.PrivilegedServiceRow
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,6 +26,7 @@ fun MainScreen(
     onOpenCertificatePicker: () -> Unit,
     onChooseCertificateProvider: (CertificateProvider.Choice?) -> Unit,
     onCloseCertificatePicker: () -> Unit,
+    onRequestShizukuPermission: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -42,6 +44,10 @@ fun MainScreen(
         ) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 CarRow(state = uiState.car)
+                PrivilegedServiceRow(
+                    state = uiState.privilegedService,
+                    onRequestPermission = onRequestShizukuPermission,
+                )
                 CertificateProviderRow(
                     state = uiState.certificateProvider,
                     onClick = onOpenCertificatePicker,

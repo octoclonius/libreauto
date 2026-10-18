@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
                     onOpenCertificatePicker = viewModel::openCertificatePicker,
                     onChooseCertificateProvider = viewModel::chooseCertificateProvider,
                     onCloseCertificatePicker = viewModel::closeCertificatePicker,
+                    onRequestShizukuPermission = viewModel::requestShizukuPermission,
                 )
             }
         }

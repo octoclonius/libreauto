@@ -7,6 +7,16 @@
     <string name="car_connected">Connected</string>
     <string name="car_failed">Failed to connect</string>
 
+    <string name="shizuku_title">Shizuku</string>
+    <string name="shizuku_stopped">Stopped</string>
+    <string name="shizuku_permission_needed">Tap to grant permission</string>
+    <string name="shizuku_connecting">Connecting…</string>
+    <string name="shizuku_running">Running</string>
+    <string name="shizuku_failed_permission_denied">Failed: permission denied</string>
+    <string name="shizuku_failed_outdated">Failed: Shizuku version %1$d is too old</string>
+    <string name="shizuku_failed_service_stopped">Failed: service stopped</string>
+    <string name="shizuku_failed_error">Failed: %1$s</string>
+
     <string name="certificate_provider_title">Certificate provider</string>
     <string name="certificate_provider_loading">Loading…</string>
     <string name="certificate_provider_not_selected">Tap to configure</string>
