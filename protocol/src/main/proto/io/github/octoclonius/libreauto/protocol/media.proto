@@ -11,3 +11,8 @@ message MediaSetupResponse {
   optional int32 max_unacked = 2;
   repeated int32 config_indexes = 3;
 }
+
+message VideoFocusNotification {
+  optional int32 mode = 1;
+  optional bool unsolicited = 2;
+}

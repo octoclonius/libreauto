@@ -20,6 +20,7 @@ import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
 import io.github.octoclonius.libreauto.protocol.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.parseServiceDiscoveryResponse
+import io.github.octoclonius.libreauto.protocol.parseVideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.videoChannel
@@ -82,6 +83,7 @@ class CarConnection(context: Context) {
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
         var openingVideoChannel: Int? = null
         var settingUpVideoChannel: Int? = null
+        var videoChannel: Int? = null
         while (true) {
             val message = reader.readMessage()
             if (!message.isEncrypted) {
@@ -105,6 +107,7 @@ class CarConnection(context: Context) {
                         message.channel,
                     )
                     settingUpVideoChannel = message.channel
+                    videoChannel = message.channel
                 } else {
                     Log.w(
                         TAG,
@@ -127,6 +130,18 @@ class CarConnection(context: Context) {
                         "configs ${response.config_indexes}",
                 )
                 settingUpVideoChannel = null
+                continue
+            }
+            if (
+                message.channel == videoChannel &&
+                    message.type == MessageType.VIDEO_FOCUS_NOTIFICATION
+            ) {
+                val notification = parseVideoFocusNotification(message.body)
+                Log.i(
+                    TAG,
+                    "Video focus on channel $videoChannel: mode ${notification.mode}, " +
+                        "unsolicited ${notification.unsolicited}",
+                )
                 continue
             }
             if (message.channel != CONTROL_CHANNEL) {
