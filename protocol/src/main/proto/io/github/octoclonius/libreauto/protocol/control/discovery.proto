@@ -1,0 +1,70 @@
+syntax = "proto2";
+
+package io.github.octoclonius.libreauto.protocol.control;
+
+message ServiceDiscoveryRequest {
+  optional string label_text = 4;
+  optional string device_name = 5;
+}
+
+message ServiceDiscoveryResponse {
+  repeated Service services = 1;
+  optional string make = 2;
+  optional string model = 3;
+  optional string display_name = 14;
+}
+
+message Service {
+  optional int32 id = 1;
+  optional SensorSourceService sensor_source_service = 2;
+  optional MediaSinkService media_sink_service = 3;
+  optional InputSourceService input_source_service = 4;
+  optional MediaSourceService media_source_service = 5;
+  optional BluetoothService bluetooth_service = 6;
+  optional RadioService radio_service = 7;
+  optional NavigationStatusService navigation_status_service = 8;
+  optional MediaPlaybackStatusService media_playback_status_service = 9;
+  optional PhoneStatusService phone_status_service = 10;
+  optional MediaBrowserService media_browser_service = 11;
+  optional VendorExtensionService vendor_extension_service = 12;
+  optional GenericNotificationService generic_notification_service = 13;
+  optional WifiProjectionService wifi_projection_service = 14;
+}
+
+message SensorSourceService {}
+
+message MediaSinkService {
+  repeated VideoConfig video_configs = 4;
+  optional int32 display_id = 6;
+  optional int32 display_type = 7;
+}
+
+message VideoConfig {
+  optional int32 resolution = 1;
+  optional int32 frame_rate = 2;
+}
+
+message InputSourceService {
+  repeated int32 keycodes = 1;
+  optional int32 display_id = 5;
+}
+
+message MediaSourceService {}
+
+message BluetoothService {}
+
+message RadioService {}
+
+message NavigationStatusService {}
+
+message MediaPlaybackStatusService {}
+
+message PhoneStatusService {}
+
+message MediaBrowserService {}
+
+message VendorExtensionService {}
+
+message GenericNotificationService {}
+
+message WifiProjectionService {}

@@ -9,9 +9,9 @@ import android.media.MediaCodecInfo.CodecProfileLevel
 import android.media.MediaFormat
 import android.util.Log
 import android.view.Surface
-import io.github.octoclonius.libreauto.protocol.MediaMessageType
-import io.github.octoclonius.libreauto.protocol.VideoFormat
-import io.github.octoclonius.libreauto.protocol.mediaData
+import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
+import io.github.octoclonius.libreauto.protocol.media.VideoFormat
+import io.github.octoclonius.libreauto.protocol.media.mediaData
 import java.io.Closeable
 import java.io.IOException
 import java.util.concurrent.TimeUnit

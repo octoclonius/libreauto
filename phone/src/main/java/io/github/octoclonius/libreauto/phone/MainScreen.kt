@@ -13,7 +13,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import io.github.octoclonius.libreauto.phone.car.CarRow
+import io.github.octoclonius.libreauto.phone.connection.CarRow
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderRow
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 

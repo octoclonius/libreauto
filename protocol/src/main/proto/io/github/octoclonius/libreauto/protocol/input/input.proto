@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package io.github.octoclonius.libreauto.protocol.input;
+
+message InputBindingRequest {
+  repeated int32 keycodes = 1 [packed = true];
+}
+
+message InputBindingResponse {
+  optional int32 status = 1;
+}
+
+message InputReport {
+  optional int64 timestamp = 1;
+  optional TouchEvent touch = 3;
+}
+
+message TouchEvent {
+  repeated Pointer pointers = 1;
+  optional int32 action_index = 2;
+  optional int32 action = 3;
+}
+
+message Pointer {
+  optional int32 x = 1;
+  optional int32 y = 2;
+  optional int32 id = 3;
+}
