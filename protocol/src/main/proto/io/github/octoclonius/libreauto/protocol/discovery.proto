@@ -35,6 +35,7 @@ message SensorSourceService {}
 
 message MediaSinkService {
   repeated VideoConfig video_configs = 4;
+  optional int32 display_id = 6;
   optional int32 display_type = 7;
 }
 
@@ -43,7 +44,10 @@ message VideoConfig {
   optional int32 frame_rate = 2;
 }
 
-message InputSourceService {}
+message InputSourceService {
+  repeated int32 keycodes = 1;
+  optional int32 display_id = 5;
+}
 
 message MediaSourceService {}
 

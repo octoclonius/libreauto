@@ -8,6 +8,8 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.Handshake
+import io.github.octoclonius.libreauto.protocol.InputMessageType
+import io.github.octoclonius.libreauto.protocol.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.MessageType
 import io.github.octoclonius.libreauto.protocol.TlsServer
@@ -18,9 +20,13 @@ import io.github.octoclonius.libreauto.protocol.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.carName
 import io.github.octoclonius.libreauto.protocol.channelOpenRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
+import io.github.octoclonius.libreauto.protocol.inputBindingRequest
+import io.github.octoclonius.libreauto.protocol.inputSource
 import io.github.octoclonius.libreauto.protocol.isProjected
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
+import io.github.octoclonius.libreauto.protocol.parseInputBindingResponse
+import io.github.octoclonius.libreauto.protocol.parseInputReport
 import io.github.octoclonius.libreauto.protocol.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
@@ -90,6 +96,7 @@ class CarConnection(context: Context) {
 
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
         var video: VideoChannelState? = null
+        var input: InputChannelState? = null
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -105,14 +112,12 @@ class CarConnection(context: Context) {
                         message.channel == current.channel &&
                         message.type == MessageType.CHANNEL_OPEN_RESPONSE
                 ) {
-                    val status = parseChannelOpenResponse(message.body)
                     video =
-                        if (status == MessageStatus.SUCCESS) {
-                            Log.i(TAG, "The car opened the video channel ${current.channel}")
+                        if (isChannelOpened(message, "video")) {
                             send(
                                 writer,
                                 tls,
-                                MessageType.MEDIA_SETUP_REQUEST,
+                                MediaMessageType.SETUP_REQUEST,
                                 videoSetupRequest(),
                                 current.channel,
                             )
@@ -122,11 +127,6 @@ class CarConnection(context: Context) {
                                 pendingFocus = null,
                             )
                         } else {
-                            Log.w(
-                                TAG,
-                                "The car refused the video channel ${current.channel}: " +
-                                    "status $status",
-                            )
                             null
                         }
                     continue
@@ -134,7 +134,7 @@ class CarConnection(context: Context) {
                 if (
                     current is VideoChannelState.SettingUp &&
                         message.channel == current.channel &&
-                        message.type == MessageType.MEDIA_SETUP_RESPONSE
+                        message.type == MediaMessageType.SETUP_RESPONSE
                 ) {
                     val response = parseMediaSetupResponse(message.body)
                     Log.i(
@@ -181,7 +181,7 @@ class CarConnection(context: Context) {
                     current != null &&
                         current !is VideoChannelState.Opening &&
                         message.channel == current.channel &&
-                        message.type == MessageType.VIDEO_FOCUS_NOTIFICATION
+                        message.type == MediaMessageType.VIDEO_FOCUS_NOTIFICATION
                 ) {
                     val notification = parseVideoFocusNotification(message.body)
                     Log.i(
@@ -206,9 +206,57 @@ class CarConnection(context: Context) {
                 if (
                     current is VideoChannelState.Started &&
                         message.channel == current.channel &&
-                        message.type == MessageType.MEDIA_ACK
+                        message.type == MediaMessageType.ACK
                 ) {
                     current.stream.acknowledge(parseMediaAck(message.body))
+                    continue
+                }
+                val currentInput = input
+                if (
+                    currentInput is InputChannelState.Opening &&
+                        message.channel == currentInput.channel &&
+                        message.type == MessageType.CHANNEL_OPEN_RESPONSE
+                ) {
+                    input =
+                        if (isChannelOpened(message, "input")) {
+                            Log.i(TAG, "Binding the keys ${currentInput.keycodes}")
+                            send(
+                                writer,
+                                tls,
+                                InputMessageType.BINDING_REQUEST,
+                                inputBindingRequest(currentInput.keycodes),
+                                currentInput.channel,
+                            )
+                            InputChannelState.Open(currentInput.channel)
+                        } else {
+                            null
+                        }
+                    continue
+                }
+                if (
+                    currentInput is InputChannelState.Open &&
+                        message.channel == currentInput.channel
+                ) {
+                    when (message.type) {
+                        InputMessageType.BINDING_RESPONSE -> {
+                            val status = parseInputBindingResponse(message.body)
+                            if (status == MessageStatus.SUCCESS) {
+                                Log.i(TAG, "The car bound the keys")
+                            } else {
+                                Log.w(TAG, "The car refused the key binding: status $status")
+                            }
+                        }
+                        InputMessageType.REPORT -> {
+                            val report = parseInputReport(message.body)
+                            val touch = report.touch
+                            if (touch == null) {
+                                logUnhandled(message)
+                            } else {
+                                Log.i(TAG, "Touch read at ${report.timestamp}: $touch")
+                            }
+                        }
+                        else -> logUnhandled(message)
+                    }
                     continue
                 }
                 if (message.channel != CONTROL_CHANNEL) {
@@ -224,16 +272,18 @@ class CarConnection(context: Context) {
                         if (sink == null) {
                             Log.w(TAG, "The car has no video channel for its main display")
                         } else {
-                            Log.i(TAG, "Opening the video channel ${sink.channel}")
-                            send(
-                                writer,
-                                tls,
-                                MessageType.CHANNEL_OPEN_REQUEST,
-                                channelOpenRequest(sink.channel),
-                                sink.channel,
-                                isControl = true,
-                            )
+                            openChannel(writer, tls, sink.channel, "video")
                             video = VideoChannelState.Opening(sink.channel, sink.configs)
+                            val source = inputSource(response, sink.displayId)
+                            if (source == null) {
+                                Log.w(
+                                    TAG,
+                                    "The car has no input channel for display ${sink.displayId}",
+                                )
+                            } else {
+                                openChannel(writer, tls, source.channel, "input")
+                                input = InputChannelState.Opening(source.channel, source.keycodes)
+                            }
                         }
                     }
                     MessageType.PING_REQUEST ->
@@ -257,12 +307,34 @@ class CarConnection(context: Context) {
         }
     }
 
+    private fun openChannel(writer: FrameWriter, tls: TlsServer, channel: Int, name: String) {
+        Log.i(TAG, "Opening the $name channel $channel")
+        send(
+            writer,
+            tls,
+            MessageType.CHANNEL_OPEN_REQUEST,
+            channelOpenRequest(channel),
+            channel,
+            isControl = true,
+        )
+    }
+
+    private fun isChannelOpened(message: ChannelMessage, name: String): Boolean {
+        val status = parseChannelOpenResponse(message.body)
+        if (status != MessageStatus.SUCCESS) {
+            Log.w(TAG, "The car refused the $name channel ${message.channel}: status $status")
+            return false
+        }
+        Log.i(TAG, "The car opened the $name channel ${message.channel}")
+        return true
+    }
+
     private fun startVideo(
         writer: FrameWriter,
         tls: TlsServer,
         video: VideoChannelState.Ready,
     ): VideoChannelState.Started {
-        send(writer, tls, MessageType.MEDIA_START, videoStart(video.configIndex), video.channel)
+        send(writer, tls, MediaMessageType.START, videoStart(video.configIndex), video.channel)
         Log.i(TAG, "Started video on channel ${video.channel} with config ${video.configIndex}")
         val stream =
             TestPatternStream(video.format, video.maxUnacked) { type, body ->
@@ -322,6 +394,14 @@ private sealed interface VideoChannelState {
 
     data class Started(override val channel: Int, val stream: TestPatternStream) :
         VideoChannelState
+}
+
+private sealed interface InputChannelState {
+    val channel: Int
+
+    data class Opening(override val channel: Int, val keycodes: List<Int>) : InputChannelState
+
+    data class Open(override val channel: Int) : InputChannelState
 }
 
 private fun Closeable.closeQuietly() {

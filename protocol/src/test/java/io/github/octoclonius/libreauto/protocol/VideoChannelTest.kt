@@ -55,13 +55,18 @@ class VideoChannelTest {
         assertEquals(listOf(1, 2), sink?.configs?.map { it.resolution })
     }
 
-    private fun pick(vararg services: ByteArray) =
+    @Test
+    fun theSinkHasItsDisplayIdAsField6Or0() {
+        assertEquals(2, sinkOf(sink(1, message(4), varint(6, 2)))?.displayId)
+        assertEquals(0, sinkOf(sink(1, message(4)))?.displayId)
+    }
+
+    private fun sinkOf(vararg services: ByteArray) =
         videoSink(
-                parseServiceDiscoveryResponse(
-                    services.map { message(1, it) }.reduce(ByteArray::plus)
-                )
-            )
-            ?.channel
+            parseServiceDiscoveryResponse(services.map { message(1, it) }.reduce(ByteArray::plus))
+        )
+
+    private fun pick(vararg services: ByteArray) = sinkOf(*services)?.channel
 
     private fun sink(channel: Int, vararg fields: ByteArray) =
         service(channel, message(3, *fields))

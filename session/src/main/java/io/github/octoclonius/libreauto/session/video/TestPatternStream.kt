@@ -9,7 +9,7 @@ import android.media.MediaCodecInfo.CodecProfileLevel
 import android.media.MediaFormat
 import android.util.Log
 import android.view.Surface
-import io.github.octoclonius.libreauto.protocol.MessageType
+import io.github.octoclonius.libreauto.protocol.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.VideoFormat
 import io.github.octoclonius.libreauto.protocol.mediaData
 import java.io.Closeable
@@ -127,9 +127,9 @@ class TestPatternStream(
             encoder.releaseOutputBuffer(index, false)
             when {
                 info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 ->
-                    send(MessageType.MEDIA_CODEC_CONFIG, data)
+                    send(MediaMessageType.CODEC_CONFIG, data)
                 data.isNotEmpty() && takePermit() ->
-                    send(MessageType.MEDIA_DATA, mediaData(info.presentationTimeUs, data))
+                    send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))
             }
         }
     }
