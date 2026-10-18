@@ -11,10 +11,12 @@ import io.github.octoclonius.libreauto.protocol.Handshake
 import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.MessageType
 import io.github.octoclonius.libreauto.protocol.TlsServer
+import io.github.octoclonius.libreauto.protocol.VideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.carName
 import io.github.octoclonius.libreauto.protocol.channelOpenRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
+import io.github.octoclonius.libreauto.protocol.isProjected
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
 import io.github.octoclonius.libreauto.protocol.parseMediaSetupResponse
@@ -25,6 +27,7 @@ import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.videoChannel
 import io.github.octoclonius.libreauto.protocol.videoSetupRequest
+import io.github.octoclonius.libreauto.protocol.videoStart
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import java.io.Closeable
@@ -81,9 +84,7 @@ class CarConnection(context: Context) {
     }
 
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
-        var openingVideoChannel: Int? = null
-        var settingUpVideoChannel: Int? = null
-        var videoChannel: Int? = null
+        var video: VideoChannelState? = null
         while (true) {
             val message = reader.readMessage()
             if (!message.isEncrypted) {
@@ -92,56 +93,90 @@ class CarConnection(context: Context) {
                         .format(message.type, message.channel)
                 )
             }
+            val current = video
             if (
-                message.channel == openingVideoChannel &&
+                current is VideoChannelState.Opening &&
+                    message.channel == current.channel &&
                     message.type == MessageType.CHANNEL_OPEN_RESPONSE
             ) {
                 val status = parseChannelOpenResponse(message.body)
-                if (status == MessageStatus.SUCCESS) {
-                    Log.i(TAG, "The car opened the video channel $openingVideoChannel")
-                    send(
-                        writer,
-                        tls,
-                        MessageType.MEDIA_SETUP_REQUEST,
-                        videoSetupRequest(),
-                        message.channel,
-                    )
-                    settingUpVideoChannel = message.channel
-                    videoChannel = message.channel
-                } else {
-                    Log.w(
-                        TAG,
-                        "The car refused the video channel $openingVideoChannel: status $status",
-                    )
-                }
-                openingVideoChannel = null
+                video =
+                    if (status == MessageStatus.SUCCESS) {
+                        Log.i(TAG, "The car opened the video channel ${current.channel}")
+                        send(
+                            writer,
+                            tls,
+                            MessageType.MEDIA_SETUP_REQUEST,
+                            videoSetupRequest(),
+                            current.channel,
+                        )
+                        VideoChannelState.SettingUp(current.channel, pendingFocus = null)
+                    } else {
+                        Log.w(
+                            TAG,
+                            "The car refused the video channel ${current.channel}: status $status",
+                        )
+                        null
+                    }
                 continue
             }
             if (
-                message.channel == settingUpVideoChannel &&
+                current is VideoChannelState.SettingUp &&
+                    message.channel == current.channel &&
                     message.type == MessageType.MEDIA_SETUP_RESPONSE
             ) {
                 val response = parseMediaSetupResponse(message.body)
                 Log.i(
                     TAG,
-                    "The car set up the video channel $settingUpVideoChannel: " +
+                    "The car set up the video channel ${current.channel}: " +
                         "status ${response.status}, " +
                         "up to ${response.max_unacked} unacked frames, " +
                         "configs ${response.config_indexes}",
                 )
-                settingUpVideoChannel = null
+                val maxUnacked = response.max_unacked
+                if (maxUnacked == null || maxUnacked <= 0) {
+                    throw ProtocolException(
+                        "The car allows $maxUnacked unacked frames on the video channel " +
+                            "${current.channel}"
+                    )
+                }
+                val configIndex =
+                    response.config_indexes.firstOrNull()
+                        ?: throw ProtocolException(
+                            "The car accepted no video config on channel ${current.channel}"
+                        )
+                val ready = VideoChannelState.Ready(current.channel, configIndex)
+                video =
+                    if (current.pendingFocus?.isProjected == true) {
+                        startVideo(writer, tls, ready)
+                    } else {
+                        ready
+                    }
                 continue
             }
             if (
-                message.channel == videoChannel &&
+                current != null &&
+                    current !is VideoChannelState.Opening &&
+                    message.channel == current.channel &&
                     message.type == MessageType.VIDEO_FOCUS_NOTIFICATION
             ) {
                 val notification = parseVideoFocusNotification(message.body)
                 Log.i(
                     TAG,
-                    "Video focus on channel $videoChannel: mode ${notification.mode}, " +
+                    "Video focus on channel ${current.channel}: mode ${notification.mode}, " +
                         "unsolicited ${notification.unsolicited}",
                 )
+                video =
+                    when (current) {
+                        is VideoChannelState.SettingUp -> current.copy(pendingFocus = notification)
+                        is VideoChannelState.Ready ->
+                            if (notification.isProjected) {
+                                startVideo(writer, tls, current)
+                            } else {
+                                current
+                            }
+                        else -> current
+                    }
                 continue
             }
             if (message.channel != CONTROL_CHANNEL) {
@@ -153,19 +188,20 @@ class CarConnection(context: Context) {
                     val response = parseServiceDiscoveryResponse(message.body)
                     response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
                     _state.value = CarConnectionState.Connected(carName(response))
-                    openingVideoChannel = videoChannel(response)
-                    if (openingVideoChannel == null) {
+                    val channel = videoChannel(response)
+                    if (channel == null) {
                         Log.w(TAG, "The car has no video channel for its main display")
                     } else {
-                        Log.i(TAG, "Opening the video channel $openingVideoChannel")
+                        Log.i(TAG, "Opening the video channel $channel")
                         send(
                             writer,
                             tls,
                             MessageType.CHANNEL_OPEN_REQUEST,
-                            channelOpenRequest(openingVideoChannel),
-                            openingVideoChannel,
+                            channelOpenRequest(channel),
+                            channel,
                             isControl = true,
                         )
+                        video = VideoChannelState.Opening(channel)
                     }
                 }
                 MessageType.PING_REQUEST ->
@@ -184,6 +220,16 @@ class CarConnection(context: Context) {
                 else -> logUnhandled(message)
             }
         }
+    }
+
+    private fun startVideo(
+        writer: FrameWriter,
+        tls: TlsServer,
+        video: VideoChannelState.Ready,
+    ): VideoChannelState.Started {
+        send(writer, tls, MessageType.MEDIA_START, videoStart(video.configIndex), video.channel)
+        Log.i(TAG, "Started video on channel ${video.channel} with config ${video.configIndex}")
+        return VideoChannelState.Started(video.channel, video.configIndex)
     }
 
     private fun send(
@@ -213,6 +259,21 @@ class CarConnection(context: Context) {
             }
         }
     }
+}
+
+private sealed interface VideoChannelState {
+    val channel: Int
+
+    data class Opening(override val channel: Int) : VideoChannelState
+
+    data class SettingUp(
+        override val channel: Int,
+        val pendingFocus: VideoFocusNotification?,
+    ) : VideoChannelState
+
+    data class Ready(override val channel: Int, val configIndex: Int) : VideoChannelState
+
+    data class Started(override val channel: Int, val configIndex: Int) : VideoChannelState
 }
 
 private fun Closeable.closeQuietly() {

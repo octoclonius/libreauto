@@ -14,6 +14,7 @@ object MessageType {
     const val BYE_BYE_REQUEST = 0x000F
     const val BYE_BYE_RESPONSE = 0x0010
     const val MEDIA_SETUP_REQUEST = 0x8000
+    const val MEDIA_START = 0x8001
     const val MEDIA_SETUP_RESPONSE = 0x8003
     const val VIDEO_FOCUS_NOTIFICATION = 0x8008
 }

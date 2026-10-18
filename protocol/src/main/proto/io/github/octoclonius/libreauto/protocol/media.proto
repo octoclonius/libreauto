@@ -16,3 +16,8 @@ message VideoFocusNotification {
   optional int32 mode = 1;
   optional bool unsolicited = 2;
 }
+
+message MediaStart {
+  optional int32 session = 1;
+  optional int32 config_index = 2;
+}
