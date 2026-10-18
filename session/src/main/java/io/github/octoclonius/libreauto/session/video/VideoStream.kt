@@ -1,9 +1,5 @@
 package io.github.octoclonius.libreauto.session.video
 
-import android.content.Context
-import android.hardware.display.DisplayManager
-import android.hardware.display.VirtualDisplay
-import android.hardware.display.VirtualDisplayConfig
 import android.media.MediaCodec
 import android.util.Log
 import android.view.Surface
@@ -17,7 +13,6 @@ import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
 internal class VideoStream(
-    private val context: Context,
     private val format: VideoFormat,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Unit,
@@ -25,7 +20,6 @@ internal class VideoStream(
 
     companion object {
         private const val TAG = "VideoStream"
-        private const val DISPLAY_NAME = "LibreAuto"
         private const val DEQUEUE_TIMEOUT_US = 100_000L
     }
 
@@ -72,7 +66,7 @@ internal class VideoStream(
             }
         var surface: Surface? = null
         var compositor: VideoCompositor? = null
-        var display: VirtualDisplay? = null
+        var display: PrivilegedDisplay? = null
         try {
             encoder.configure(
                 H264Encoder.format(width, height, framesPerSecond),
@@ -93,12 +87,7 @@ internal class VideoStream(
             )
             val created = VideoCompositor(input, format, ::close)
             compositor = created
-            display = createDisplay(created.input)
-            if (display == null) {
-                Log.w(TAG, "Creating the car display failed")
-                return
-            }
-            CarDisplay.onCreated(display.display.displayId, format.displayContentInsets)
+            display = PrivilegedDisplay(created.input, format).also { it.start() }
             drain(encoder)
         } catch (e: IllegalStateException) {
             Log.w(TAG, "The H.264 encoder or the compositor failed", e)
@@ -108,30 +97,12 @@ internal class VideoStream(
             Log.w(TAG, "Sending video to the car failed", e)
         } finally {
             close()
-            if (display != null) {
-                CarDisplay.onReleased(display.display.displayId)
-                display.release()
-            }
+            display?.close()
             encoder.release()
             compositor?.close()
             surface?.release()
         }
     }
-
-    private fun createDisplay(surface: Surface): VirtualDisplay? =
-        context
-            .getSystemService(DisplayManager::class.java)
-            .createVirtualDisplay(
-                VirtualDisplayConfig.Builder(
-                        DISPLAY_NAME,
-                        format.displayWidth,
-                        format.displayHeight,
-                        format.density,
-                    )
-                    .setSurface(surface)
-                    .setRequestedRefreshRate(format.framesPerSecond.toFloat())
-                    .build()
-            )
 
     private fun drain(encoder: MediaCodec) {
         val info = MediaCodec.BufferInfo()

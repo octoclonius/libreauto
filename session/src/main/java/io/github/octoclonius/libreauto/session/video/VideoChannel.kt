@@ -1,6 +1,5 @@
 package io.github.octoclonius.libreauto.session.video
 
-import android.content.Context
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
@@ -23,7 +22,6 @@ import java.io.IOException
 import java.net.ProtocolException
 
 class VideoChannel(
-    private val context: Context,
     private val sender: ChannelSender,
     configs: List<VideoConfig>,
 ) : Closeable {
@@ -132,7 +130,7 @@ class VideoChannel(
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
         sender.send(MediaMessageType.START, videoStart(ready.configIndex))
         Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
-        val stream = VideoStream(context, ready.format, ready.maxUnacked, sender::send)
+        val stream = VideoStream(ready.format, ready.maxUnacked, sender::send)
         stream.start()
         return VideoChannelState.Started(ready.format, stream)
     }

@@ -25,12 +25,20 @@ object PrivilegedServiceConnection {
     private val _state = MutableStateFlow<PrivilegedServiceState>(PrivilegedServiceState.Stopped)
     val state: StateFlow<PrivilegedServiceState> = _state.asStateFlow()
 
+    private val _service = MutableStateFlow<IPrivilegedService?>(null)
+    internal val service: StateFlow<IPrivilegedService?> = _service.asStateFlow()
+
     private lateinit var args: Shizuku.UserServiceArgs
     private var status = PrivilegedServiceStatus()
     private var connection: ServiceConnection? = null
+    private var boundService: IPrivilegedService? = null
 
-    fun start(context: Context, service: ComponentName) {
+    internal lateinit var carHome: ComponentName
+        private set
+
+    fun start(context: Context, service: ComponentName, carHome: ComponentName) {
         check(!::args.isInitialized) { "Already started" }
+        this.carHome = carHome
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         args =
             Shizuku.UserServiceArgs(service)
@@ -69,7 +77,9 @@ object PrivilegedServiceConnection {
         if (next.binding == ServiceBinding.Unbound || next.binding is ServiceBinding.Failed) {
             connection = null
         }
+        if (next.binding != ServiceBinding.Bound) boundService = null
         if (next.shouldBind) bind() else _state.value = next.state
+        _service.value = if (status.state == PrivilegedServiceState.Running) boundService else null
     }
 
     private fun bind() {
@@ -102,15 +112,17 @@ object PrivilegedServiceConnection {
             fail(bound, Failed.Reason.ServiceStopped)
             return
         }
+        val service = IPrivilegedService.Stub.asInterface(binder)
         val uid =
             try {
-                IPrivilegedService.Stub.asInterface(binder).uid
+                service.uid
             } catch (e: RemoteException) {
                 Log.w(TAG, "The privileged service didn't answer", e)
                 fail(bound, Failed.Reason.Error(describe(e)))
                 return
             }
         Log.i(TAG, "Connected to the privileged service running as uid $uid")
+        boundService = service
         update(status.connected())
     }
 

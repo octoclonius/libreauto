@@ -8,4 +8,8 @@ android {
 
 dependencies {
     api(project(":privileged-api"))
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

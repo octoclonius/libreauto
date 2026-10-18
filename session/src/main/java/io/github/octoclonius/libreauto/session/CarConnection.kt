@@ -116,11 +116,7 @@ class CarConnection(context: Context) {
                             Log.w(TAG, "The car has no video channel for its main display")
                         } else {
                             val videoChannel =
-                                VideoChannel(
-                                        context,
-                                        ChannelSender(writer, tls, sink.channel),
-                                        sink.configs,
-                                    )
+                                VideoChannel(ChannelSender(writer, tls, sink.channel), sink.configs)
                                     .also { it.open() }
                             video = videoChannel
                             val source = inputSource(response, sink.displayId)

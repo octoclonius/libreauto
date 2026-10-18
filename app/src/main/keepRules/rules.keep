@@ -11,5 +11,5 @@
 #   public *;
 #}
 -keep class io.github.octoclonius.libreauto.privileged.PrivilegedService {
-    <init>();
+    <init>(android.content.Context);
 }

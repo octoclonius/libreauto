@@ -1,0 +1,3 @@
+<resources>
+    <bool name="is_touch_indicator_enabled">true</bool>
+</resources>
