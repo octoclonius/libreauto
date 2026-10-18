@@ -12,6 +12,7 @@ import io.github.octoclonius.libreauto.protocol.media.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.media.parseVideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.preferredConfigIndex
+import io.github.octoclonius.libreauto.protocol.media.projectedVideoFocusRequest
 import io.github.octoclonius.libreauto.protocol.media.videoFormat
 import io.github.octoclonius.libreauto.protocol.media.videoSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.videoStart
@@ -109,7 +110,10 @@ class VideoChannel(
             )
         }
         val ready = VideoChannelState.Ready(configIndex, format, maxUnacked)
-        return if (current.pendingFocus?.isProjected == true) start(ready) else ready
+        if (current.pendingFocus?.isProjected == true) return start(ready)
+        sender.send(MediaMessageType.VIDEO_FOCUS_REQUEST, projectedVideoFocusRequest())
+        Log.i(TAG, "Requested projected video focus on channel $channel")
+        return ready
     }
 
     private fun onFocus(current: VideoChannelState, message: ChannelMessage): VideoChannelState {

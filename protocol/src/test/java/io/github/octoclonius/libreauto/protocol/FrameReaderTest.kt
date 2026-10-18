@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.protocol
 
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
+import java.io.FilterInputStream
 import java.net.ProtocolException
 import java.nio.ByteBuffer
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -119,6 +120,33 @@ class FrameReaderTest {
         assertThrows<ProtocolException> { readAll(frame(1, flags, byteArrayOf(1, 2))) }
     }
 
+    @Test
+    fun everyReadAsksForAFullAccessoryBuffer() {
+        val output = ByteArrayOutputStream()
+        val writer = FrameWriter(output)
+        val bodies =
+            listOf(
+                byteArrayOf(7),
+                ByteArray(ACCESSORY_READ_BYTES - HEADER_BYTES - TYPE_BYTES),
+                ByteArray(ACCESSORY_READ_BYTES),
+                ByteArray(MAX_FRAME_DATA + 1),
+                byteArrayOf(8),
+            )
+        for (body in bodies) writer.write(5, isControl = false, 0x8001, body)
+        val input =
+            object : FilterInputStream(output.toByteArray().inputStream()) {
+                override fun read(): Int = throw AssertionError("Read of 1 byte")
+
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    if (len < ACCESSORY_READ_BYTES) throw AssertionError("Read of $len bytes")
+                    return super.read(b, off, len)
+                }
+            }
+        val reader = FrameReader(input, TestCipher::decrypt)
+        val messages = bodies.map { reader.readMessage() }
+        assertEquals(bodies.map { it.size }, messages.map { it.body.size })
+    }
+
     private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 
     private fun frame(
@@ -153,5 +181,6 @@ class FrameReaderTest {
         const val TOTAL_SIZE_BYTES = 4
         const val TYPE_BYTES = 2
         const val MAX_FRAME_DATA = 0xFFFF
+        const val ACCESSORY_READ_BYTES = 16384
     }
 }

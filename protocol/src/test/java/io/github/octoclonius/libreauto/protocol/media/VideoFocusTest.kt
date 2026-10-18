@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.protocol.media
 
 import java.io.IOException
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -8,6 +9,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class VideoFocusTest {
+
+    @Test
+    fun theProjectedRequestHasTheModeAsField2AndAnUnknownReasonAsField3() {
+        assertArrayEquals(bytes(0x10, 0x01, 0x18, 0x00), projectedVideoFocusRequest())
+    }
 
     @Test
     fun theNotificationHasTheModeAsField1AndWhetherItIsUnsolicitedAsField2() {

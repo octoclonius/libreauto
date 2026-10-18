@@ -7,5 +7,6 @@ object MediaMessageType {
     const val START = 0x8001
     const val SETUP_RESPONSE = 0x8003
     const val ACK = 0x8004
+    const val VIDEO_FOCUS_REQUEST = 0x8007
     const val VIDEO_FOCUS_NOTIFICATION = 0x8008
 }

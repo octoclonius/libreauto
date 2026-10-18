@@ -1,0 +1,4 @@
+<resources>
+    <string name="session_channel">Car connection</string>
+    <string name="session_title">Connected to a car</string>
+</resources>

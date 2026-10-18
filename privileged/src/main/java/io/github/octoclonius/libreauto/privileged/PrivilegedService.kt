@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.privileged
 
 import android.content.ComponentName
 import android.content.Context
+import android.hardware.usb.UsbManager
 import android.os.Binder
 import android.os.Parcel
 import android.os.Process
@@ -14,6 +15,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     companion object {
         private const val TAG = "PrivilegedService"
+        private const val USB_FUNCTION_NONE = 0L
     }
 
     private val appUid = context.applicationInfo.uid
@@ -115,6 +117,19 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                 val cause = if (e is InvocationTargetException) e.targetException else e
                 Log.e(TAG, "Sending a touch to the car display ${current.id} failed", cause)
             }
+        }
+    }
+
+    override fun exitAccessoryMode() {
+        try {
+            UsbManager::class
+                .java
+                .getMethod("setCurrentFunctions", Long::class.javaPrimitiveType)
+                .invoke(shellContext.getSystemService(UsbManager::class.java), USB_FUNCTION_NONE)
+            Log.i(TAG, "Left USB accessory mode")
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "Leaving USB accessory mode failed", cause)
         }
     }
 

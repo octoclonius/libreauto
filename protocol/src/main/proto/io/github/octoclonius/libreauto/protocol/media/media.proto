@@ -12,6 +12,11 @@ message MediaSetupResponse {
   repeated int32 config_indexes = 3;
 }
 
+message VideoFocusRequest {
+  optional int32 mode = 2;
+  optional int32 reason = 3;
+}
+
 message VideoFocusNotification {
   optional int32 mode = 1;
   optional bool unsolicited = 2;

@@ -30,6 +30,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ProtocolException
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,10 +47,10 @@ class CarConnection(context: Context) {
     private val context = context.applicationContext
     private val certificateProvider = CertificateProvider(this.context)
 
-    fun run(input: InputStream, output: OutputStream) {
+    fun run(input: InputStream, output: OutputStream): Boolean {
         _state.value = CarConnectionState.Connecting
         try {
-            val credentials = credentials() ?: return
+            val credentials = credentials() ?: return false
             val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
             val reader = FrameReader(input, tls::decrypt)
             val writer = FrameWriter(output)
@@ -61,10 +62,19 @@ class CarConnection(context: Context) {
                 serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
             )
             serve(reader, writer, tls, control)
+            return false
         } catch (_: EOFException) {
             Log.i(TAG, "The car closed the connection")
+            return true
+        } catch (e: ProtocolException) {
+            Log.w(TAG, "The car broke the protocol", e)
+            return false
+        } catch (e: SSLException) {
+            Log.w(TAG, "The TLS handshake with the car failed", e)
+            return false
         } catch (e: IOException) {
             Log.w(TAG, "Connection to the car failed", e)
+            return true
         } finally {
             _state.value =
                 if (_state.value is CarConnectionState.Connected) {
