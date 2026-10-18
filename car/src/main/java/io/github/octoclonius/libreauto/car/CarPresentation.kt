@@ -2,13 +2,20 @@ package io.github.octoclonius.libreauto.car
 
 import android.app.Presentation
 import android.content.Context
+import android.graphics.Insets
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Display
 import android.view.InputDevice
 import android.view.MotionEvent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,16 +24,23 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import io.github.octoclonius.libreauto.car.touch.TouchIndicator
+import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.input.Touch
 
-class CarPresentation(context: Context, display: Display) :
-    Presentation(context, display), SavedStateRegistryOwner {
+class CarPresentation(
+    context: Context,
+    display: Display,
+    private val contentInsets: Insets,
+    isTouchIndicatorEnabled: Boolean,
+) : Presentation(context, display), SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val touchIndicator = if (isTouchIndicatorEnabled) TouchIndicatorState() else null
     private var downTime = 0L
 
     override val lifecycle: Lifecycle
@@ -47,7 +61,13 @@ class CarPresentation(context: Context, display: Display) :
                 setContent {
                     val state by CarConnection.state.collectAsStateWithLifecycle()
                     CarTheme {
-                        CarScreen(carName = (state as? CarConnectionState.Connected)?.carName)
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            CarScreen(
+                                carName = (state as? CarConnectionState.Connected)?.carName,
+                                contentPadding = contentPadding(),
+                            )
+                            touchIndicator?.let { TouchIndicator(it) }
+                        }
                     }
                 }
             }
@@ -55,6 +75,7 @@ class CarPresentation(context: Context, display: Display) :
     }
 
     fun dispatchTouch(touch: Touch) {
+        touchIndicator?.onTouch(touch)
         val now = SystemClock.uptimeMillis()
         if (touch.action == MotionEvent.ACTION_DOWN) downTime = now
         val properties =
@@ -91,6 +112,17 @@ class CarPresentation(context: Context, display: Display) :
         dispatchTouchEvent(event)
         event.recycle()
     }
+
+    @Composable
+    private fun contentPadding(): PaddingValues =
+        with(LocalDensity.current) {
+            PaddingValues.Absolute(
+                left = contentInsets.left.toDp(),
+                top = contentInsets.top.toDp(),
+                right = contentInsets.right.toDp(),
+                bottom = contentInsets.bottom.toDp(),
+            )
+        }
 
     override fun onStart() {
         super.onStart()

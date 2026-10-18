@@ -6,10 +6,14 @@ import android.util.Log
 import android.view.WindowManager
 import io.github.octoclonius.libreauto.session.input.CarTouches
 import io.github.octoclonius.libreauto.session.video.CarDisplay
+import io.github.octoclonius.libreauto.session.video.CarDisplayState
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
-class CarScreenPresenter(private val context: Context) {
+class CarScreenPresenter(
+    private val context: Context,
+    private val isTouchIndicatorEnabled: Boolean,
+) {
 
     companion object {
         private const val TAG = "CarScreenPresenter"
@@ -19,20 +23,22 @@ class CarScreenPresenter(private val context: Context) {
     private var presentation: CarPresentation? = null
 
     fun start() {
-        scope.launch { CarDisplay.id.collect { present(it) } }
+        scope.launch { CarDisplay.state.collect { present(it) } }
         scope.launch { CarTouches.touches.collect { presentation?.dispatchTouch(it) } }
     }
 
-    private fun present(displayId: Int?) {
+    private fun present(state: CarDisplayState?) {
         presentation?.dismiss()
         presentation = null
-        if (displayId == null) return
+        if (state == null) return
+        val displayId = state.id
         val display = context.getSystemService(DisplayManager::class.java).getDisplay(displayId)
         if (display == null) {
             Log.w(TAG, "The car display $displayId is gone")
             return
         }
-        val shown = CarPresentation(context, display)
+        val shown =
+            CarPresentation(context, display, state.contentInsets, isTouchIndicatorEnabled)
         try {
             shown.show()
         } catch (e: WindowManager.InvalidDisplayException) {

@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.session.input
 
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
 import io.github.octoclonius.libreauto.protocol.input.TouchEvent
+import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 
 internal const val MAX_POINTER_ID = 31
 
@@ -27,3 +28,11 @@ internal fun touch(event: TouchEvent): Touch? {
     val action = event.action?.takeIf { it in KNOWN_ACTIONS } ?: TouchAction.DOWN
     return Touch(action, actionIndex, pointers)
 }
+
+internal fun Touch.onDisplay(format: VideoFormat): Touch =
+    copy(
+        pointers =
+            pointers.map {
+                it.copy(x = format.displayX(it.x), y = format.displayY(it.y))
+            }
+    )

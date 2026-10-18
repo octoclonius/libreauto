@@ -68,6 +68,7 @@ internal class VideoStream(
                 return
             }
         var surface: Surface? = null
+        var compositor: VideoCompositor? = null
         var display: VirtualDisplay? = null
         try {
             encoder.configure(mediaFormat(), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
@@ -76,19 +77,23 @@ internal class VideoStream(
             encoder.start()
             Log.i(
                 TAG,
-                "Encoding ${format.width}x${format.height} at ${format.framesPerSecond} fps " +
-                    "and ${format.density} dpi",
+                "Encoding ${format.frameWidth}x${format.frameHeight} at " +
+                    "${format.framesPerSecond} fps, showing ${format.visibleWidth}x" +
+                    "${format.visibleHeight} inside margins ${format.margins} from a " +
+                    "${format.displayWidth}x${format.displayHeight} display at " +
+                    "${format.density} dpi",
             )
-            val created = createDisplay(input)
-            if (created == null) {
+            val created = VideoCompositor(input, format, ::close)
+            compositor = created
+            display = createDisplay(created.input)
+            if (display == null) {
                 Log.w(TAG, "Creating the car display failed")
                 return
             }
-            display = created
-            CarDisplay.onCreated(created.display.displayId)
+            CarDisplay.onCreated(display.display.displayId, format.displayContentInsets)
             drain(encoder)
         } catch (e: IllegalStateException) {
-            Log.w(TAG, "The H.264 encoder failed", e)
+            Log.w(TAG, "The H.264 encoder or the compositor failed", e)
         } catch (e: IllegalArgumentException) {
             Log.w(TAG, "The H.264 encoder refused the format", e)
         } catch (e: IOException) {
@@ -100,6 +105,7 @@ internal class VideoStream(
                 display.release()
             }
             encoder.release()
+            compositor?.close()
             surface?.release()
         }
     }
@@ -110,8 +116,8 @@ internal class VideoStream(
             .createVirtualDisplay(
                 VirtualDisplayConfig.Builder(
                         DISPLAY_NAME,
-                        format.width,
-                        format.height,
+                        format.displayWidth,
+                        format.displayHeight,
                         format.density,
                     )
                     .setSurface(surface)
@@ -122,8 +128,8 @@ internal class VideoStream(
     private fun mediaFormat(): MediaFormat =
         MediaFormat.createVideoFormat(
                 MediaFormat.MIMETYPE_VIDEO_AVC,
-                format.width,
-                format.height,
+                format.frameWidth,
+                format.frameHeight,
             )
             .apply {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecCapabilities.COLOR_FormatSurface)

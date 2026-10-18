@@ -8,10 +8,15 @@ import io.github.octoclonius.libreauto.protocol.input.InputMessageType
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
+import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 
-class InputChannel(private val sender: ChannelSender, keycodes: List<Int>) {
+class InputChannel(
+    private val sender: ChannelSender,
+    keycodes: List<Int>,
+    private val videoFormat: () -> VideoFormat?,
+) {
 
     companion object {
         private const val TAG = "InputChannel"
@@ -64,10 +69,11 @@ class InputChannel(private val sender: ChannelSender, keycodes: List<Int>) {
             InputMessageType.REPORT -> {
                 val event = parseInputReport(message.body).touch ?: return false
                 val touch = touch(event)
-                if (touch == null) {
-                    Log.w(TAG, "Dropped touch $event")
-                } else if (!CarTouches.emit(touch)) {
-                    Log.w(TAG, "Lost touch $touch")
+                val format = videoFormat()
+                when {
+                    touch == null -> Log.w(TAG, "Dropped touch $event")
+                    format == null -> Log.w(TAG, "Dropped touch $touch before the video started")
+                    !CarTouches.emit(touch.onDisplay(format)) -> Log.w(TAG, "Lost touch $touch")
                 }
             }
             else -> return false

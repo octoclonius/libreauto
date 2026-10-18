@@ -42,7 +42,23 @@ message MediaSinkService {
 message VideoConfig {
   optional int32 resolution = 1;
   optional int32 frame_rate = 2;
+  optional int32 width_margin = 3;
+  optional int32 height_margin = 4;
   optional int32 density = 5;
+  optional int32 pixel_aspect_ratio_e4 = 8;
+  optional UiConfig ui_config = 11;
+}
+
+message UiConfig {
+  optional UiInsets margins = 1;
+  optional UiInsets content_insets = 2;
+}
+
+message UiInsets {
+  optional int32 top = 1;
+  optional int32 bottom = 2;
+  optional int32 left = 3;
+  optional int32 right = 4;
 }
 
 message InputSourceService {

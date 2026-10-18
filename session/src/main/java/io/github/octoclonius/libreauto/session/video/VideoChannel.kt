@@ -35,6 +35,9 @@ class VideoChannel(
     val channel: Int
         get() = sender.channel
 
+    val format: VideoFormat?
+        get() = (state as? VideoChannelState.Started)?.format
+
     fun open() {
         Log.i(TAG, "Opening the video channel $channel")
         sender.sendOpenRequest()
@@ -98,7 +101,16 @@ class VideoChannel(
                         "${current.configs.size} on channel $channel"
                 )
         Log.i(TAG, "Video config $configIndex has density ${config.density}")
-        val ready = VideoChannelState.Ready(configIndex, videoFormat(config), maxUnacked)
+        val format = videoFormat(config)
+        if (!format.areContentInsetsUsable) {
+            Log.w(
+                TAG,
+                "Ignored the content insets ${format.contentInsets} of video config " +
+                    "$configIndex: they leave no content area in the visible " +
+                    "${format.visibleWidth}x${format.visibleHeight}",
+            )
+        }
+        val ready = VideoChannelState.Ready(configIndex, format, maxUnacked)
         return if (current.pendingFocus?.isProjected == true) start(ready) else ready
     }
 
@@ -122,7 +134,7 @@ class VideoChannel(
         Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
         val stream = VideoStream(context, ready.format, ready.maxUnacked, sender::send)
         stream.start()
-        return VideoChannelState.Started(stream)
+        return VideoChannelState.Started(ready.format, stream)
     }
 }
 
@@ -138,5 +150,5 @@ private sealed interface VideoChannelState {
     data class Ready(val configIndex: Int, val format: VideoFormat, val maxUnacked: Int) :
         VideoChannelState
 
-    data class Started(val stream: VideoStream) : VideoChannelState
+    data class Started(val format: VideoFormat, val stream: VideoStream) : VideoChannelState
 }

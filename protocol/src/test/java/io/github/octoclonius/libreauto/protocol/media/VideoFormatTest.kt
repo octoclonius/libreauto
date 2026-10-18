@@ -107,6 +107,183 @@ class VideoFormatTest {
         }
     }
 
+    @Test
+    fun theWidthAndHeightMarginsSplitWithTheOddPixelRightAndTop() {
+        val format = format(varint(1, 2), varint(3, 81), varint(4, 41), varint(5, 160))
+        assertEquals(CarInsets(top = 21, bottom = 20, left = 40, right = 41), format?.margins)
+        assertEquals(1199, format?.visibleWidth)
+        assertEquals(679, format?.visibleHeight)
+    }
+
+    @Test
+    fun evenMarginsSplitEvenly() {
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 420, right = 420),
+            format(varint(1, 3), varint(3, 840), varint(5, 240))?.margins,
+        )
+    }
+
+    @Test
+    fun theUiConfigsMarginsAreBySide() {
+        val format =
+            format(
+                varint(1, 3),
+                varint(4, 400),
+                varint(5, 200),
+                message(11, sides(1, top = 0, bottom = 400, left = 0, right = 0)),
+            )
+        assertEquals(CarInsets(top = 0, bottom = 400, left = 0, right = 0), format?.margins)
+        assertEquals(1920, format?.visibleWidth)
+        assertEquals(680, format?.visibleHeight)
+    }
+
+    @Test
+    fun aUiConfigWithoutMarginsHasNoneWhateverTheWidthAndHeightMargins() {
+        assertEquals(
+            CarInsets.NONE,
+            format(varint(1, 2), varint(3, 80), varint(4, 40), varint(5, 160), message(11))
+                ?.margins,
+        )
+    }
+
+    @Test
+    fun theContentInsetsAreUiConfigField2() {
+        val format =
+            format(
+                varint(1, 3),
+                varint(3, 840),
+                varint(5, 240),
+                message(
+                    11,
+                    sides(1, top = 0, bottom = 0, left = 420, right = 420),
+                    sides(2, top = 280, bottom = 300, left = 160, right = 160),
+                ),
+            )
+        assertEquals(
+            CarInsets(top = 280, bottom = 300, left = 160, right = 160),
+            format?.contentInsets,
+        )
+        assertEquals(1080, format?.visibleWidth)
+        assertEquals(1080, format?.visibleHeight)
+        assertEquals(true, format?.areContentInsetsUsable)
+    }
+
+    @Test
+    fun anEmptyContentInsetsMessageIsNoInsets() {
+        assertEquals(
+            CarInsets.NONE,
+            format(varint(1, 7), varint(5, 240), message(11, message(1), message(2)))
+                ?.contentInsets,
+        )
+    }
+
+    @Test
+    fun contentInsetsThatLeaveNoContentAreaAreIgnored() {
+        val wide = CarInsets(top = 0, bottom = 0, left = 400, right = 400)
+        val tall = CarInsets(top = 300, bottom = 180, left = 0, right = 0)
+        val negative = CarInsets(top = -1, bottom = 0, left = 0, right = 0)
+        for (insets in listOf(wide, tall, negative)) {
+            val format =
+                format(
+                    varint(1, 1),
+                    varint(5, 160),
+                    message(
+                        11,
+                        sides(2, insets.top, insets.bottom, insets.left, insets.right),
+                    ),
+                )
+            assertEquals(insets, format?.contentInsets)
+            assertEquals(false, format?.areContentInsetsUsable)
+            assertEquals(CarInsets.NONE, format?.displayContentInsets)
+        }
+    }
+
+    @Test
+    fun marginsThatLeaveNoVisibleAreaAreAProtocolError() {
+        assertThrows(ProtocolException::class.java) {
+            format(varint(1, 1), varint(3, 800), varint(5, 160))
+        }
+        assertThrows(ProtocolException::class.java) {
+            format(varint(1, 1), varint(4, 480), varint(5, 160))
+        }
+        assertThrows(ProtocolException::class.java) {
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, sides(1, top = 0, bottom = 0, left = 400, right = 400)),
+            )
+        }
+    }
+
+    @Test
+    fun negativeMarginsAreAProtocolError() {
+        assertThrows(ProtocolException::class.java) {
+            format(varint(1, 1), varint(3, -2), varint(5, 160))
+        }
+        assertThrows(ProtocolException::class.java) {
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, sides(1, top = -1, bottom = 0, left = 0, right = 0)),
+            )
+        }
+    }
+
+    @Test
+    fun thePixelAspectRatioIsField8Times10000() {
+        assertEquals(
+            15000,
+            format(varint(1, 2), varint(5, 160), varint(8, 15000))?.pixelAspectRatioE4,
+        )
+    }
+
+    @Test
+    fun aMissingPixelAspectRatioIsSquare() {
+        val format = format(varint(1, 2), varint(3, 80), varint(4, 40), varint(5, 160))
+        assertEquals(10000, format?.pixelAspectRatioE4)
+        assertEquals(1200, format?.displayWidth)
+        assertEquals(680, format?.displayHeight)
+    }
+
+    @Test
+    fun aZeroOrNegativePixelAspectRatioIsAProtocolError() {
+        for (value in listOf(0, -10000)) {
+            assertThrows(ProtocolException::class.java) {
+                format(varint(1, 2), varint(5, 160), varint(8, value))
+            }
+        }
+    }
+
+    @Test
+    fun widePixelsWidenTheDisplay() {
+        val format =
+            format(varint(1, 2), varint(3, 80), varint(4, 40), varint(5, 160), varint(8, 15000))
+        assertEquals(1800, format?.displayWidth)
+        assertEquals(680, format?.displayHeight)
+    }
+
+    @Test
+    fun tallPixelsHeightenTheDisplay() {
+        val format = format(varint(1, 2), varint(5, 160), varint(8, 7500))
+        assertEquals(1280, format?.displayWidth)
+        assertEquals(960, format?.displayHeight)
+    }
+
+    @Test
+    fun theDisplaysContentInsetsAreScaledLikeItsSize() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                varint(8, 20000),
+                message(11, sides(2, top = 30, bottom = 30, left = 40, right = 200)),
+            )
+        assertEquals(
+            CarInsets(top = 30, bottom = 30, left = 80, right = 400),
+            format?.displayContentInsets,
+        )
+    }
+
     private fun format(vararg fields: ByteArray): VideoFormat? =
         videoSink(
                 parseServiceDiscoveryResponse(
@@ -116,6 +293,9 @@ class VideoFormatTest {
             ?.configs
             ?.single()
             ?.let(::videoFormat)
+
+    private fun sides(number: Int, top: Int, bottom: Int, left: Int, right: Int): ByteArray =
+        message(number, varint(1, top), varint(2, bottom), varint(3, left), varint(4, right))
 
     private fun varint(number: Int, value: Int): ByteArray {
         val bytes = mutableListOf((number shl 3).toByte())
