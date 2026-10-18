@@ -1,0 +1,101 @@
+package io.github.octoclonius.libreauto.session.input
+
+import io.github.octoclonius.libreauto.protocol.input.parseInputReport
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
+
+class TouchTest {
+
+    @Test
+    fun aDownIsATouchWithItsPointer() {
+        assertEquals(
+            Touch(0, 0, listOf(TouchPointer(0, 400, 300))),
+            touchOf(pointer(400, 300, 0), actionIndex(0), action(0)),
+        )
+    }
+
+    @Test
+    fun aPointerDownKeepsItsIndexAndItsPointersInOrder() {
+        assertEquals(
+            Touch(5, 1, listOf(TouchPointer(0, 100, 200), TouchPointer(1, 300, 400))),
+            touchOf(pointer(100, 200, 0), pointer(300, 400, 1), actionIndex(1), action(5)),
+        )
+    }
+
+    @Test
+    fun theCarsActionsAreKept() {
+        for (value in listOf(0, 1, 2, 5, 6)) {
+            assertEquals(value, touchOf(pointer(1, 2, 0), action(value))?.action)
+        }
+    }
+
+    @Test
+    fun anUnknownActionIsADown() {
+        for (value in listOf(3, 4, 7, 9, -1)) {
+            assertEquals(0, touchOf(pointer(1, 2, 0), action(value))?.action)
+        }
+    }
+
+    @Test
+    fun missingFieldsAre0() {
+        assertEquals(Touch(0, 0, listOf(TouchPointer(0, 0, 0))), touchOf(message(1)))
+    }
+
+    @Test
+    fun aTouchWithoutPointersIsDropped() {
+        assertNull(touchOf(actionIndex(0), action(0)))
+        assertNull(touchOf())
+    }
+
+    @Test
+    fun anActionIndexPastThePointersIsDropped() {
+        assertNull(touchOf(pointer(1, 2, 0), pointer(3, 4, 1), actionIndex(2), action(6)))
+    }
+
+    @Test
+    fun aNegativeActionIndexIsDropped() {
+        assertNull(touchOf(pointer(1, 2, 0), actionIndex(-1), action(0)))
+    }
+
+    @Test
+    fun aPointerIdOutsideMotionEventsRangeIsDropped() {
+        assertNull(touchOf(pointer(1, 2, MAX_POINTER_ID + 1)))
+        assertNull(touchOf(pointer(1, 2, -1)))
+        assertEquals(
+            listOf(TouchPointer(MAX_POINTER_ID, 1, 2)),
+            touchOf(pointer(1, 2, MAX_POINTER_ID))?.pointers,
+        )
+    }
+
+    @Test
+    fun aPointerIdUsedTwiceIsDropped() {
+        assertNull(touchOf(pointer(1, 2, 3), pointer(4, 5, 3), actionIndex(1), action(5)))
+    }
+
+    private fun touchOf(vararg fields: ByteArray): Touch? =
+        touch(checkNotNull(parseInputReport(message(3, *fields)).touch))
+
+    private fun pointer(x: Int, y: Int, id: Int) =
+        message(1, varint(1, x), varint(2, y), varint(3, id))
+
+    private fun actionIndex(value: Int) = varint(2, value)
+
+    private fun action(value: Int) = varint(3, value)
+
+    private fun varint(number: Int, value: Int): ByteArray {
+        val bytes = mutableListOf((number shl 3).toByte())
+        var rest = value.toLong()
+        while (rest and 0x7FL.inv() != 0L) {
+            bytes += (rest and 0x7F or 0x80).toByte()
+            rest = rest ushr 7
+        }
+        bytes += rest.toByte()
+        return bytes.toByteArray()
+    }
+
+    private fun message(number: Int, vararg fields: ByteArray): ByteArray {
+        val body = fields.fold(ByteArray(0), ByteArray::plus)
+        return byteArrayOf((number shl 3 or 2).toByte(), body.size.toByte()) + body
+    }
+}

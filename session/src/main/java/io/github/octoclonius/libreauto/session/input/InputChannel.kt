@@ -62,9 +62,13 @@ class InputChannel(private val sender: ChannelSender, keycodes: List<Int>) {
                 }
             }
             InputMessageType.REPORT -> {
-                val report = parseInputReport(message.body)
-                val touch = report.touch ?: return false
-                Log.i(TAG, "Touch read at ${report.timestamp}: $touch")
+                val event = parseInputReport(message.body).touch ?: return false
+                val touch = touch(event)
+                if (touch == null) {
+                    Log.w(TAG, "Dropped touch $event")
+                } else if (!CarTouches.emit(touch)) {
+                    Log.w(TAG, "Lost touch $touch")
+                }
             }
             else -> return false
         }

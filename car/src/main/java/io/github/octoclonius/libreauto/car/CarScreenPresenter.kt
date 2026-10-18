@@ -4,6 +4,7 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
+import io.github.octoclonius.libreauto.session.input.CarTouches
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -19,6 +20,7 @@ class CarScreenPresenter(private val context: Context) {
 
     fun start() {
         scope.launch { CarDisplay.id.collect { present(it) } }
+        scope.launch { CarTouches.touches.collect { presentation?.dispatchTouch(it) } }
     }
 
     private fun present(displayId: Int?) {
