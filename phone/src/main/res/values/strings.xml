@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">LibreAuto</string>
+
+    <string name="car_title">Car</string>
+    <string name="car_disconnected">Connect via USB</string>
+    <string name="car_connecting">Connecting…</string>
+    <string name="car_connected">Connected</string>
+    <string name="car_failed">Failed to connect</string>
+
+    <string name="certificate_provider_title">Certificate provider</string>
+    <string name="certificate_provider_loading">Loading…</string>
+    <string name="certificate_provider_not_selected">Tap to configure</string>
+    <string name="certificate_provider_none">None</string>
+    <string name="certificate_pending">Pending…</string>
+    <string name="certificate_error">Error: %1$s</string>
+    <string name="certificate_invalid_until">Invalid until %1$s (%2$s)</string>
+    <string name="certificate_valid_until">Valid until %1$s (%2$s)</string>
+    <string name="certificate_invalid_since">Invalid since %1$s (%2$s)</string>
 </resources>

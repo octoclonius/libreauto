@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.phone.certificate
 
+import android.content.res.Resources
 import android.icu.text.DateFormat
 import android.icu.text.RelativeDateTimeFormatter
 import android.icu.text.RelativeDateTimeFormatter.AbsoluteUnit
@@ -26,7 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import io.github.octoclonius.libreauto.phone.R
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
@@ -46,20 +50,22 @@ fun CertificateProviderRow(
     onDismissPicker: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resources = LocalResources.current
     val is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
     val selection = state.selection
     StatusRow(
-        title = "Certificate provider",
+        title = stringResource(R.string.certificate_provider_title),
         status =
             when (selection) {
-                Selection.Loading -> "Loading..."
-                Selection.None -> "Tap to configure"
+                Selection.Loading -> stringResource(R.string.certificate_provider_loading)
+                Selection.None -> stringResource(R.string.certificate_provider_not_selected)
                 is Selection.Selected ->
                     when (val certificate = selection.certificate) {
-                        CertificateState.Loading -> "Pending..."
+                        CertificateState.Loading -> stringResource(R.string.certificate_pending)
                         is CertificateState.Success ->
-                            validity(certificate, Instant.now(), is24Hour)
-                        is CertificateState.Error -> "Error: ${certificate.message}"
+                            validity(resources, certificate, Instant.now(), is24Hour)
+                        is CertificateState.Error ->
+                            stringResource(R.string.certificate_error, certificate.message)
                     }
             },
         onClick = onClick,
@@ -78,15 +84,17 @@ fun CertificateProviderRow(
 }
 
 private fun validity(
+    resources: Resources,
     certificate: CertificateState.Success,
     now: Instant,
     is24Hour: Boolean,
 ): String {
     val (text, at) =
         when {
-            now < certificate.notBefore -> "Invalid until" to certificate.notBefore
-            now <= certificate.notAfter -> "Valid until" to certificate.notAfter
-            else -> "Invalid since" to certificate.notAfter
+            now < certificate.notBefore ->
+                R.string.certificate_invalid_until to certificate.notBefore
+            now <= certificate.notAfter -> R.string.certificate_valid_until to certificate.notAfter
+            else -> R.string.certificate_invalid_since to certificate.notAfter
         }
     val locale = Locale.getDefault()
     val zone = ZoneId.systemDefault()
@@ -105,7 +113,7 @@ private fun validity(
             days < 0 -> relative.format(-days.toDouble(), Direction.LAST, RelativeUnit.DAYS)
             else -> relative.format(Direction.THIS, AbsoluteUnit.DAY)
         }
-    return "$text $date ($distance)"
+    return resources.getString(text, date, distance)
 }
 
 @Composable
@@ -123,7 +131,7 @@ private fun CertificateProviderPickerDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Certificate provider") },
+        title = { Text(stringResource(R.string.certificate_provider_title)) },
         text = {
             when (picker) {
                 Picker.Loading ->
@@ -133,7 +141,7 @@ private fun CertificateProviderPickerDialog(
                 is Picker.Success ->
                     Column(Modifier.selectableGroup()) {
                         PickerOption(
-                            "None",
+                            stringResource(R.string.certificate_provider_none),
                             selected = selection == Selection.None,
                             enabled = !picked,
                             onClick = { pick(null) },
@@ -149,7 +157,9 @@ private fun CertificateProviderPickerDialog(
                     }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        },
     )
 }
 
