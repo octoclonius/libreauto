@@ -14,8 +14,8 @@ internal class CompanionAssociation(private val context: Context) {
         private const val TAG = "CompanionAssociation"
         private const val PROFILE = AssociationRequest.DEVICE_PROFILE_APP_STREAMING
         private const val PER_USER_RANGE = 100_000
-        private const val COMMAND_TIMEOUT_SECONDS = 10L
-        private const val STORE_TIMEOUT_MILLIS = 10_000L
+        private const val COMMAND_TIMEOUT_SECONDS = 5L
+        private const val STORE_TIMEOUT_MILLIS = 5_000L
         private const val POLL_INTERVAL_MILLIS = 100L
         private const val SELF_MANAGED = "true"
     }
@@ -71,10 +71,11 @@ internal class CompanionAssociation(private val context: Context) {
                 SELF_MANAGED,
             )
         val process = ProcessBuilder(command).redirectErrorStream(true).start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-        check(process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            "${command.joinToString(" ")} didn't finish"
+        if (!process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            error("${command.joinToString(" ")} didn't finish in ${COMMAND_TIMEOUT_SECONDS}s")
         }
+        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
         check(process.exitValue() == 0) {
             "${command.joinToString(" ")} exited with ${process.exitValue()}: $output"
         }
