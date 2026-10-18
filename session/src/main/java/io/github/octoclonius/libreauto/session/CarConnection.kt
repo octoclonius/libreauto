@@ -11,6 +11,8 @@ import io.github.octoclonius.libreauto.protocol.Handshake
 import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.MessageType
 import io.github.octoclonius.libreauto.protocol.TlsServer
+import io.github.octoclonius.libreauto.protocol.VideoConfig
+import io.github.octoclonius.libreauto.protocol.VideoFormat
 import io.github.octoclonius.libreauto.protocol.VideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.carName
@@ -19,17 +21,20 @@ import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.isProjected
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
+import io.github.octoclonius.libreauto.protocol.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.parseServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.parseVideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
-import io.github.octoclonius.libreauto.protocol.videoChannel
+import io.github.octoclonius.libreauto.protocol.videoFormat
 import io.github.octoclonius.libreauto.protocol.videoSetupRequest
+import io.github.octoclonius.libreauto.protocol.videoSink
 import io.github.octoclonius.libreauto.protocol.videoStart
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.video.TestPatternStream
 import java.io.Closeable
 import java.io.EOFException
 import java.io.IOException
@@ -85,140 +90,170 @@ class CarConnection(context: Context) {
 
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
         var video: VideoChannelState? = null
-        while (true) {
-            val message = reader.readMessage()
-            if (!message.isEncrypted) {
-                throw ProtocolException(
-                    "Plaintext message 0x%04x on channel %d after the handshake"
-                        .format(message.type, message.channel)
-                )
-            }
-            val current = video
-            if (
-                current is VideoChannelState.Opening &&
-                    message.channel == current.channel &&
-                    message.type == MessageType.CHANNEL_OPEN_RESPONSE
-            ) {
-                val status = parseChannelOpenResponse(message.body)
-                video =
-                    if (status == MessageStatus.SUCCESS) {
-                        Log.i(TAG, "The car opened the video channel ${current.channel}")
-                        send(
-                            writer,
-                            tls,
-                            MessageType.MEDIA_SETUP_REQUEST,
-                            videoSetupRequest(),
-                            current.channel,
-                        )
-                        VideoChannelState.SettingUp(current.channel, pendingFocus = null)
-                    } else {
-                        Log.w(
-                            TAG,
-                            "The car refused the video channel ${current.channel}: status $status",
-                        )
-                        null
-                    }
-                continue
-            }
-            if (
-                current is VideoChannelState.SettingUp &&
-                    message.channel == current.channel &&
-                    message.type == MessageType.MEDIA_SETUP_RESPONSE
-            ) {
-                val response = parseMediaSetupResponse(message.body)
-                Log.i(
-                    TAG,
-                    "The car set up the video channel ${current.channel}: " +
-                        "status ${response.status}, " +
-                        "up to ${response.max_unacked} unacked frames, " +
-                        "configs ${response.config_indexes}",
-                )
-                val maxUnacked = response.max_unacked
-                if (maxUnacked == null || maxUnacked <= 0) {
+        try {
+            while (true) {
+                val message = reader.readMessage()
+                if (!message.isEncrypted) {
                     throw ProtocolException(
-                        "The car allows $maxUnacked unacked frames on the video channel " +
-                            "${current.channel}"
+                        "Plaintext message 0x%04x on channel %d after the handshake"
+                            .format(message.type, message.channel)
                     )
                 }
-                val configIndex =
-                    response.config_indexes.firstOrNull()
-                        ?: throw ProtocolException(
-                            "The car accepted no video config on channel ${current.channel}"
+                val current = video
+                if (
+                    current is VideoChannelState.Opening &&
+                        message.channel == current.channel &&
+                        message.type == MessageType.CHANNEL_OPEN_RESPONSE
+                ) {
+                    val status = parseChannelOpenResponse(message.body)
+                    video =
+                        if (status == MessageStatus.SUCCESS) {
+                            Log.i(TAG, "The car opened the video channel ${current.channel}")
+                            send(
+                                writer,
+                                tls,
+                                MessageType.MEDIA_SETUP_REQUEST,
+                                videoSetupRequest(),
+                                current.channel,
+                            )
+                            VideoChannelState.SettingUp(
+                                current.channel,
+                                current.configs,
+                                pendingFocus = null,
+                            )
+                        } else {
+                            Log.w(
+                                TAG,
+                                "The car refused the video channel ${current.channel}: " +
+                                    "status $status",
+                            )
+                            null
+                        }
+                    continue
+                }
+                if (
+                    current is VideoChannelState.SettingUp &&
+                        message.channel == current.channel &&
+                        message.type == MessageType.MEDIA_SETUP_RESPONSE
+                ) {
+                    val response = parseMediaSetupResponse(message.body)
+                    Log.i(
+                        TAG,
+                        "The car set up the video channel ${current.channel}: " +
+                            "status ${response.status}, " +
+                            "up to ${response.max_unacked} unacked frames, " +
+                            "configs ${response.config_indexes}",
+                    )
+                    val maxUnacked = response.max_unacked
+                    if (maxUnacked == null || maxUnacked <= 0) {
+                        throw ProtocolException(
+                            "The car allows $maxUnacked unacked frames on the video channel " +
+                                "${current.channel}"
                         )
-                val ready = VideoChannelState.Ready(current.channel, configIndex)
-                video =
-                    if (current.pendingFocus?.isProjected == true) {
-                        startVideo(writer, tls, ready)
-                    } else {
-                        ready
                     }
-                continue
-            }
-            if (
-                current != null &&
-                    current !is VideoChannelState.Opening &&
-                    message.channel == current.channel &&
-                    message.type == MessageType.VIDEO_FOCUS_NOTIFICATION
-            ) {
-                val notification = parseVideoFocusNotification(message.body)
-                Log.i(
-                    TAG,
-                    "Video focus on channel ${current.channel}: mode ${notification.mode}, " +
-                        "unsolicited ${notification.unsolicited}",
-                )
-                video =
-                    when (current) {
-                        is VideoChannelState.SettingUp -> current.copy(pendingFocus = notification)
-                        is VideoChannelState.Ready ->
-                            if (notification.isProjected) {
-                                startVideo(writer, tls, current)
-                            } else {
-                                current
-                            }
-                        else -> current
+                    val configIndex =
+                        response.config_indexes.firstOrNull()
+                            ?: throw ProtocolException(
+                                "The car accepted no video config on channel ${current.channel}"
+                            )
+                    val config =
+                        current.configs.getOrNull(configIndex)
+                            ?: throw ProtocolException(
+                                "The car accepted video config $configIndex of " +
+                                    "${current.configs.size} on channel ${current.channel}"
+                            )
+                    val ready =
+                        VideoChannelState.Ready(
+                            current.channel,
+                            configIndex,
+                            videoFormat(config),
+                            maxUnacked,
+                        )
+                    video =
+                        if (current.pendingFocus?.isProjected == true) {
+                            startVideo(writer, tls, ready)
+                        } else {
+                            ready
+                        }
+                    continue
+                }
+                if (
+                    current != null &&
+                        current !is VideoChannelState.Opening &&
+                        message.channel == current.channel &&
+                        message.type == MessageType.VIDEO_FOCUS_NOTIFICATION
+                ) {
+                    val notification = parseVideoFocusNotification(message.body)
+                    Log.i(
+                        TAG,
+                        "Video focus on channel ${current.channel}: mode ${notification.mode}, " +
+                            "unsolicited ${notification.unsolicited}",
+                    )
+                    video =
+                        when (current) {
+                            is VideoChannelState.SettingUp ->
+                                current.copy(pendingFocus = notification)
+                            is VideoChannelState.Ready ->
+                                if (notification.isProjected) {
+                                    startVideo(writer, tls, current)
+                                } else {
+                                    current
+                                }
+                            else -> current
+                        }
+                    continue
+                }
+                if (
+                    current is VideoChannelState.Started &&
+                        message.channel == current.channel &&
+                        message.type == MessageType.MEDIA_ACK
+                ) {
+                    current.stream.acknowledge(parseMediaAck(message.body))
+                    continue
+                }
+                if (message.channel != CONTROL_CHANNEL) {
+                    logUnhandled(message)
+                    continue
+                }
+                when (message.type) {
+                    MessageType.SERVICE_DISCOVERY_RESPONSE -> {
+                        val response = parseServiceDiscoveryResponse(message.body)
+                        response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
+                        _state.value = CarConnectionState.Connected(carName(response))
+                        val sink = videoSink(response)
+                        if (sink == null) {
+                            Log.w(TAG, "The car has no video channel for its main display")
+                        } else {
+                            Log.i(TAG, "Opening the video channel ${sink.channel}")
+                            send(
+                                writer,
+                                tls,
+                                MessageType.CHANNEL_OPEN_REQUEST,
+                                channelOpenRequest(sink.channel),
+                                sink.channel,
+                                isControl = true,
+                            )
+                            video = VideoChannelState.Opening(sink.channel, sink.configs)
+                        }
                     }
-                continue
-            }
-            if (message.channel != CONTROL_CHANNEL) {
-                logUnhandled(message)
-                continue
-            }
-            when (message.type) {
-                MessageType.SERVICE_DISCOVERY_RESPONSE -> {
-                    val response = parseServiceDiscoveryResponse(message.body)
-                    response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
-                    _state.value = CarConnectionState.Connected(carName(response))
-                    val channel = videoChannel(response)
-                    if (channel == null) {
-                        Log.w(TAG, "The car has no video channel for its main display")
-                    } else {
-                        Log.i(TAG, "Opening the video channel $channel")
+                    MessageType.PING_REQUEST ->
                         send(
                             writer,
                             tls,
-                            MessageType.CHANNEL_OPEN_REQUEST,
-                            channelOpenRequest(channel),
-                            channel,
-                            isControl = true,
+                            MessageType.PING_RESPONSE,
+                            pingResponse(parsePingRequest(message.body)),
                         )
-                        video = VideoChannelState.Opening(channel)
+                    MessageType.BYE_BYE_REQUEST -> {
+                        val reason = parseByeByeRequest(message.body)
+                        Log.i(TAG, "The car says bye-bye with reason $reason")
+                        send(writer, tls, MessageType.BYE_BYE_RESPONSE, byeByeResponse())
+                        return
                     }
+                    else -> logUnhandled(message)
                 }
-                MessageType.PING_REQUEST ->
-                    send(
-                        writer,
-                        tls,
-                        MessageType.PING_RESPONSE,
-                        pingResponse(parsePingRequest(message.body)),
-                    )
-                MessageType.BYE_BYE_REQUEST -> {
-                    val reason = parseByeByeRequest(message.body)
-                    Log.i(TAG, "The car says bye-bye with reason $reason")
-                    send(writer, tls, MessageType.BYE_BYE_RESPONSE, byeByeResponse())
-                    return
-                }
-                else -> logUnhandled(message)
             }
+        } finally {
+            (video as? VideoChannelState.Started)?.stream?.close()
         }
     }
 
@@ -229,7 +264,12 @@ class CarConnection(context: Context) {
     ): VideoChannelState.Started {
         send(writer, tls, MessageType.MEDIA_START, videoStart(video.configIndex), video.channel)
         Log.i(TAG, "Started video on channel ${video.channel} with config ${video.configIndex}")
-        return VideoChannelState.Started(video.channel, video.configIndex)
+        val stream =
+            TestPatternStream(video.format, video.maxUnacked) { type, body ->
+                send(writer, tls, type, body, video.channel)
+            }
+        stream.start()
+        return VideoChannelState.Started(video.channel, stream)
     }
 
     private fun send(
@@ -264,16 +304,24 @@ class CarConnection(context: Context) {
 private sealed interface VideoChannelState {
     val channel: Int
 
-    data class Opening(override val channel: Int) : VideoChannelState
+    data class Opening(override val channel: Int, val configs: List<VideoConfig>) :
+        VideoChannelState
 
     data class SettingUp(
         override val channel: Int,
+        val configs: List<VideoConfig>,
         val pendingFocus: VideoFocusNotification?,
     ) : VideoChannelState
 
-    data class Ready(override val channel: Int, val configIndex: Int) : VideoChannelState
+    data class Ready(
+        override val channel: Int,
+        val configIndex: Int,
+        val format: VideoFormat,
+        val maxUnacked: Int,
+    ) : VideoChannelState
 
-    data class Started(override val channel: Int, val configIndex: Int) : VideoChannelState
+    data class Started(override val channel: Int, val stream: TestPatternStream) :
+        VideoChannelState
 }
 
 private fun Closeable.closeQuietly() {

@@ -38,7 +38,10 @@ message MediaSinkService {
   optional int32 display_type = 7;
 }
 
-message VideoConfig {}
+message VideoConfig {
+  optional int32 resolution = 1;
+  optional int32 frame_rate = 2;
+}
 
 message InputSourceService {}
 

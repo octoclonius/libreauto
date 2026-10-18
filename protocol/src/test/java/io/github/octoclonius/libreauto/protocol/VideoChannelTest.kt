@@ -44,10 +44,24 @@ class VideoChannelTest {
         assertEquals(5, pick(sink(5, message(4)), sink(6, message(4))))
     }
 
+    @Test
+    fun theSinkKeepsItsConfigsInOrder() {
+        val sink =
+            videoSink(
+                parseServiceDiscoveryResponse(
+                    message(1, sink(3, message(4, varint(1, 1)), message(4, varint(1, 2))))
+                )
+            )
+        assertEquals(listOf(1, 2), sink?.configs?.map { it.resolution })
+    }
+
     private fun pick(vararg services: ByteArray) =
-        videoChannel(
-            parseServiceDiscoveryResponse(services.map { message(1, it) }.reduce(ByteArray::plus))
-        )
+        videoSink(
+                parseServiceDiscoveryResponse(
+                    services.map { message(1, it) }.reduce(ByteArray::plus)
+                )
+            )
+            ?.channel
 
     private fun sink(channel: Int, vararg fields: ByteArray) =
         service(channel, message(3, *fields))
