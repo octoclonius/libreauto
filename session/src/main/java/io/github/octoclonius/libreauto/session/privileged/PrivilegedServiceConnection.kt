@@ -141,7 +141,7 @@ object PrivilegedServiceConnection {
             }
         } catch (e: RuntimeException) {
             Log.w(TAG, "Can't ask Shizuku", e)
-            ShizukuStatus()
+            ShizukuStatus(isRunning = true, error = describe(e))
         }
     }
 }

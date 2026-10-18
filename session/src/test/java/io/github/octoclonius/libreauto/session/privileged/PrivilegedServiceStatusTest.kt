@@ -32,6 +32,13 @@ class PrivilegedServiceStatusTest {
     }
 
     @Test
+    fun aShizukuThatCantBeAskedFailsWithItsError() {
+        val status = start.withShizuku(ShizukuStatus(isRunning = true, error = "x"))
+        assertEquals(Failed(Failed.Reason.Error("x")), status.state)
+        assertFalse(status.shouldBind)
+    }
+
+    @Test
     fun withoutPermissionItIsNeeded() {
         val status = start.withShizuku(ungranted)
         assertEquals(PrivilegedServiceState.PermissionNeeded, status.state)

@@ -81,20 +81,27 @@ data class VideoFormat(
 }
 
 @Throws(ProtocolException::class)
-fun videoFormat(config: VideoConfig): VideoFormat {
-    val (width, height) =
-        when (config.resolution) {
-            VIDEO_1280X720 -> 1280 to 720
-            VIDEO_1920X1080 -> 1920 to 1080
-            VIDEO_2560X1440 -> 2560 to 1440
-            VIDEO_3840X2160 -> 3840 to 2160
-            VIDEO_720X1280 -> 720 to 1280
-            VIDEO_1080X1920 -> 1080 to 1920
-            VIDEO_1440X2560 -> 1440 to 2560
-            VIDEO_2160X3840 -> 2160 to 3840
-            else -> 800 to 480
+fun preferredConfigIndex(
+    configs: List<VideoConfig>,
+    accepted: List<Int>,
+    isEncodable: (width: Int, height: Int, framesPerSecond: Int) -> Boolean,
+): Int? {
+    if (accepted.isEmpty()) throw ProtocolException("The car accepted no video config")
+    accepted
+        .firstOrNull { it !in configs.indices }
+        ?.let { throw ProtocolException("The car accepted video config $it of ${configs.size}") }
+    return accepted
+        .sortedByDescending { index -> frameSize(configs[index]).let { (w, h) -> w * h } }
+        .firstOrNull { index ->
+            val (width, height) = frameSize(configs[index])
+            isEncodable(width, height, framesPerSecond(configs[index]))
         }
-    val framesPerSecond = if (config.frame_rate == VIDEO_FPS_30) 30 else 60
+}
+
+@Throws(ProtocolException::class)
+fun videoFormat(config: VideoConfig): VideoFormat {
+    val (width, height) = frameSize(config)
+    val framesPerSecond = framesPerSecond(config)
     val density = config.density
     if (density == null || density <= 0) {
         throw ProtocolException("The car's video config has density $density")
@@ -121,6 +128,22 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         pixelAspectRatioE4,
     )
 }
+
+private fun frameSize(config: VideoConfig): Pair<Int, Int> =
+    when (config.resolution) {
+        VIDEO_1280X720 -> 1280 to 720
+        VIDEO_1920X1080 -> 1920 to 1080
+        VIDEO_2560X1440 -> 2560 to 1440
+        VIDEO_3840X2160 -> 3840 to 2160
+        VIDEO_720X1280 -> 720 to 1280
+        VIDEO_1080X1920 -> 1080 to 1920
+        VIDEO_1440X2560 -> 1440 to 2560
+        VIDEO_2160X3840 -> 2160 to 3840
+        else -> 800 to 480
+    }
+
+private fun framesPerSecond(config: VideoConfig): Int =
+    if (config.frame_rate == VIDEO_FPS_30) 30 else 60
 
 private fun margins(config: VideoConfig): CarInsets {
     val ui = config.ui_config

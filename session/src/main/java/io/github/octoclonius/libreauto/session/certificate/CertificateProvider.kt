@@ -53,14 +53,12 @@ class CertificateProvider(private val context: Context) {
 
     fun selection(): Choice? {
         val packageName = prefs.getString(PREF_PACKAGE, null) ?: return null
-        val signer =
-            try {
-                prefs.getString(PREF_SIGNER, null)?.let { Base64.getDecoder().decode(it) }
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        if (signer != null) return Choice(packageName, signer)
-        return Choice(packageName, signer(packageName) ?: return null).also { select(it) }
+        val signer = prefs.getString(PREF_SIGNER, null) ?: return null
+        return try {
+            Choice(packageName, Base64.getDecoder().decode(signer))
+        } catch (_: IllegalArgumentException) {
+            null
+        }
     }
 
     fun options(): List<Option> {

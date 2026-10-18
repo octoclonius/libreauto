@@ -1,8 +1,10 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import java.net.ProtocolException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -283,6 +285,95 @@ class VideoFormatTest {
             format?.displayContentInsets,
         )
     }
+
+    @Test
+    fun theHighestAcceptedResolutionIsPreferred() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 1),
+                VideoConfig(resolution = 3),
+                VideoConfig(resolution = 2),
+            )
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 2, 1), ::anySize))
+        assertEquals(2, preferredConfigIndex(configs, listOf(0, 2), ::anySize))
+    }
+
+    @Test
+    fun anUnknownResolutionCountsAs800x480() {
+        val configs = listOf(VideoConfig(resolution = 10), VideoConfig(resolution = 2))
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), ::anySize))
+    }
+
+    @Test
+    fun equalResolutionsKeepTheCarsOrder() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1),
+                VideoConfig(resolution = 3, frame_rate = 2),
+                VideoConfig(resolution = 7),
+            )
+        assertEquals(1, preferredConfigIndex(configs, listOf(1, 0), ::anySize))
+        assertEquals(2, preferredConfigIndex(configs, listOf(2, 0, 1), ::anySize))
+    }
+
+    @Test
+    fun noAcceptedConfigIsAProtocolError() {
+        assertThrows(ProtocolException::class.java) {
+            preferredConfigIndex(listOf(VideoConfig(resolution = 1)), emptyList(), ::anySize)
+        }
+    }
+
+    @Test
+    fun anAcceptedIndexWithoutAConfigIsAProtocolError() {
+        val configs = listOf(VideoConfig(resolution = 1), VideoConfig(resolution = 3))
+        for (indexes in listOf(listOf(2), listOf(1, 2), listOf(-1, 0))) {
+            assertThrows(ProtocolException::class.java) {
+                preferredConfigIndex(configs, indexes, ::anySize)
+            }
+        }
+    }
+
+    @Test
+    fun aResolutionThatCantBeEncodedIsSkipped() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 2),
+                VideoConfig(resolution = 5),
+                VideoConfig(resolution = 3),
+            )
+        assertEquals(
+            2,
+            preferredConfigIndex(configs, listOf(0, 1, 2)) { width, height, _ ->
+                width <= 1920 && height <= 1080
+            },
+        )
+    }
+
+    @Test
+    fun theFrameRateIsCheckedToo() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1),
+                VideoConfig(resolution = 3, frame_rate = 2),
+            )
+        assertEquals(
+            1,
+            preferredConfigIndex(configs, listOf(0, 1)) { _, _, framesPerSecond ->
+                framesPerSecond == 30
+            },
+        )
+    }
+
+    @Test
+    fun noEncodableConfigIsNull() {
+        assertNull(
+            preferredConfigIndex(listOf(VideoConfig(resolution = 1)), listOf(0)) { _, _, _ ->
+                false
+            }
+        )
+    }
+
+    private fun anySize(width: Int, height: Int, framesPerSecond: Int): Boolean = true
 
     private fun format(vararg fields: ByteArray): VideoFormat? =
         videoSink(

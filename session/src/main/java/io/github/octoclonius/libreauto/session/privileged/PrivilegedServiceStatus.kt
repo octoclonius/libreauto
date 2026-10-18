@@ -9,9 +9,10 @@ internal data class ShizukuStatus(
     val version: Int = 0,
     val isPermissionGranted: Boolean = false,
     val isPermissionDenied: Boolean = false,
+    val error: String? = null,
 ) {
     val isReady: Boolean
-        get() = isRunning && version >= MIN_SHIZUKU_VERSION && isPermissionGranted
+        get() = isRunning && error == null && version >= MIN_SHIZUKU_VERSION && isPermissionGranted
 }
 
 internal sealed interface ServiceBinding {
@@ -32,6 +33,7 @@ internal data class PrivilegedServiceStatus(
         get() =
             when {
                 !shizuku.isRunning -> PrivilegedServiceState.Stopped
+                shizuku.error != null -> Failed(Failed.Reason.Error(shizuku.error))
                 shizuku.version < MIN_SHIZUKU_VERSION ->
                     Failed(Failed.Reason.ShizukuOutdated(shizuku.version))
                 !shizuku.isPermissionGranted ->

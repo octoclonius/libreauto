@@ -5,9 +5,6 @@ import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.hardware.display.VirtualDisplayConfig
 import android.media.MediaCodec
-import android.media.MediaCodecInfo.CodecCapabilities
-import android.media.MediaCodecInfo.CodecProfileLevel
-import android.media.MediaFormat
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
@@ -15,7 +12,6 @@ import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaData
 import java.io.Closeable
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
@@ -30,8 +26,6 @@ internal class VideoStream(
     companion object {
         private const val TAG = "VideoStream"
         private const val DISPLAY_NAME = "LibreAuto"
-        private const val BIT_RATE = 4_000_000
-        private const val I_FRAME_INTERVAL_SECONDS = 1
         private const val DEQUEUE_TIMEOUT_US = 100_000L
     }
 
@@ -59,11 +53,20 @@ internal class VideoStream(
     }
 
     private fun encode() {
+        val width = format.frameWidth
+        val height = format.frameHeight
+        val framesPerSecond = format.framesPerSecond
+        val name = H264Encoder.name(width, height, framesPerSecond)
+        if (name == null) {
+            Log.w(TAG, "No H.264 encoder for ${width}x$height at $framesPerSecond fps")
+            close()
+            return
+        }
         val encoder =
             try {
-                MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+                MediaCodec.createByCodecName(name)
             } catch (e: IOException) {
-                Log.w(TAG, "No H.264 encoder", e)
+                Log.w(TAG, "Can't create the H.264 encoder $name", e)
                 close()
                 return
             }
@@ -71,15 +74,20 @@ internal class VideoStream(
         var compositor: VideoCompositor? = null
         var display: VirtualDisplay? = null
         try {
-            encoder.configure(mediaFormat(), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            encoder.configure(
+                H264Encoder.format(width, height, framesPerSecond),
+                null,
+                null,
+                MediaCodec.CONFIGURE_FLAG_ENCODE,
+            )
             val input = encoder.createInputSurface()
             surface = input
             encoder.start()
             Log.i(
                 TAG,
-                "Encoding ${format.frameWidth}x${format.frameHeight} at " +
-                    "${format.framesPerSecond} fps, showing ${format.visibleWidth}x" +
-                    "${format.visibleHeight} inside margins ${format.margins} from a " +
+                "Encoding ${width}x$height at $framesPerSecond fps with $name, showing " +
+                    "${format.visibleWidth}x${format.visibleHeight} inside margins " +
+                    "${format.margins} from a " +
                     "${format.displayWidth}x${format.displayHeight} display at " +
                     "${format.density} dpi",
             )
@@ -124,24 +132,6 @@ internal class VideoStream(
                     .setRequestedRefreshRate(format.framesPerSecond.toFloat())
                     .build()
             )
-
-    private fun mediaFormat(): MediaFormat =
-        MediaFormat.createVideoFormat(
-                MediaFormat.MIMETYPE_VIDEO_AVC,
-                format.frameWidth,
-                format.frameHeight,
-            )
-            .apply {
-                setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecCapabilities.COLOR_FormatSurface)
-                setInteger(MediaFormat.KEY_PROFILE, CodecProfileLevel.AVCProfileBaseline)
-                setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
-                setInteger(MediaFormat.KEY_FRAME_RATE, format.framesPerSecond)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL_SECONDS)
-                setLong(
-                    MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER,
-                    TimeUnit.SECONDS.toMicros(1) / format.framesPerSecond,
-                )
-            }
 
     private fun drain(encoder: MediaCodec) {
         val info = MediaCodec.BufferInfo()

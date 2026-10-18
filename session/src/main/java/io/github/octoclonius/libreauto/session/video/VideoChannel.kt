@@ -12,12 +12,14 @@ import io.github.octoclonius.libreauto.protocol.media.isProjected
 import io.github.octoclonius.libreauto.protocol.media.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.media.parseVideoFocusNotification
+import io.github.octoclonius.libreauto.protocol.media.preferredConfigIndex
 import io.github.octoclonius.libreauto.protocol.media.videoFormat
 import io.github.octoclonius.libreauto.protocol.media.videoSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.videoStart
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import java.io.Closeable
+import java.io.IOException
 import java.net.ProtocolException
 
 class VideoChannel(
@@ -92,14 +94,12 @@ class VideoChannel(
             )
         }
         val configIndex =
-            response.config_indexes.firstOrNull()
-                ?: throw ProtocolException("The car accepted no video config on channel $channel")
-        val config =
-            current.configs.getOrNull(configIndex)
-                ?: throw ProtocolException(
-                    "The car accepted video config $configIndex of " +
-                        "${current.configs.size} on channel $channel"
+            preferredConfigIndex(current.configs, response.config_indexes, H264Encoder::supports)
+                ?: throw IOException(
+                    "No H.264 encoder can encode the video configs " +
+                        "${response.config_indexes} the car accepted on channel $channel"
                 )
+        val config = current.configs[configIndex]
         Log.i(TAG, "Video config $configIndex has density ${config.density}")
         val format = videoFormat(config)
         if (!format.areContentInsetsUsable) {
