@@ -17,11 +17,13 @@ import io.github.octoclonius.libreauto.protocol.channelOpenRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.parseChannelOpenResponse
+import io.github.octoclonius.libreauto.protocol.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.parseServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.pingResponse
 import io.github.octoclonius.libreauto.protocol.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.videoChannel
+import io.github.octoclonius.libreauto.protocol.videoSetupRequest
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import java.io.Closeable
@@ -79,6 +81,7 @@ class CarConnection(context: Context) {
 
     private fun serve(reader: FrameReader, writer: FrameWriter, tls: TlsServer) {
         var openingVideoChannel: Int? = null
+        var settingUpVideoChannel: Int? = null
         while (true) {
             val message = reader.readMessage()
             if (!message.isEncrypted) {
@@ -94,6 +97,14 @@ class CarConnection(context: Context) {
                 val status = parseChannelOpenResponse(message.body)
                 if (status == MessageStatus.SUCCESS) {
                     Log.i(TAG, "The car opened the video channel $openingVideoChannel")
+                    send(
+                        writer,
+                        tls,
+                        MessageType.MEDIA_SETUP_REQUEST,
+                        videoSetupRequest(),
+                        message.channel,
+                    )
+                    settingUpVideoChannel = message.channel
                 } else {
                     Log.w(
                         TAG,
@@ -101,6 +112,21 @@ class CarConnection(context: Context) {
                     )
                 }
                 openingVideoChannel = null
+                continue
+            }
+            if (
+                message.channel == settingUpVideoChannel &&
+                    message.type == MessageType.MEDIA_SETUP_RESPONSE
+            ) {
+                val response = parseMediaSetupResponse(message.body)
+                Log.i(
+                    TAG,
+                    "The car set up the video channel $settingUpVideoChannel: " +
+                        "status ${response.status}, " +
+                        "up to ${response.max_unacked} unacked frames, " +
+                        "configs ${response.config_indexes}",
+                )
+                settingUpVideoChannel = null
                 continue
             }
             if (message.channel != CONTROL_CHANNEL) {

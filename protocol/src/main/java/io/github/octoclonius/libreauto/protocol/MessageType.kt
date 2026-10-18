@@ -13,4 +13,6 @@ object MessageType {
     const val PING_RESPONSE = 0x000C
     const val BYE_BYE_REQUEST = 0x000F
     const val BYE_BYE_RESPONSE = 0x0010
+    const val MEDIA_SETUP_REQUEST = 0x8000
+    const val MEDIA_SETUP_RESPONSE = 0x8003
 }

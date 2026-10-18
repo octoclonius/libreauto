@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package io.github.octoclonius.libreauto.protocol;
+
+message MediaSetupRequest {
+  optional int32 codec = 1;
+}
+
+message MediaSetupResponse {
+  optional int32 status = 1;
+  optional int32 max_unacked = 2;
+  repeated int32 config_indexes = 3;
+}
