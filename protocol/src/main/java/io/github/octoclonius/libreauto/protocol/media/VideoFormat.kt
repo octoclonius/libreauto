@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.protocol.media
 
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
+import java.net.ProtocolException
 
 private const val VIDEO_1280X720 = 2
 private const val VIDEO_1920X1080 = 3
@@ -13,8 +14,9 @@ private const val VIDEO_2160X3840 = 9
 
 private const val VIDEO_FPS_30 = 2
 
-data class VideoFormat(val width: Int, val height: Int, val framesPerSecond: Int)
+data class VideoFormat(val width: Int, val height: Int, val framesPerSecond: Int, val density: Int)
 
+@Throws(ProtocolException::class)
 fun videoFormat(config: VideoConfig): VideoFormat {
     val (width, height) =
         when (config.resolution) {
@@ -29,5 +31,9 @@ fun videoFormat(config: VideoConfig): VideoFormat {
             else -> 800 to 480
         }
     val framesPerSecond = if (config.frame_rate == VIDEO_FPS_30) 30 else 60
-    return VideoFormat(width, height, framesPerSecond)
+    val density = config.density
+    if (density == null || density <= 0) {
+        throw ProtocolException("The car's video config has density $density")
+    }
+    return VideoFormat(width, height, framesPerSecond, density)
 }

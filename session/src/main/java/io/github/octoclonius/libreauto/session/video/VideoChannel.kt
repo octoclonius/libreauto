@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.session.video
 
+import android.content.Context
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
@@ -19,7 +20,11 @@ import io.github.octoclonius.libreauto.session.isChannelOpened
 import java.io.Closeable
 import java.net.ProtocolException
 
-class VideoChannel(private val sender: ChannelSender, configs: List<VideoConfig>) : Closeable {
+class VideoChannel(
+    private val context: Context,
+    private val sender: ChannelSender,
+    configs: List<VideoConfig>,
+) : Closeable {
 
     companion object {
         private const val TAG = "VideoChannel"
@@ -92,6 +97,7 @@ class VideoChannel(private val sender: ChannelSender, configs: List<VideoConfig>
                     "The car accepted video config $configIndex of " +
                         "${current.configs.size} on channel $channel"
                 )
+        Log.i(TAG, "Video config $configIndex has density ${config.density}")
         val ready = VideoChannelState.Ready(configIndex, videoFormat(config), maxUnacked)
         return if (current.pendingFocus?.isProjected == true) start(ready) else ready
     }
@@ -114,7 +120,7 @@ class VideoChannel(private val sender: ChannelSender, configs: List<VideoConfig>
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
         sender.send(MediaMessageType.START, videoStart(ready.configIndex))
         Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
-        val stream = TestPatternStream(ready.format, ready.maxUnacked, sender::send)
+        val stream = VideoStream(context, ready.format, ready.maxUnacked, sender::send)
         stream.start()
         return VideoChannelState.Started(stream)
     }
@@ -132,5 +138,5 @@ private sealed interface VideoChannelState {
     data class Ready(val configIndex: Int, val format: VideoFormat, val maxUnacked: Int) :
         VideoChannelState
 
-    data class Started(val stream: TestPatternStream) : VideoChannelState
+    data class Started(val stream: VideoStream) : VideoChannelState
 }

@@ -32,5 +32,6 @@ dependencyResolutionManagement {
 rootProject.name = "LibreAuto"
 include(":app")
 include(":phone")
+include(":car")
 include(":session")
 include(":protocol")

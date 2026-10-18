@@ -42,6 +42,7 @@ message MediaSinkService {
 message VideoConfig {
   optional int32 resolution = 1;
   optional int32 frame_rate = 2;
+  optional int32 density = 5;
 }
 
 message InputSourceService {

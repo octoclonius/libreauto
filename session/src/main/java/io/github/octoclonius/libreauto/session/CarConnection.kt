@@ -43,7 +43,8 @@ class CarConnection(context: Context) {
         val state: StateFlow<CarConnectionState> = _state.asStateFlow()
     }
 
-    private val certificateProvider = CertificateProvider(context.applicationContext)
+    private val context = context.applicationContext
+    private val certificateProvider = CertificateProvider(this.context)
 
     fun run(input: InputStream, output: OutputStream) {
         _state.value = CarConnectionState.Connecting
@@ -115,7 +116,11 @@ class CarConnection(context: Context) {
                             Log.w(TAG, "The car has no video channel for its main display")
                         } else {
                             video =
-                                VideoChannel(ChannelSender(writer, tls, sink.channel), sink.configs)
+                                VideoChannel(
+                                        context,
+                                        ChannelSender(writer, tls, sink.channel),
+                                        sink.configs,
+                                    )
                                     .also { it.open() }
                             val source = inputSource(response, sink.displayId)
                             if (source == null) {
