@@ -73,7 +73,7 @@ class InputChannel(
                 when {
                     touch == null -> Log.w(TAG, "Dropped touch $event")
                     format == null -> Log.w(TAG, "Dropped touch $touch before the video started")
-                    !CarTouches.emit(touch.onDisplay(format)) -> Log.w(TAG, "Lost touch $touch")
+                    else -> PrivilegedTouches.send(touch.onDisplay(format))
                 }
             }
             else -> return false

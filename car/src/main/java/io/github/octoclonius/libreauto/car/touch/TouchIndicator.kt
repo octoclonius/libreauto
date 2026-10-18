@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import io.github.octoclonius.libreauto.session.input.Touch
 
 private const val FADE_MILLIS = 250
 private const val FINGER_ALPHA = 0.45f
@@ -28,27 +27,29 @@ private val FINGER_COLOR = Color.White
 class TouchIndicatorState {
     internal val fingers = mutableStateListOf<Finger>()
 
-    fun onTouch(touch: Touch) {
+    fun onTouch(event: MotionEvent) {
+        val action = event.actionMasked
         val liftedId =
-            if (
-                touch.action == MotionEvent.ACTION_UP ||
-                    touch.action == MotionEvent.ACTION_POINTER_UP
-            ) {
-                touch.pointers[touch.actionIndex].id
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+                event.getPointerId(event.actionIndex)
             } else {
                 null
             }
-        for (pointer in touch.pointers) {
-            val position = Offset(pointer.x.toFloat(), pointer.y.toFloat())
-            val finger = fingers.firstOrNull { it.id == pointer.id && it.isDown }
-            if (finger == null) {
-                fingers += Finger(pointer.id, position)
-            } else {
-                finger.position = position
+        val ids = List(event.pointerCount, event::getPointerId)
+        if (action != MotionEvent.ACTION_CANCEL) {
+            for (index in ids.indices) {
+                val position = Offset(event.getX(index), event.getY(index))
+                val finger = fingers.firstOrNull { it.id == ids[index] && it.isDown }
+                if (finger == null) {
+                    fingers += Finger(ids[index], position)
+                } else {
+                    finger.position = position
+                }
             }
         }
         for (finger in fingers) {
-            val isLifted = finger.id == liftedId || touch.pointers.none { it.id == finger.id }
+            val isLifted =
+                action == MotionEvent.ACTION_CANCEL || finger.id == liftedId || finger.id !in ids
             if (finger.isDown && isLifted) finger.isDown = false
         }
     }

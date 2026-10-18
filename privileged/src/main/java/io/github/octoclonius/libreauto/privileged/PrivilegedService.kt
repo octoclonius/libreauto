@@ -90,6 +90,34 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
+    override fun sendTouch(
+        action: Int,
+        actionIndex: Int,
+        pointerIds: IntArray,
+        xs: IntArray,
+        ys: IntArray,
+    ) {
+        val error = touchRequestError(action, actionIndex, pointerIds, xs, ys)
+        if (error != null) {
+            Log.w(TAG, "Dropped a touch: $error")
+            return
+        }
+        val pointers = pointerIds.indices.map { TouchPointer(pointerIds[it], xs[it], ys[it]) }
+        synchronized(lock) {
+            val current = display
+            if (current == null) {
+                Log.w(TAG, "Dropped a touch without a car display")
+                return
+            }
+            try {
+                current.onTouch(action, actionIndex, pointers)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Sending a touch to the car display ${current.id} failed", cause)
+            }
+        }
+    }
+
     private fun release() {
         val released = display ?: return
         display = null

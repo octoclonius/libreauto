@@ -17,6 +17,7 @@ private constructor(
     private val associationId: Int,
     private val device: AutoCloseable,
     private val display: VirtualDisplay,
+    private val touchscreen: VirtualCarTouchscreen,
 ) : Closeable {
 
     companion object {
@@ -52,12 +53,21 @@ private constructor(
                     association.release(associationId)
                     throw e
                 }
+            val touchscreen =
+                try {
+                    VirtualCarTouchscreen.create(device, display.display.displayId, width, height)
+                } catch (e: Exception) {
+                    display.release()
+                    device.close()
+                    association.release(associationId)
+                    throw e
+                }
             Log.i(
                 TAG,
-                "Created the display ${display.display.displayId}: ${width}x$height at " +
-                    "$densityDpi dpi and $framesPerSecond fps, home $home",
+                "Created the display ${display.display.displayId} with a touchscreen: " +
+                    "${width}x$height at $densityDpi dpi and $framesPerSecond fps, home $home",
             )
-            return VirtualCarDisplay(association, associationId, device, display)
+            return VirtualCarDisplay(association, associationId, device, display, touchscreen)
         }
 
         private fun createDevice(
@@ -124,10 +134,18 @@ private constructor(
 
     val id: Int = display.display.displayId
 
+    fun onTouch(action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
+        touchscreen.onTouch(action, actionIndex, pointers)
+    }
+
     override fun close() {
         try {
             try {
-                display.release()
+                try {
+                    touchscreen.close()
+                } finally {
+                    display.release()
+                }
             } finally {
                 device.close()
             }

@@ -15,9 +15,9 @@ private val KNOWN_ACTIONS =
         TouchAction.POINTER_UP,
     )
 
-data class Touch(val action: Int, val actionIndex: Int, val pointers: List<TouchPointer>)
+internal data class Touch(val action: Int, val actionIndex: Int, val pointers: List<TouchPointer>)
 
-data class TouchPointer(val id: Int, val x: Int, val y: Int)
+internal data class TouchPointer(val id: Int, val x: Int, val y: Int)
 
 internal fun touch(event: TouchEvent): Touch? {
     val pointers = event.pointers.map { TouchPointer(it.id ?: 0, it.x ?: 0, it.y ?: 0) }

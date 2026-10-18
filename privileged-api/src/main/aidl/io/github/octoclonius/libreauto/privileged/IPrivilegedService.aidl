@@ -11,4 +11,6 @@ interface IPrivilegedService {
     int createDisplay(in Surface surface, int width, int height, int densityDpi, int framesPerSecond, in ComponentName home) = 2;
 
     void releaseDisplay(int displayId) = 3;
+
+    oneway void sendTouch(int action, int actionIndex, in int[] pointerIds, in int[] xs, in int[] ys) = 4;
 }

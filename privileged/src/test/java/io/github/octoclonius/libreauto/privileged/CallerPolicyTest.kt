@@ -15,6 +15,7 @@ class CallerPolicyTest {
     private val getUid = 2
     private val createDisplay = 3
     private val releaseDisplay = 4
+    private val sendTouch = 5
 
     @Test
     fun onlyShizukuMayDestroy() {
@@ -25,7 +26,7 @@ class CallerPolicyTest {
 
     @Test
     fun onlyLibreAutoMayMakeTheOtherCalls() {
-        for (code in listOf(getUid, createDisplay, releaseDisplay)) {
+        for (code in listOf(getUid, createDisplay, releaseDisplay, sendTouch)) {
             assertTrue(isCallerAllowed(code, appUid, appUid, serviceUid))
             assertFalse(isCallerAllowed(code, serviceUid, appUid, serviceUid))
             assertFalse(isCallerAllowed(code, otherUid, appUid, serviceUid))
