@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.LibreAuto.Car" parent="android:Theme.DeviceDefault.Wallpaper.NoTitleBar" />
+</resources>

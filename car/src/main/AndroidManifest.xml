@@ -5,7 +5,8 @@
 
         <activity
             android:name=".CarHomeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LibreAuto.Car" />
 
     </application>
 
