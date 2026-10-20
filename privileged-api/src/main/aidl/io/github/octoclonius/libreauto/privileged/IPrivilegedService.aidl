@@ -8,7 +8,7 @@ interface IPrivilegedService {
 
     int getUid() = 1;
 
-    int createDisplay(in Surface surface, int width, int height, int densityDpi, int framesPerSecond, in ComponentName home) = 2;
+    int createDisplay(in Surface surface, int width, int height, int densityDpi, in ComponentName home) = 2;
 
     void releaseDisplay(int displayId) = 3;
 

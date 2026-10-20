@@ -4,7 +4,6 @@ import android.media.MediaCodecInfo.CodecCapabilities
 import android.media.MediaCodecInfo.CodecProfileLevel
 import android.media.MediaCodecList
 import android.media.MediaFormat
-import java.util.concurrent.TimeUnit
 
 internal object H264Encoder {
     private const val BIT_RATE = 4_000_000
@@ -24,9 +23,5 @@ internal object H264Encoder {
             setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
             setInteger(MediaFormat.KEY_FRAME_RATE, framesPerSecond)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL_SECONDS)
-            setLong(
-                MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER,
-                TimeUnit.SECONDS.toMicros(1) / framesPerSecond,
-            )
         }
 }

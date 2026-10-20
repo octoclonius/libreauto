@@ -46,18 +46,9 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         width: Int,
         height: Int,
         densityDpi: Int,
-        framesPerSecond: Int,
         home: ComponentName,
     ): Int {
-        val error =
-            displayRequestError(
-                width,
-                height,
-                densityDpi,
-                framesPerSecond,
-                home.packageName,
-                appPackage,
-            )
+        val error = displayRequestError(width, height, densityDpi, home.packageName, appPackage)
         if (error != null) throw IllegalArgumentException(error)
         synchronized(lock) {
             release()
@@ -70,7 +61,6 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                         width,
                         height,
                         densityDpi,
-                        framesPerSecond,
                         home,
                     )
                 } catch (e: Exception) {

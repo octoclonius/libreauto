@@ -52,7 +52,6 @@ internal class PrivilegedDisplay(private val surface: Surface, private val forma
                     format.displayWidth,
                     format.displayHeight,
                     format.density,
-                    format.framesPerSecond,
                     PrivilegedServiceConnection.carHome,
                 )
             } catch (e: RemoteException) {

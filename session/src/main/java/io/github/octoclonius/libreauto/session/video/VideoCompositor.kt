@@ -10,6 +10,7 @@ import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
+import android.view.Choreographer
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import java.io.Closeable
@@ -18,6 +19,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
+import java.util.concurrent.TimeUnit
 
 internal class VideoCompositor(
     output: Surface,
@@ -53,6 +55,8 @@ internal class VideoCompositor(
 
         private val QUAD = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         private val TEXTURE_QUAD = floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)
+
+        private const val FRAME_TIME_DEVIATION = 0.2
     }
 
     private val thread = HandlerThread("video-compositor").apply { start() }
@@ -60,6 +64,10 @@ internal class VideoCompositor(
     private val textureMatrix = FloatArray(16)
     private val quad = floatBuffer(QUAD)
     private val textureQuad = floatBuffer(TEXTURE_QUAD)
+    private val intervalNanos = TimeUnit.SECONDS.toNanos(1) / format.framesPerSecond
+    private val deviationNanos = (intervalNanos * FRAME_TIME_DEVIATION).toLong()
+    private val onVsync = Choreographer.FrameCallback(::onVsync)
+    private lateinit var choreographer: Choreographer
 
     private var eglDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext = EGL14.EGL_NO_CONTEXT
@@ -67,6 +75,9 @@ internal class VideoCompositor(
     private var program = 0
     private var texture: SurfaceTexture? = null
     private var textureSurface: Surface? = null
+    private var dueNanos = 0L
+    private var hasNewPicture = false
+    private var isScheduled = false
     private var isReleased = false
     private var isFailed = false
 
@@ -91,6 +102,7 @@ internal class VideoCompositor(
     }
 
     private fun setUp(output: Surface): Surface {
+        choreographer = Choreographer.getInstance()
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         check(eglDisplay != EGL14.EGL_NO_DISPLAY) { "No EGL display" }
         val version = IntArray(2)
@@ -138,7 +150,7 @@ internal class VideoCompositor(
         val surfaceTexture =
             SurfaceTexture(textureId).apply {
                 setDefaultBufferSize(format.displayWidth, format.displayHeight)
-                setOnFrameAvailableListener({ draw() }, handler)
+                setOnFrameAvailableListener({ onFrameAvailable() }, handler)
             }
         texture = surfaceTexture
         return Surface(surfaceTexture).also { textureSurface = it }
@@ -193,11 +205,39 @@ internal class VideoCompositor(
         return shader
     }
 
-    private fun draw() {
+    private fun onFrameAvailable() {
         val surfaceTexture = texture
         if (isReleased || isFailed || surfaceTexture == null) return
+        guarded {
+            surfaceTexture.updateTexImage()
+            surfaceTexture.getTransformMatrix(textureMatrix)
+            hasNewPicture = true
+            schedule()
+        }
+    }
+
+    private fun schedule() {
+        if (isScheduled) return
+        isScheduled = true
+        choreographer.postFrameCallback(onVsync)
+    }
+
+    private fun onVsync(vsyncNanos: Long) {
+        isScheduled = false
+        if (isReleased || isFailed || !hasNewPicture) return
+        if (vsyncNanos < dueNanos - deviationNanos) {
+            schedule()
+            return
+        }
+        val frameNanos = if (vsyncNanos > dueNanos + deviationNanos) vsyncNanos else dueNanos
+        dueNanos = frameNanos + intervalNanos
+        hasNewPicture = false
+        guarded { drawFrame(vsyncNanos) }
+    }
+
+    private fun guarded(block: () -> Unit) {
         try {
-            drawFrame(surfaceTexture)
+            block()
         } catch (e: RuntimeException) {
             Log.w(TAG, "Drawing the car display failed", e)
             isFailed = true
@@ -205,9 +245,7 @@ internal class VideoCompositor(
         }
     }
 
-    private fun drawFrame(surfaceTexture: SurfaceTexture) {
-        surfaceTexture.updateTexImage()
-        surfaceTexture.getTransformMatrix(textureMatrix)
+    private fun drawFrame(presentationNanos: Long) {
         GLES20.glViewport(0, 0, format.frameWidth, format.frameHeight)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
@@ -232,12 +270,13 @@ internal class VideoCompositor(
             0,
         )
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, surfaceTexture.timestamp)
+        EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationNanos)
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
     }
 
     private fun release() {
         isReleased = true
+        choreographer.removeFrameCallback(onVsync)
         textureSurface?.release()
         textureSurface = null
         texture?.release()

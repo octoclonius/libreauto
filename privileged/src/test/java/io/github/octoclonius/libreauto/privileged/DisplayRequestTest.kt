@@ -10,24 +10,24 @@ class DisplayRequestTest {
 
     @Test
     fun aDisplayWithLibreAutosHomeIsAccepted() {
-        assertNull(displayRequestError(1280, 720, 160, 60, app, app))
+        assertNull(displayRequestError(1280, 720, 160, app, app))
     }
 
     @Test
     fun aHomeFromAnotherPackageIsRefused() {
-        assertNotNull(displayRequestError(1280, 720, 160, 60, "com.example.launcher", app))
-        assertNotNull(displayRequestError(1280, 720, 160, 60, "$app.other", app))
+        assertNotNull(displayRequestError(1280, 720, 160, "com.example.launcher", app))
+        assertNotNull(displayRequestError(1280, 720, 160, "$app.other", app))
     }
 
     @Test
     fun anEmptySizeIsRefused() {
-        assertNotNull(displayRequestError(0, 720, 160, 60, app, app))
-        assertNotNull(displayRequestError(1280, -1, 160, 60, app, app))
+        assertNotNull(displayRequestError(0, 720, 160, app, app))
+        assertNotNull(displayRequestError(1280, -1, 160, app, app))
     }
 
     @Test
-    fun aDensityOrRefreshRateThatIsntPositiveIsRefused() {
-        assertNotNull(displayRequestError(1280, 720, 0, 60, app, app))
-        assertNotNull(displayRequestError(1280, 720, 160, 0, app, app))
+    fun aDensityThatIsntPositiveIsRefused() {
+        assertNotNull(displayRequestError(1280, 720, 0, app, app))
+        assertNotNull(displayRequestError(1280, 720, -160, app, app))
     }
 }

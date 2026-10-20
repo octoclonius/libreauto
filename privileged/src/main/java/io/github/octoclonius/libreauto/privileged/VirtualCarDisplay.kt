@@ -34,7 +34,6 @@ private constructor(
             width: Int,
             height: Int,
             densityDpi: Int,
-            framesPerSecond: Int,
             home: ComponentName,
         ): VirtualCarDisplay {
             val associationId = association.acquire()
@@ -47,7 +46,7 @@ private constructor(
                 }
             val display =
                 try {
-                    createDisplay(device, surface, width, height, densityDpi, framesPerSecond)
+                    createDisplay(device, surface, width, height, densityDpi)
                 } catch (e: Exception) {
                     device.close()
                     association.release(associationId)
@@ -65,7 +64,7 @@ private constructor(
             Log.i(
                 TAG,
                 "Created the display ${display.display.displayId} with a touchscreen: " +
-                    "${width}x$height at $densityDpi dpi and $framesPerSecond fps, home $home",
+                    "${width}x$height at $densityDpi dpi, home $home",
             )
             return VirtualCarDisplay(association, associationId, device, display, touchscreen)
         }
@@ -107,7 +106,6 @@ private constructor(
             width: Int,
             height: Int,
             densityDpi: Int,
-            framesPerSecond: Int,
         ): VirtualDisplay {
             val builder =
                 VirtualDisplayConfig.Builder(NAME, width, height, densityDpi)
@@ -116,7 +114,6 @@ private constructor(
                             VIRTUAL_DISPLAY_FLAG_TRUSTED
                     )
                     .setSurface(surface)
-                    .setRequestedRefreshRate(framesPerSecond.toFloat())
             builder.javaClass
                 .getMethod("setHomeSupported", Boolean::class.javaPrimitiveType)
                 .invoke(builder, true)
