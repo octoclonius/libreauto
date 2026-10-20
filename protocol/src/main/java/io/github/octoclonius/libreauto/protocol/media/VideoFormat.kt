@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.UiInsets
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import java.net.ProtocolException
@@ -17,6 +18,9 @@ private const val VIDEO_2160X3840 = 9
 private const val VIDEO_FPS_30 = 2
 
 private const val SQUARE_PIXEL_ASPECT_RATIO_E4 = 10_000
+
+private const val DEFAULT_DECODER_DEPTH = 4
+private const val FIRST_MAJOR_WITHOUT_DECODER_DEPTH = 6
 
 data class CarInsets(val top: Int, val bottom: Int, val left: Int, val right: Int) {
     companion object {
@@ -128,6 +132,13 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         pixelAspectRatioE4,
     )
 }
+
+fun decoderDepth(config: VideoConfig, car: ProtocolVersion): Int =
+    if (car.major >= FIRST_MAJOR_WITHOUT_DECODER_DEPTH) {
+        0
+    } else {
+        (config.decoder_additional_depth ?: DEFAULT_DECODER_DEPTH).coerceAtLeast(0)
+    }
 
 private fun frameSize(config: VideoConfig): Pair<Int, Int> =
     when (config.resolution) {

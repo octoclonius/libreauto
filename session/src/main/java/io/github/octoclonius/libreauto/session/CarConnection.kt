@@ -10,6 +10,7 @@ import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.control.Handshake
 import io.github.octoclonius.libreauto.protocol.control.MessageType
+import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.control.carName
 import io.github.octoclonius.libreauto.protocol.control.parseByeByeRequest
@@ -61,7 +62,7 @@ class CarConnection(context: Context) {
                 MessageType.SERVICE_DISCOVERY_REQUEST,
                 serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
             )
-            serve(reader, writer, tls, control)
+            serve(reader, writer, tls, control, version)
             return false
         } catch (_: EOFException) {
             Log.i(TAG, "The car closed the connection")
@@ -92,6 +93,7 @@ class CarConnection(context: Context) {
         writer: FrameWriter,
         tls: TlsServer,
         control: ChannelSender,
+        version: ProtocolVersion,
     ) {
         var video: VideoChannel? = null
         var input: InputChannel? = null
@@ -126,7 +128,11 @@ class CarConnection(context: Context) {
                             Log.w(TAG, "The car has no video channel for its main display")
                         } else {
                             val videoChannel =
-                                VideoChannel(ChannelSender(writer, tls, sink.channel), sink.configs)
+                                VideoChannel(
+                                        ChannelSender(writer, tls, sink.channel),
+                                        sink.configs,
+                                        version,
+                                    )
                                     .also { it.open() }
                             video = videoChannel
                             val source = inputSource(response, sink.displayId)

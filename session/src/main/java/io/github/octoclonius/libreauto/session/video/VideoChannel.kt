@@ -3,10 +3,12 @@ package io.github.octoclonius.libreauto.session.video
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
+import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
+import io.github.octoclonius.libreauto.protocol.media.decoderDepth
 import io.github.octoclonius.libreauto.protocol.media.isProjected
 import io.github.octoclonius.libreauto.protocol.media.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
@@ -25,6 +27,7 @@ import java.net.ProtocolException
 class VideoChannel(
     private val sender: ChannelSender,
     configs: List<VideoConfig>,
+    private val car: ProtocolVersion,
 ) : Closeable {
 
     companion object {
@@ -99,7 +102,11 @@ class VideoChannel(
                         "${response.config_indexes} the car accepted on channel $channel"
                 )
         val config = current.configs[configIndex]
-        Log.i(TAG, "Video config $configIndex has density ${config.density}")
+        val decoderDepth = decoderDepth(config, car)
+        Log.i(
+            TAG,
+            "Video config $configIndex has density ${config.density}, decoder depth $decoderDepth",
+        )
         val format = videoFormat(config)
         if (!format.areContentInsetsUsable) {
             Log.w(
@@ -109,7 +116,7 @@ class VideoChannel(
                     "${format.visibleWidth}x${format.visibleHeight}",
             )
         }
-        val ready = VideoChannelState.Ready(configIndex, format, maxUnacked)
+        val ready = VideoChannelState.Ready(configIndex, format, decoderDepth, maxUnacked)
         if (current.pendingFocus?.isProjected == true) return start(ready)
         sender.send(MediaMessageType.VIDEO_FOCUS_REQUEST, projectedVideoFocusRequest())
         Log.i(TAG, "Requested projected video focus on channel $channel")
@@ -134,7 +141,7 @@ class VideoChannel(
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
         sender.send(MediaMessageType.START, videoStart(ready.configIndex))
         Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
-        val stream = VideoStream(ready.format, ready.maxUnacked, sender::send)
+        val stream = VideoStream(ready.format, ready.decoderDepth, ready.maxUnacked, sender::send)
         stream.start()
         return VideoChannelState.Started(ready.format, stream)
     }
@@ -149,8 +156,12 @@ private sealed interface VideoChannelState {
         val pendingFocus: VideoFocusNotification?,
     ) : VideoChannelState
 
-    data class Ready(val configIndex: Int, val format: VideoFormat, val maxUnacked: Int) :
-        VideoChannelState
+    data class Ready(
+        val configIndex: Int,
+        val format: VideoFormat,
+        val decoderDepth: Int,
+        val maxUnacked: Int,
+    ) : VideoChannelState
 
     data class Started(val format: VideoFormat, val stream: VideoStream) : VideoChannelState
 }

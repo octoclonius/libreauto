@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import java.net.ProtocolException
@@ -373,9 +374,37 @@ class VideoFormatTest {
         )
     }
 
+    @Test
+    fun theDecoderDepthIsField6() {
+        assertEquals(2, depth(ProtocolVersion(1, 7), varint(1, 1), varint(6, 2)))
+        assertEquals(0, depth(ProtocolVersion(1, 7), varint(1, 1), varint(6, 0)))
+    }
+
+    @Test
+    fun aCarWithoutADecoderDepthHasADepthOf4() {
+        assertEquals(4, depth(ProtocolVersion(1, 7), varint(1, 1)))
+    }
+
+    @Test
+    fun aNegativeDecoderDepthIsNone() {
+        assertEquals(0, depth(ProtocolVersion(1, 7), varint(1, 1), varint(6, -1)))
+    }
+
+    @Test
+    fun carsFromProtocol6HaveNoDecoderDepth() {
+        assertEquals(3, depth(ProtocolVersion(5, 9), varint(1, 1), varint(6, 3)))
+        assertEquals(0, depth(ProtocolVersion(6, 0), varint(1, 1), varint(6, 3)))
+        assertEquals(0, depth(ProtocolVersion(6, 1), varint(1, 1)))
+    }
+
     private fun anySize(width: Int, height: Int, framesPerSecond: Int): Boolean = true
 
-    private fun format(vararg fields: ByteArray): VideoFormat? =
+    private fun format(vararg fields: ByteArray): VideoFormat? = config(*fields)?.let(::videoFormat)
+
+    private fun depth(car: ProtocolVersion, vararg fields: ByteArray): Int =
+        decoderDepth(checkNotNull(config(*fields)), car)
+
+    private fun config(vararg fields: ByteArray): VideoConfig? =
         videoSink(
                 parseServiceDiscoveryResponse(
                     message(1, varint(1, 3), message(3, message(4, *fields)))
@@ -383,7 +412,6 @@ class VideoFormatTest {
             )
             ?.configs
             ?.single()
-            ?.let(::videoFormat)
 
     private fun sides(number: Int, top: Int, bottom: Int, left: Int, right: Int): ByteArray =
         message(number, varint(1, top), varint(2, bottom), varint(3, left), varint(4, right))

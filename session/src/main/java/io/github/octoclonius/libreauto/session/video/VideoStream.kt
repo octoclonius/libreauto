@@ -14,6 +14,7 @@ import kotlin.concurrent.withLock
 
 internal class VideoStream(
     private val format: VideoFormat,
+    private val decoderDepth: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Unit,
 ) : Closeable {
@@ -85,7 +86,7 @@ internal class VideoStream(
                     "${format.displayWidth}x${format.displayHeight} display at " +
                     "${format.density} dpi",
             )
-            val created = VideoCompositor(input, format, ::close)
+            val created = VideoCompositor(input, format, decoderDepth, ::close)
             compositor = created
             display = PrivilegedDisplay(created.input, format).also { it.start() }
             drain(encoder)

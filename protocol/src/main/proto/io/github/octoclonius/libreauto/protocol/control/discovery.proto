@@ -45,6 +45,7 @@ message VideoConfig {
   optional int32 width_margin = 3;
   optional int32 height_margin = 4;
   optional int32 density = 5;
+  optional int32 decoder_additional_depth = 6;
   optional int32 pixel_aspect_ratio_e4 = 8;
   optional UiConfig ui_config = 11;
 }

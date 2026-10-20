@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit
 internal class VideoCompositor(
     output: Surface,
     private val format: VideoFormat,
+    private val decoderDepth: Int,
     private val onFailed: () -> Unit,
 ) : Closeable {
 
@@ -77,6 +78,7 @@ internal class VideoCompositor(
     private var textureSurface: Surface? = null
     private var dueNanos = 0L
     private var hasNewPicture = false
+    private var repeats = 0
     private var isScheduled = false
     private var isReleased = false
     private var isFailed = false
@@ -224,15 +226,19 @@ internal class VideoCompositor(
 
     private fun onVsync(vsyncNanos: Long) {
         isScheduled = false
-        if (isReleased || isFailed || !hasNewPicture) return
+        if (isReleased || isFailed || (!hasNewPicture && repeats == 0)) return
         if (vsyncNanos < dueNanos - deviationNanos) {
             schedule()
             return
         }
         val frameNanos = if (vsyncNanos > dueNanos + deviationNanos) vsyncNanos else dueNanos
         dueNanos = frameNanos + intervalNanos
+        repeats = if (hasNewPicture) decoderDepth else repeats - 1
         hasNewPicture = false
-        guarded { drawFrame(vsyncNanos) }
+        guarded {
+            drawFrame(vsyncNanos)
+            if (repeats > 0) schedule()
+        }
     }
 
     private fun guarded(block: () -> Unit) {
