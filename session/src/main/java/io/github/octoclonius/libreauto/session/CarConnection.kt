@@ -14,6 +14,10 @@ import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.control.carName
+import io.github.octoclonius.libreauto.protocol.control.isBatteryOnCar
+import io.github.octoclonius.libreauto.protocol.control.isClockOnCar
+import io.github.octoclonius.libreauto.protocol.control.isDriverOnRight
+import io.github.octoclonius.libreauto.protocol.control.isPhoneSignalOnCar
 import io.github.octoclonius.libreauto.protocol.control.parseByeByeRequest
 import io.github.octoclonius.libreauto.protocol.control.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
@@ -123,7 +127,18 @@ class CarConnection(context: Context) {
                     MessageType.SERVICE_DISCOVERY_RESPONSE -> {
                         val response = parseServiceDiscoveryResponse(message.body)
                         response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
-                        _state.value = CarConnectionState.Connected(carName(response))
+                        val connected =
+                            CarConnectionState.Connected(
+                                carName(response),
+                                isDriverOnRight(response),
+                                CarStatusBar(
+                                    isClockOnCar(response),
+                                    isPhoneSignalOnCar(response),
+                                    isBatteryOnCar(response),
+                                ),
+                            )
+                        Log.i(TAG, "The car is $connected")
+                        _state.value = connected
                         val sink = videoSink(response)
                         if (sink == null) {
                             Log.w(TAG, "The car has no video channel for its main display")

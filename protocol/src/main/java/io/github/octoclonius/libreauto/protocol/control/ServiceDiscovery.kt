@@ -6,6 +6,12 @@ import java.net.ProtocolException
 private const val LABEL_TEXT = "Android"
 private const val MAX_CHANNEL = 0xFF
 
+private const val DRIVER_POSITION_RIGHT = 1
+
+private const val NATIVE_CLOCK = 1
+private const val NATIVE_PHONE_SIGNAL = 2
+private const val NATIVE_BATTERY = 4
+
 internal const val DEFAULT_DISPLAY_ID = 0
 
 fun serviceDiscoveryRequest(deviceName: String): ByteArray =
@@ -31,3 +37,16 @@ fun carName(response: ServiceDiscoveryResponse): String? =
             .filter { it.isNotBlank() }
             .joinToString(" ")
             .ifEmpty { null }
+
+fun isDriverOnRight(response: ServiceDiscoveryResponse): Boolean =
+    response.driver_position == DRIVER_POSITION_RIGHT
+
+fun isClockOnCar(response: ServiceDiscoveryResponse): Boolean = isOnCar(response, NATIVE_CLOCK)
+
+fun isPhoneSignalOnCar(response: ServiceDiscoveryResponse): Boolean =
+    isOnCar(response, NATIVE_PHONE_SIGNAL)
+
+fun isBatteryOnCar(response: ServiceDiscoveryResponse): Boolean = isOnCar(response, NATIVE_BATTERY)
+
+private fun isOnCar(response: ServiceDiscoveryResponse, flag: Int): Boolean =
+    (response.native_status_flags ?: 0) and flag != 0

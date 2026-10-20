@@ -4,8 +4,10 @@ import java.net.ProtocolException
 import okio.ByteString.Companion.toByteString
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -81,6 +83,33 @@ class ServiceDiscoveryTest {
     @Test
     fun aCarWithoutANameHasNone() {
         assertNull(carName(parseServiceDiscoveryResponse(message(2) + message(3))))
+    }
+
+    @Test
+    fun theDriverIsOnTheRightOnlyWhenField6Is1() {
+        assertTrue(isDriverOnRight(parseServiceDiscoveryResponse(varint(6, 1))))
+        for (position in listOf(0, 2, 3, 4)) {
+            assertFalse(isDriverOnRight(parseServiceDiscoveryResponse(varint(6, position))))
+        }
+        assertFalse(isDriverOnRight(parseServiceDiscoveryResponse(message(2))))
+    }
+
+    @Test
+    fun field13FlagsTheClockSignalAndBatteryTheCarShows() {
+        for (flags in 0..7) {
+            val response = parseServiceDiscoveryResponse(varint(13, flags))
+            assertEquals(flags and 1 != 0, isClockOnCar(response))
+            assertEquals(flags and 2 != 0, isPhoneSignalOnCar(response))
+            assertEquals(flags and 4 != 0, isBatteryOnCar(response))
+        }
+    }
+
+    @Test
+    fun aCarWithoutField13ShowsNoStatusOfItsOwn() {
+        val response = parseServiceDiscoveryResponse(message(2))
+        assertFalse(isClockOnCar(response))
+        assertFalse(isPhoneSignalOnCar(response))
+        assertFalse(isBatteryOnCar(response))
     }
 
     private fun parse(vararg services: Service) =
