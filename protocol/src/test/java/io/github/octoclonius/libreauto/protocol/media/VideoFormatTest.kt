@@ -288,6 +288,14 @@ class VideoFormatTest {
     }
 
     @Test
+    fun displayPointsScaleBackToTheVisibleArea() {
+        val format = VideoFormat(1280, 720, 30, 160, pixelAspectRatioE4 = 15000)
+        assertEquals(640, format.visibleX(960))
+        assertEquals(1280, format.visibleX(1920))
+        assertEquals(360, format.visibleY(360))
+    }
+
+    @Test
     fun theHighestAcceptedResolutionIsPreferred() {
         val configs =
             listOf(

@@ -14,19 +14,12 @@ object CarDisplay {
     val state: StateFlow<CarDisplayState?> = _state.asStateFlow()
 
     internal fun onCreated(id: Int, contentInsets: CarInsets) {
-        _state.value =
-            CarDisplayState(
-                id,
-                Insets.of(
-                    contentInsets.left,
-                    contentInsets.top,
-                    contentInsets.right,
-                    contentInsets.bottom,
-                ),
-            )
+        _state.value = CarDisplayState(id, contentInsets.toInsets())
     }
 
     internal fun onReleased(id: Int) {
         _state.update { if (it?.id == id) null else it }
     }
 }
+
+internal fun CarInsets.toInsets(): Insets = Insets.of(left, top, right, bottom)

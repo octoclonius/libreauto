@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit
 internal class VideoCompositor(
     output: Surface,
     private val format: VideoFormat,
+    private val areas: List<Area>,
     private val decoderDepth: Int,
     private val onFailed: () -> Unit,
 ) : Closeable {
@@ -60,9 +61,17 @@ internal class VideoCompositor(
         private const val FRAME_TIME_DEVIATION = 0.2
     }
 
+    private class Layer(
+        val area: Area,
+        val textureId: Int,
+        val texture: SurfaceTexture,
+        val surface: Surface,
+    ) {
+        val matrix = FloatArray(16)
+    }
+
     private val thread = HandlerThread("video-compositor").apply { start() }
     private val handler = Handler(thread.looper)
-    private val textureMatrix = FloatArray(16)
     private val quad = floatBuffer(QUAD)
     private val textureQuad = floatBuffer(TEXTURE_QUAD)
     private val intervalNanos = TimeUnit.SECONDS.toNanos(1) / format.framesPerSecond
@@ -74,8 +83,7 @@ internal class VideoCompositor(
     private var eglContext = EGL14.EGL_NO_CONTEXT
     private var eglSurface = EGL14.EGL_NO_SURFACE
     private var program = 0
-    private var texture: SurfaceTexture? = null
-    private var textureSurface: Surface? = null
+    private var layers: List<Layer> = emptyList()
     private var dueNanos = 0L
     private var hasNewPicture = false
     private var repeats = 0
@@ -83,12 +91,12 @@ internal class VideoCompositor(
     private var isReleased = false
     private var isFailed = false
 
-    val input: Surface
+    val inputs: List<Surface>
 
     init {
         val setUp = FutureTask { setUp(output) }
         handler.post(setUp)
-        input =
+        inputs =
             try {
                 setUp.get()
             } catch (e: ExecutionException) {
@@ -103,7 +111,7 @@ internal class VideoCompositor(
         thread.join()
     }
 
-    private fun setUp(output: Surface): Surface {
+    private fun setUp(output: Surface): List<Surface> {
         choreographer = Choreographer.getInstance()
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         check(eglDisplay != EGL14.EGL_NO_DISPLAY) { "No EGL display" }
@@ -127,6 +135,11 @@ internal class VideoCompositor(
             "eglMakeCurrent",
         )
         program = linkProgram()
+        layers = areas.map(::createLayer)
+        return layers.map { it.surface }
+    }
+
+    private fun createLayer(area: Area): Layer {
         val textureId = IntArray(1).also { GLES20.glGenTextures(1, it, 0) }[0]
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId)
         GLES20.glTexParameteri(
@@ -149,13 +162,11 @@ internal class VideoCompositor(
             GLES20.GL_TEXTURE_WRAP_T,
             GLES20.GL_CLAMP_TO_EDGE,
         )
-        val surfaceTexture =
-            SurfaceTexture(textureId).apply {
-                setDefaultBufferSize(format.displayWidth, format.displayHeight)
-                setOnFrameAvailableListener({ onFrameAvailable() }, handler)
-            }
-        texture = surfaceTexture
-        return Surface(surfaceTexture).also { textureSurface = it }
+        val texture =
+            SurfaceTexture(textureId).apply { setDefaultBufferSize(area.width, area.height) }
+        val layer = Layer(area, textureId, texture, Surface(texture))
+        texture.setOnFrameAvailableListener({ onFrameAvailable(layer) }, handler)
+        return layer
     }
 
     private fun chooseConfig(display: EGLDisplay): EGLConfig {
@@ -207,12 +218,11 @@ internal class VideoCompositor(
         return shader
     }
 
-    private fun onFrameAvailable() {
-        val surfaceTexture = texture
-        if (isReleased || isFailed || surfaceTexture == null) return
+    private fun onFrameAvailable(layer: Layer) {
+        if (isReleased || isFailed) return
         guarded {
-            surfaceTexture.updateTexImage()
-            surfaceTexture.getTransformMatrix(textureMatrix)
+            layer.texture.updateTexImage()
+            layer.texture.getTransformMatrix(layer.matrix)
             hasNewPicture = true
             schedule()
         }
@@ -255,12 +265,6 @@ internal class VideoCompositor(
         GLES20.glViewport(0, 0, format.frameWidth, format.frameHeight)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glViewport(
-            format.margins.left,
-            format.margins.bottom,
-            format.visibleWidth,
-            format.visibleHeight,
-        )
         GLES20.glUseProgram(program)
         val position = GLES20.glGetAttribLocation(program, "aPosition")
         val textureCoordinate = GLES20.glGetAttribLocation(program, "aTextureCoordinate")
@@ -268,25 +272,38 @@ internal class VideoCompositor(
         GLES20.glVertexAttribPointer(position, 2, GLES20.GL_FLOAT, false, 0, quad)
         GLES20.glEnableVertexAttribArray(textureCoordinate)
         GLES20.glVertexAttribPointer(textureCoordinate, 2, GLES20.GL_FLOAT, false, 0, textureQuad)
-        GLES20.glUniformMatrix4fv(
-            GLES20.glGetUniformLocation(program, "uTextureMatrix"),
-            1,
-            false,
-            textureMatrix,
-            0,
-        )
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        val matrix = GLES20.glGetUniformLocation(program, "uTextureMatrix")
+        for (layer in layers) {
+            setViewport(layer.area)
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, layer.textureId)
+            GLES20.glUniformMatrix4fv(matrix, 1, false, layer.matrix, 0)
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        }
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationNanos)
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+    }
+
+    private fun setViewport(area: Area) {
+        val left = format.visibleX(area.left)
+        val top = format.visibleY(area.top)
+        val right = format.visibleX(area.right)
+        val bottom = format.visibleY(area.bottom)
+        GLES20.glViewport(
+            format.margins.left + left,
+            format.margins.bottom + format.visibleHeight - bottom,
+            right - left,
+            bottom - top,
+        )
     }
 
     private fun release() {
         isReleased = true
         choreographer.removeFrameCallback(onVsync)
-        textureSurface?.release()
-        textureSurface = null
-        texture?.release()
-        texture = null
+        layers.forEach {
+            it.surface.release()
+            it.texture.release()
+        }
+        layers = emptyList()
         if (eglDisplay == EGL14.EGL_NO_DISPLAY) return
         EGL14.eglMakeCurrent(
             eglDisplay,

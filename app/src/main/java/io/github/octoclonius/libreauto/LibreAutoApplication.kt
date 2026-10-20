@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto
 import android.app.Application
 import android.content.ComponentName
 import io.github.octoclonius.libreauto.car.CarHomeActivity
+import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.privileged.PrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
@@ -14,5 +15,6 @@ open class LibreAutoApplication : Application() {
             service = ComponentName(this, PrivilegedService::class.java),
             carHome = ComponentName(this, CarHomeActivity::class.java),
         )
+        RailHost(this).start()
     }
 }

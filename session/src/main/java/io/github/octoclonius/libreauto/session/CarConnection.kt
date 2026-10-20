@@ -145,9 +145,11 @@ class CarConnection(context: Context) {
                         } else {
                             val videoChannel =
                                 VideoChannel(
+                                        context,
                                         ChannelSender(writer, tls, sink.channel),
                                         sink.configs,
                                         version,
+                                        connected.isDriverOnRight,
                                     )
                                     .also { it.open() }
                             video = videoChannel
@@ -162,7 +164,7 @@ class CarConnection(context: Context) {
                                     InputChannel(
                                             ChannelSender(writer, tls, source.channel),
                                             source.keycodes,
-                                            videoChannel::format,
+                                            videoChannel::layout,
                                         )
                                         .also { it.open() }
                             }

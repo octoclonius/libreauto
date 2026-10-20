@@ -1,10 +1,10 @@
 package io.github.octoclonius.libreauto.session.video
 
+import android.content.Context
 import android.media.MediaCodec
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
-import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaData
 import java.io.Closeable
 import java.io.IOException
@@ -13,7 +13,8 @@ import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
 internal class VideoStream(
-    private val format: VideoFormat,
+    private val context: Context,
+    private val layout: CarLayout,
     private val decoderDepth: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Unit,
@@ -48,6 +49,7 @@ internal class VideoStream(
     }
 
     private fun encode() {
+        val format = layout.format
         val width = format.frameWidth
         val height = format.frameHeight
         val framesPerSecond = format.framesPerSecond
@@ -67,6 +69,7 @@ internal class VideoStream(
             }
         var surface: Surface? = null
         var compositor: VideoCompositor? = null
+        var rail: RailVirtualDisplay? = null
         var display: PrivilegedDisplay? = null
         try {
             encoder.configure(
@@ -83,12 +86,21 @@ internal class VideoStream(
                 "Encoding ${width}x$height at $framesPerSecond fps with $name, showing " +
                     "${format.visibleWidth}x${format.visibleHeight} inside margins " +
                     "${format.margins} from a " +
-                    "${format.displayWidth}x${format.displayHeight} display at " +
-                    "${format.density} dpi",
+                    "${format.displayWidth}x${format.displayHeight} area at " +
+                    "${format.density} dpi: apps in ${layout.apps}, rail in ${layout.rail}",
             )
-            val created = VideoCompositor(input, format, decoderDepth, ::close)
+            val created =
+                VideoCompositor(
+                    input,
+                    format,
+                    listOf(layout.apps, layout.rail),
+                    decoderDepth,
+                    ::close,
+                )
             compositor = created
-            display = PrivilegedDisplay(created.input, format).also { it.start() }
+            val (appsInput, railInput) = created.inputs
+            rail = RailVirtualDisplay(context, railInput, layout)
+            display = PrivilegedDisplay(appsInput, layout).also { it.start() }
             drain(encoder)
         } catch (e: IllegalStateException) {
             Log.w(TAG, "The H.264 encoder or the compositor failed", e)
@@ -99,6 +111,7 @@ internal class VideoStream(
         } finally {
             close()
             display?.close()
+            rail?.close()
             encoder.release()
             compositor?.close()
             surface?.release()

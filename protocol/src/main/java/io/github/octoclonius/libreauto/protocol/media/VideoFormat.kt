@@ -82,6 +82,12 @@ data class VideoFormat(
 
     fun displayY(visibleY: Int): Int =
         (visibleY.toDouble() * displayHeight / visibleHeight).roundToInt()
+
+    fun visibleX(displayX: Int): Int =
+        (displayX.toDouble() * visibleWidth / displayWidth).roundToInt()
+
+    fun visibleY(displayY: Int): Int =
+        (displayY.toDouble() * visibleHeight / displayHeight).roundToInt()
 }
 
 @Throws(ProtocolException::class)

@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.session.input
 import io.github.octoclonius.libreauto.protocol.input.InputReport
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
+import io.github.octoclonius.libreauto.session.video.Area
 
 internal const val TOUCHSCREEN_POINTERS = 16
 
@@ -40,3 +41,6 @@ internal fun Touch.onDisplay(format: VideoFormat): Touch =
                 it.copy(x = format.displayX(it.x), y = format.displayY(it.y))
             }
     )
+
+internal fun Touch.relativeTo(area: Area): Touch =
+    copy(pointers = pointers.map { it.copy(x = it.x - area.left, y = it.y - area.top) })

@@ -8,14 +8,14 @@ import io.github.octoclonius.libreauto.protocol.input.InputMessageType
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
-import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.video.CarLayout
 
-class InputChannel(
+internal class InputChannel(
     private val sender: ChannelSender,
     keycodes: List<Int>,
-    private val videoFormat: () -> VideoFormat?,
+    private val layout: () -> CarLayout?,
 ) {
 
     companion object {
@@ -23,6 +23,8 @@ class InputChannel(
     }
 
     private var state: InputChannelState? = InputChannelState.Opening(keycodes)
+    private val router = TouchRouter()
+    private val railTouches = RailTouches()
 
     val channel: Int
         get() = sender.channel
@@ -70,16 +72,23 @@ class InputChannel(
                 val report = parseInputReport(message.body)
                 if (report.touch == null) return false
                 val touch = touch(report)
-                val format = videoFormat()
+                val layout = layout()
                 when {
                     touch == null -> Log.w(TAG, "Dropped touch report $report")
-                    format == null -> Log.w(TAG, "Dropped touch $touch before the video started")
-                    else -> PrivilegedTouches.send(message.receivedNanos, touch.onDisplay(format))
+                    layout == null -> Log.w(TAG, "Dropped touch $touch before the video started")
+                    else -> send(message.receivedNanos, router.route(touch, layout))
                 }
             }
             else -> return false
         }
         return true
+    }
+
+    private fun send(eventTimeNanos: Long, routed: RoutedTouch) {
+        when (routed.target) {
+            TouchTarget.Apps -> PrivilegedTouches.send(eventTimeNanos, routed.touch)
+            TouchTarget.Rail -> railTouches.send(eventTimeNanos, routed.touch)
+        }
     }
 }
 

@@ -4,13 +4,14 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,13 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.session.CarStatusBar
+import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
+import io.github.octoclonius.libreauto.session.video.RailSide
 
-val RAIL_THICKNESS = 80.dp
+private val RAIL_THICKNESS = RAIL_THICKNESS_DP.dp
 private val RAIL_PADDING = 12.dp
 private val STATUS_SPACING = 4.dp
 private val STATUS_ICON_SIZE = 24.dp
 private val APPS_ICON_SIZE = 40.dp
-private const val DISABLED_ALPHA = 0.38f
 private const val FULL_PERCENT = 100
 
 private val WIFI_ICONS =
@@ -92,6 +94,8 @@ fun Rail(
     side: RailSide,
     isDriverOnRight: Boolean,
     carStatusBar: CarStatusBar,
+    contentPadding: PaddingValues,
+    onAppsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -108,7 +112,10 @@ fun Rail(
             battery = battery.takeUnless { carStatusBar.isBatteryShown },
         )
     Surface(modifier) {
-        if (side == RailSide.Bottom) BottomRail(status, isDriverOnRight) else SideRail(status)
+        Box(Modifier.padding(contentPadding)) {
+            if (side == RailSide.Bottom) BottomRail(status, isDriverOnRight, onAppsClick)
+            else SideRail(status, onAppsClick)
+        }
     }
 }
 
@@ -120,7 +127,7 @@ private data class RailStatus(
 )
 
 @Composable
-private fun SideRail(status: RailStatus) {
+private fun SideRail(status: RailStatus, onAppsClick: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(top = RAIL_PADDING),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -137,12 +144,12 @@ private fun SideRail(status: RailStatus) {
             status.battery?.let { Battery(it, HORIZONTAL_BATTERY) }
         }
         Spacer(Modifier.weight(1f))
-        AppsCell()
+        AppsCell(onAppsClick)
     }
 }
 
 @Composable
-private fun BottomRail(status: RailStatus, isDriverOnRight: Boolean) {
+private fun BottomRail(status: RailStatus, isDriverOnRight: Boolean, onAppsClick: () -> Unit) {
     Row(
         Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.Absolute.SpaceBetween,
@@ -150,9 +157,9 @@ private fun BottomRail(status: RailStatus, isDriverOnRight: Boolean) {
     ) {
         if (isDriverOnRight) {
             BottomStatus(status, Modifier.padding(horizontal = RAIL_PADDING))
-            AppsCell()
+            AppsCell(onAppsClick)
         } else {
-            AppsCell()
+            AppsCell(onAppsClick)
             BottomStatus(status, Modifier.padding(horizontal = RAIL_PADDING))
         }
     }
@@ -215,13 +222,12 @@ private fun StatusIcon(@DrawableRes icon: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AppsCell() {
-    Box(Modifier.size(RAIL_THICKNESS), contentAlignment = Alignment.Center) {
+private fun AppsCell(onClick: () -> Unit) {
+    IconButton(onClick, Modifier.size(RAIL_THICKNESS)) {
         Icon(
             painterResource(R.drawable.ic_apps),
             contentDescription = stringResource(R.string.all_apps),
             modifier = Modifier.size(APPS_ICON_SIZE),
-            tint = LocalContentColor.current.copy(alpha = DISABLED_ALPHA),
         )
     }
 }

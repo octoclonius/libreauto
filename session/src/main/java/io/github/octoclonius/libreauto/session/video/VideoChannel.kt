@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.session.video
 
+import android.content.Context
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
@@ -24,10 +25,12 @@ import java.io.Closeable
 import java.io.IOException
 import java.net.ProtocolException
 
-class VideoChannel(
+internal class VideoChannel(
+    private val context: Context,
     private val sender: ChannelSender,
     configs: List<VideoConfig>,
     private val car: ProtocolVersion,
+    private val isDriverOnRight: Boolean,
 ) : Closeable {
 
     companion object {
@@ -39,8 +42,8 @@ class VideoChannel(
     val channel: Int
         get() = sender.channel
 
-    val format: VideoFormat?
-        get() = (state as? VideoChannelState.Started)?.format
+    val layout: CarLayout?
+        get() = (state as? VideoChannelState.Started)?.layout
 
     fun open() {
         Log.i(TAG, "Opening the video channel $channel")
@@ -141,9 +144,11 @@ class VideoChannel(
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
         sender.send(MediaMessageType.START, videoStart(ready.configIndex))
         Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
-        val stream = VideoStream(ready.format, ready.decoderDepth, ready.maxUnacked, sender::send)
+        val layout = carLayout(ready.format, isDriverOnRight)
+        val stream =
+            VideoStream(context, layout, ready.decoderDepth, ready.maxUnacked, sender::send)
         stream.start()
-        return VideoChannelState.Started(ready.format, stream)
+        return VideoChannelState.Started(layout, stream)
     }
 }
 
@@ -163,5 +168,5 @@ private sealed interface VideoChannelState {
         val maxUnacked: Int,
     ) : VideoChannelState
 
-    data class Started(val format: VideoFormat, val stream: VideoStream) : VideoChannelState
+    data class Started(val layout: CarLayout, val stream: VideoStream) : VideoChannelState
 }

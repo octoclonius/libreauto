@@ -4,7 +4,6 @@ import android.os.RemoteException
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
-import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +13,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-internal class PrivilegedDisplay(private val surface: Surface, private val format: VideoFormat) :
+internal class PrivilegedDisplay(private val surface: Surface, private val layout: CarLayout) :
     Closeable {
 
     companion object {
@@ -49,9 +48,9 @@ internal class PrivilegedDisplay(private val surface: Surface, private val forma
             try {
                 service.createDisplay(
                     surface,
-                    format.displayWidth,
-                    format.displayHeight,
-                    format.density,
+                    layout.apps.width,
+                    layout.apps.height,
+                    layout.format.density,
                     PrivilegedServiceConnection.carHome,
                 )
             } catch (e: RemoteException) {
@@ -62,7 +61,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private val forma
                 return null
             }
         Log.i(TAG, "The privileged service created the car display $id")
-        CarDisplay.onCreated(id, format.displayContentInsets)
+        CarDisplay.onCreated(id, layout.appsContentInsets)
         return id
     }
 
