@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.home.onAppsButton
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
@@ -45,6 +47,7 @@ internal class RailWindow(context: Context, display: Display, private val rail: 
 
 @Composable
 private fun RailContent(rail: RailDisplayState) {
+    val context = LocalContext.current
     val connection by CarConnection.state.collectAsStateWithLifecycle()
     val connected = connection as? CarConnectionState.Connected
     val insets = rail.contentInsets
@@ -68,7 +71,7 @@ private fun RailContent(rail: RailDisplayState) {
                     isBatteryShown = false,
                 ),
         contentPadding = padding,
-        onAppsClick = {},
+        onAppsClick = { onAppsButton(context) },
         modifier = Modifier.fillMaxSize(),
     )
 }
