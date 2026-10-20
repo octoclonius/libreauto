@@ -12,6 +12,7 @@ private val TOUCH_ACTIONS =
     )
 
 internal fun touchRequestError(
+    eventTimeNanos: Long,
     action: Int,
     actionIndex: Int,
     pointerIds: IntArray,
@@ -19,6 +20,7 @@ internal fun touchRequestError(
     ys: IntArray,
 ): String? =
     when {
+        eventTimeNanos < 0 -> "The touch's event time $eventTimeNanos is negative"
         action !in TOUCH_ACTIONS -> "The touch action $action isn't known"
         pointerIds.isEmpty() -> "The touch has no pointers"
         xs.size != pointerIds.size || ys.size != pointerIds.size ->

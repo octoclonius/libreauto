@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.session
 
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
@@ -53,7 +54,7 @@ class CarConnection(context: Context) {
         try {
             val credentials = credentials() ?: return false
             val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
-            val reader = FrameReader(input, tls::decrypt)
+            val reader = FrameReader(input, tls::decrypt, SystemClock::uptimeNanos)
             val writer = FrameWriter(output)
             val version = Handshake(reader, writer, tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")

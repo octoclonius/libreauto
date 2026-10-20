@@ -57,6 +57,22 @@ class FrameReaderTest {
     }
 
     @Test
+    fun aMessageCarriesWhenItsFirstFrameArrived() {
+        val bytes =
+            frame(1, FIRST, bytes(0, 1, 1), totalSize = 4) +
+                frame(2, FIRST or LAST, bytes(0, 2)) +
+                frame(1, LAST, bytes(1))
+        var nanos = 0L
+        val reader =
+            FrameReader(bytes.inputStream(), TestCipher::decrypt) {
+                nanos += 10
+                nanos
+            }
+        val messages = List(2) { reader.readMessage() }
+        assertEquals(listOf(2 to 20L, 1 to 10L), messages.map { it.channel to it.receivedNanos })
+    }
+
+    @Test
     fun aMessageWithAPlaintextFrameIsNotEncrypted() {
         val encrypted = TestCipher.encrypt(bytes(0, 1, 1))
         val bytes =
@@ -142,7 +158,7 @@ class FrameReaderTest {
                     return super.read(b, off, len)
                 }
             }
-        val reader = FrameReader(input, TestCipher::decrypt)
+        val reader = FrameReader(input, TestCipher::decrypt, clock = { 0 })
         val messages = bodies.map { reader.readMessage() }
         assertEquals(bodies.map { it.size }, messages.map { it.body.size })
     }
@@ -165,7 +181,7 @@ class FrameReaderTest {
     }
 
     private fun readAll(bytes: ByteArray): List<ChannelMessage> {
-        val reader = FrameReader(bytes.inputStream(), TestCipher::decrypt)
+        val reader = FrameReader(bytes.inputStream(), TestCipher::decrypt, clock = { 0 })
         val channelMessages = mutableListOf<ChannelMessage>()
         try {
             while (true) channelMessages += reader.readMessage()

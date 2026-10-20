@@ -5,6 +5,7 @@ class ChannelMessage(
     val isEncrypted: Boolean,
     val type: Int,
     val body: ByteArray,
+    val receivedNanos: Long,
 )
 
 const val CONTROL_CHANNEL = 0

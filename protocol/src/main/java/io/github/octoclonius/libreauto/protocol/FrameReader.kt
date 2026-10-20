@@ -6,7 +6,11 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.ProtocolException
 
-class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteArray?) {
+class FrameReader(
+    input: InputStream,
+    private val decrypt: (ByteArray) -> ByteArray?,
+    private val clock: () -> Long,
+) {
     private val input = DataInputStream(BufferedInputStream(input, MAX_RECORD_PLAINTEXT_SIZE))
     private val pendingMessages = HashMap<Int, PendingMessage>()
 
@@ -20,6 +24,7 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
 
     private fun readFrame(): Frame {
         val channel = input.readUnsignedByte()
+        val receivedNanos = clock()
         val flags = input.readUnsignedByte()
         val size = input.readUnsignedShort()
         val isFirst = flags and FrameFlags.FIRST != 0
@@ -27,7 +32,7 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
         val totalSize = if (isFirst && !isLast) input.readInt() else 0
         val data = ByteArray(size)
         input.readFully(data)
-        return Frame(channel, flags, totalSize, data)
+        return Frame(channel, flags, totalSize, data, receivedNanos)
     }
 
     private fun onFrame(frame: Frame): ChannelMessage? {
@@ -39,6 +44,7 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
                 frame.isEncrypted,
                 type,
                 bytes.copyOfRange(MESSAGE_TYPE_SIZE, bytes.size),
+                frame.receivedNanos,
             )
         }
         if (frame.isFirst) {
@@ -56,7 +62,13 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
                 "Message on channel ${frame.channel} is shorter than its total size"
             )
         }
-        return ChannelMessage(frame.channel, message.isEncrypted, message.type, message.body)
+        return ChannelMessage(
+            frame.channel,
+            message.isEncrypted,
+            message.type,
+            message.body,
+            message.receivedNanos,
+        )
     }
 
     private fun startMessage(frame: Frame, bytes: ByteArray) {
@@ -70,7 +82,11 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
             )
         }
         val message =
-            PendingMessage(typeOf(frame, bytes), ByteArray(frame.totalSize - MESSAGE_TYPE_SIZE))
+            PendingMessage(
+                typeOf(frame, bytes),
+                ByteArray(frame.totalSize - MESSAGE_TYPE_SIZE),
+                frame.receivedNanos,
+            )
         pendingMessages[frame.channel] = message
         append(message, frame, bytes, from = MESSAGE_TYPE_SIZE)
     }
@@ -105,13 +121,19 @@ class FrameReader(input: InputStream, private val decrypt: (ByteArray) -> ByteAr
             ?: throw ProtocolException("Record on channel ${frame.channel} doesn't decrypt")
     }
 
-    private class Frame(val channel: Int, val flags: Int, val totalSize: Int, val data: ByteArray) {
+    private class Frame(
+        val channel: Int,
+        val flags: Int,
+        val totalSize: Int,
+        val data: ByteArray,
+        val receivedNanos: Long,
+    ) {
         val isFirst get() = flags and FrameFlags.FIRST != 0
         val isLast get() = flags and FrameFlags.LAST != 0
         val isEncrypted get() = flags and FrameFlags.ENCRYPTED != 0
     }
 
-    private class PendingMessage(val type: Int, val body: ByteArray) {
+    private class PendingMessage(val type: Int, val body: ByteArray, val receivedNanos: Long) {
         var filled = 0
         var isEncrypted = true
     }

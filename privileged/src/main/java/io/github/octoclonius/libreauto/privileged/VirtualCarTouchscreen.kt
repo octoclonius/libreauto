@@ -1,6 +1,5 @@
 package io.github.octoclonius.libreauto.privileged
 
-import android.os.SystemClock
 import android.view.MotionEvent
 import java.io.Closeable
 import java.lang.reflect.Method
@@ -52,9 +51,8 @@ internal class VirtualCarTouchscreen private constructor(private val touchscreen
     private val sendTouchEvent =
         Class.forName(TOUCHSCREEN).getMethod("sendTouchEvent", Class.forName(EVENT))
 
-    fun onTouch(action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
-        val now = SystemClock.uptimeNanos()
-        for (event in touchscreenEvents(action, actionIndex, pointers)) send(event, now)
+    fun onTouch(eventTimeNanos: Long, action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
+        for (event in touchscreenEvents(action, actionIndex, pointers)) send(event, eventTimeNanos)
     }
 
     override fun close() {

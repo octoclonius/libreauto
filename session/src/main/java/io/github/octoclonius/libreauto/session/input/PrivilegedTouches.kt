@@ -8,7 +8,7 @@ internal object PrivilegedTouches {
 
     private const val TAG = "PrivilegedTouches"
 
-    fun send(touch: Touch) {
+    fun send(eventTimeNanos: Long, touch: Touch) {
         val service = PrivilegedServiceConnection.service.value
         if (service == null) {
             Log.w(TAG, "Dropped touch $touch while the privileged service isn't running")
@@ -16,6 +16,7 @@ internal object PrivilegedTouches {
         }
         try {
             service.sendTouch(
+                eventTimeNanos,
                 touch.action,
                 touch.actionIndex,
                 IntArray(touch.pointers.size) { touch.pointers[it].id },

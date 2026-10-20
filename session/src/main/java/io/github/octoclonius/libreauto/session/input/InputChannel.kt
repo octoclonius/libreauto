@@ -74,7 +74,7 @@ class InputChannel(
                 when {
                     touch == null -> Log.w(TAG, "Dropped touch report $report")
                     format == null -> Log.w(TAG, "Dropped touch $touch before the video started")
-                    else -> PrivilegedTouches.send(touch.onDisplay(format))
+                    else -> PrivilegedTouches.send(message.receivedNanos, touch.onDisplay(format))
                 }
             }
             else -> return false

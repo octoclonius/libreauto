@@ -50,7 +50,7 @@ class HandshakeTest {
     }
 
     private fun handshake(input: InputStream, output: OutputStream, tls: TlsServer) =
-        Handshake(FrameReader(input, tls::decrypt), FrameWriter(output), tls)
+        Handshake(FrameReader(input, tls::decrypt, clock = { 0 }), FrameWriter(output), tls)
 
     private class CarSide(val tls: TestCar, private val authStatus: Int) {
         var versionResponse: ByteArray? = null
@@ -64,7 +64,10 @@ class HandshakeTest {
             var failure: Throwable? = null
             val car = thread {
                 try {
-                    run(FrameReader(carInput) { null }, FrameWriter(carOutput))
+                    run(
+                        FrameReader(carInput, decrypt = { null }, clock = { 0 }),
+                        FrameWriter(carOutput),
+                    )
                 } catch (e: Throwable) {
                     failure = e
                 }

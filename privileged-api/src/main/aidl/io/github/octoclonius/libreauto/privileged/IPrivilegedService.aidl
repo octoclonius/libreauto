@@ -12,7 +12,7 @@ interface IPrivilegedService {
 
     void releaseDisplay(int displayId) = 3;
 
-    oneway void sendTouch(int action, int actionIndex, in int[] pointerIds, in int[] xs, in int[] ys) = 4;
+    oneway void sendTouch(long eventTimeNanos, int action, int actionIndex, in int[] pointerIds, in int[] xs, in int[] ys) = 4;
 
     oneway void exitAccessoryMode() = 5;
 }

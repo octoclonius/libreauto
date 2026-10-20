@@ -131,8 +131,8 @@ private constructor(
 
     val id: Int = display.display.displayId
 
-    fun onTouch(action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
-        touchscreen.onTouch(action, actionIndex, pointers)
+    fun onTouch(eventTimeNanos: Long, action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
+        touchscreen.onTouch(eventTimeNanos, action, actionIndex, pointers)
     }
 
     override fun close() {
