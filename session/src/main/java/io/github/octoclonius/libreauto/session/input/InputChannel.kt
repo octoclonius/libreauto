@@ -67,11 +67,12 @@ class InputChannel(
                 }
             }
             InputMessageType.REPORT -> {
-                val event = parseInputReport(message.body).touch ?: return false
-                val touch = touch(event)
+                val report = parseInputReport(message.body)
+                if (report.touch == null) return false
+                val touch = touch(report)
                 val format = videoFormat()
                 when {
-                    touch == null -> Log.w(TAG, "Dropped touch $event")
+                    touch == null -> Log.w(TAG, "Dropped touch report $report")
                     format == null -> Log.w(TAG, "Dropped touch $touch before the video started")
                     else -> PrivilegedTouches.send(touch.onDisplay(format))
                 }

@@ -40,8 +40,24 @@ class TouchTest {
     }
 
     @Test
-    fun missingFieldsAre0() {
-        assertEquals(Touch(0, 0, listOf(TouchPointer(0, 0, 0))), touchOf(message(1)))
+    fun aMissingActionIndexIs0() {
+        assertEquals(
+            Touch(2, 0, listOf(TouchPointer(0, 1, 2), TouchPointer(1, 3, 4))),
+            touchOf(pointer(1, 2, 0), pointer(3, 4, 1), action(2)),
+        )
+    }
+
+    @Test
+    fun aPointerWithoutItsXYOrIdIsDropped() {
+        assertNull(touchOf(message(1, varint(2, 2), varint(3, 0))))
+        assertNull(touchOf(message(1, varint(1, 1), varint(3, 0))))
+        assertNull(touchOf(message(1, varint(1, 1), varint(2, 2))))
+        assertNull(touchOf(pointer(1, 2, 0), message(1, varint(1, 3), varint(2, 4)), action(2)))
+    }
+
+    @Test
+    fun aReportWithoutATimestampIsDropped() {
+        assertNull(touch(parseInputReport(message(3, pointer(1, 2, 0), action(0)))))
     }
 
     @Test
@@ -61,18 +77,18 @@ class TouchTest {
     }
 
     @Test
-    fun aPointerIdOutsideMotionEventsRangeIsDropped() {
-        assertNull(touchOf(pointer(1, 2, MAX_POINTER_ID + 1)))
+    fun aPointerIdOutsideTheTouchscreensSixteenIsDropped() {
+        assertNull(touchOf(pointer(1, 2, 16)))
         assertNull(touchOf(pointer(1, 2, -1)))
-        assertEquals(
-            listOf(TouchPointer(MAX_POINTER_ID, 1, 2)),
-            touchOf(pointer(1, 2, MAX_POINTER_ID))?.pointers,
-        )
+        assertEquals(listOf(TouchPointer(15, 1, 2)), touchOf(pointer(1, 2, 15))?.pointers)
     }
 
     @Test
-    fun aPointerIdUsedTwiceIsDropped() {
-        assertNull(touchOf(pointer(1, 2, 3), pointer(4, 5, 3), actionIndex(1), action(5)))
+    fun aPointerIdUsedTwiceIsKept() {
+        assertEquals(
+            Touch(5, 1, listOf(TouchPointer(3, 1, 2), TouchPointer(3, 4, 5))),
+            touchOf(pointer(1, 2, 3), pointer(4, 5, 3), actionIndex(1), action(5)),
+        )
     }
 
     @Test
@@ -137,7 +153,7 @@ class TouchTest {
     }
 
     private fun touchOf(vararg fields: ByteArray): Touch? =
-        touch(checkNotNull(parseInputReport(message(3, *fields)).touch))
+        touch(parseInputReport(varint(1, 1) + message(3, *fields)))
 
     private fun pointer(x: Int, y: Int, id: Int) =
         message(1, varint(1, x), varint(2, y), varint(3, id))

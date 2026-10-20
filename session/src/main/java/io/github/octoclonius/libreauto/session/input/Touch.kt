@@ -1,10 +1,10 @@
 package io.github.octoclonius.libreauto.session.input
 
+import io.github.octoclonius.libreauto.protocol.input.InputReport
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
-import io.github.octoclonius.libreauto.protocol.input.TouchEvent
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 
-internal const val MAX_POINTER_ID = 31
+internal const val TOUCHSCREEN_POINTERS = 16
 
 private val KNOWN_ACTIONS =
     setOf(
@@ -19,12 +19,16 @@ internal data class Touch(val action: Int, val actionIndex: Int, val pointers: L
 
 internal data class TouchPointer(val id: Int, val x: Int, val y: Int)
 
-internal fun touch(event: TouchEvent): Touch? {
-    val pointers = event.pointers.map { TouchPointer(it.id ?: 0, it.x ?: 0, it.y ?: 0) }
+internal fun touch(report: InputReport): Touch? {
+    val event = report.touch
+    if (report.timestamp == null || event == null) return null
+    val pointers =
+        event.pointers.map {
+            TouchPointer(it.id ?: return null, it.x ?: return null, it.y ?: return null)
+        }
     val actionIndex = event.action_index ?: 0
     if (actionIndex !in pointers.indices) return null
-    if (pointers.any { it.id !in 0..MAX_POINTER_ID }) return null
-    if (pointers.distinctBy { it.id }.size != pointers.size) return null
+    if (pointers.any { it.id !in 0 until TOUCHSCREEN_POINTERS }) return null
     val action = event.action?.takeIf { it in KNOWN_ACTIONS } ?: TouchAction.DOWN
     return Touch(action, actionIndex, pointers)
 }

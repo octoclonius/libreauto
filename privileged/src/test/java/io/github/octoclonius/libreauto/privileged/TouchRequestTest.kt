@@ -51,17 +51,17 @@ class TouchRequestTest {
     }
 
     @Test
-    fun pointerIdsOutsideMotionEventsRangeAreRefused() {
+    fun pointerIdsOutsideTheTouchscreensSixteenAreRefused() {
         val position = intArrayOf(1)
-        assertNull(touchRequestError(down, 0, intArrayOf(31), position, position))
-        assertNotNull(touchRequestError(down, 0, intArrayOf(32), position, position))
+        assertNull(touchRequestError(down, 0, intArrayOf(15), position, position))
+        assertNotNull(touchRequestError(down, 0, intArrayOf(16), position, position))
         assertNotNull(touchRequestError(down, 0, intArrayOf(-1), position, position))
     }
 
     @Test
-    fun aPointerIdUsedTwiceIsRefused() {
+    fun aPointerIdUsedTwiceIsAccepted() {
         val positions = intArrayOf(1, 2)
-        assertNotNull(touchRequestError(pointerDown, 1, intArrayOf(3, 3), positions, positions))
+        assertNull(touchRequestError(pointerDown, 1, intArrayOf(3, 3), positions, positions))
     }
 
     @Test

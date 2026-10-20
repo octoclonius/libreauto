@@ -2,8 +2,6 @@ package io.github.octoclonius.libreauto.privileged
 
 import android.view.MotionEvent
 
-internal const val MAX_POINTER_ID = 31
-
 private val TOUCH_ACTIONS =
     setOf(
         MotionEvent.ACTION_DOWN,
@@ -28,9 +26,8 @@ internal fun touchRequestError(
                 "positions"
         actionIndex !in pointerIds.indices ->
             "The touch's action index $actionIndex isn't one of its ${pointerIds.size} pointers"
-        pointerIds.any { it !in 0..MAX_POINTER_ID } ->
-            "The touch's pointer ids ${pointerIds.toList()} aren't all in 0..$MAX_POINTER_ID"
-        pointerIds.distinct().size != pointerIds.size ->
-            "The touch uses a pointer id twice in ${pointerIds.toList()}"
+        pointerIds.any { it !in 0 until TOUCHSCREEN_POINTERS } ->
+            "The touch's pointer ids ${pointerIds.toList()} aren't all in " +
+                "0..${TOUCHSCREEN_POINTERS - 1}"
         else -> null
     }

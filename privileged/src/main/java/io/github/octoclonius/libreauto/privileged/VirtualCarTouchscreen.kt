@@ -40,7 +40,6 @@ internal class VirtualCarTouchscreen private constructor(private val touchscreen
         }
     }
 
-    private val pointers = TouchscreenPointers()
     private val eventBuilder = Class.forName("$EVENT\$Builder").getConstructor()
     private val setPointerId = setter("setPointerId", Int::class.javaPrimitiveType)
     private val setToolType = setter("setToolType", Int::class.javaPrimitiveType)
@@ -53,9 +52,9 @@ internal class VirtualCarTouchscreen private constructor(private val touchscreen
     private val sendTouchEvent =
         Class.forName(TOUCHSCREEN).getMethod("sendTouchEvent", Class.forName(EVENT))
 
-    fun onTouch(action: Int, actionIndex: Int, touchPointers: List<TouchPointer>) {
+    fun onTouch(action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
         val now = SystemClock.uptimeNanos()
-        for (event in pointers.onTouch(action, actionIndex, touchPointers)) send(event, now)
+        for (event in touchscreenEvents(action, actionIndex, pointers)) send(event, now)
     }
 
     override fun close() {
