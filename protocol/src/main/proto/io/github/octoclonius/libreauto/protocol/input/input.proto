@@ -13,6 +13,17 @@ message InputBindingResponse {
 message InputReport {
   optional int64 timestamp = 1;
   optional TouchEvent touch = 3;
+  repeated ButtonReport buttons = 4;
+}
+
+message ButtonReport {
+  repeated ButtonEvent events = 1;
+}
+
+message ButtonEvent {
+  optional int32 code = 1;
+  optional bool pressed = 2;
+  optional bool long_press = 4;
 }
 
 message TouchEvent {

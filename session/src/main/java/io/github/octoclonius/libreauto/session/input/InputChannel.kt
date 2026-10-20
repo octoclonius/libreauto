@@ -5,6 +5,8 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.input.InputMessageType
+import io.github.octoclonius.libreauto.protocol.input.InputReport
+import io.github.octoclonius.libreauto.protocol.input.buttonPresses
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
@@ -16,6 +18,7 @@ internal class InputChannel(
     private val sender: ChannelSender,
     keycodes: List<Int>,
     private val layout: () -> CarLayout?,
+    private val buttons: CarButtons,
 ) {
 
     companion object {
@@ -24,6 +27,7 @@ internal class InputChannel(
 
     private var state: InputChannelState? = InputChannelState.Opening(keycodes)
     private val router = TouchRouter()
+    private val presses = ButtonPresses()
     private val railTouches = RailTouches()
 
     val channel: Int
@@ -70,18 +74,26 @@ internal class InputChannel(
             }
             InputMessageType.REPORT -> {
                 val report = parseInputReport(message.body)
-                if (report.touch == null) return false
-                val touch = touch(report)
-                val layout = layout()
-                when {
-                    touch == null -> Log.w(TAG, "Dropped touch report $report")
-                    layout == null -> Log.w(TAG, "Dropped touch $touch before the video started")
-                    else -> send(message.receivedNanos, router.route(touch, layout))
-                }
+                val buttonPresses = buttonPresses(report)
+                if (report.touch == null && buttonPresses.isEmpty()) return false
+                buttonPresses
+                    .filter { presses.isNewPress(it.code, it.isPressed) }
+                    .forEach { buttons.onPress(it.code) }
+                if (report.touch != null) onTouch(report, message.receivedNanos)
             }
             else -> return false
         }
         return true
+    }
+
+    private fun onTouch(report: InputReport, receivedNanos: Long) {
+        val touch = touch(report)
+        val layout = layout()
+        when {
+            touch == null -> Log.w(TAG, "Dropped touch report $report")
+            layout == null -> Log.w(TAG, "Dropped touch $touch before the video started")
+            else -> send(receivedNanos, router.route(touch, layout))
+        }
     }
 
     private fun send(eventTimeNanos: Long, routed: RoutedTouch) {

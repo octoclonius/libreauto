@@ -22,6 +22,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val appPackage = context.packageName
     private val shellContext = ShellContext(context)
     private val association = CompanionAssociation(shellContext)
+    private val keys = DisplayKeys(shellContext)
     private val lock = Any()
     private var display: VirtualCarDisplay? = null
 
@@ -107,6 +108,22 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             } catch (e: Exception) {
                 val cause = if (e is InvocationTargetException) e.targetException else e
                 Log.e(TAG, "Sending a touch to the car display ${current.id} failed", cause)
+            }
+        }
+    }
+
+    override fun sendKey(displayId: Int, keyCode: Int) {
+        synchronized(lock) {
+            val error = keyRequestError(displayId, keyCode, display?.id)
+            if (error != null) {
+                Log.w(TAG, "Dropped a key: $error")
+                return
+            }
+            try {
+                keys.press(displayId, keyCode)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Sending the key $keyCode to the car display $displayId failed", cause)
             }
         }
     }

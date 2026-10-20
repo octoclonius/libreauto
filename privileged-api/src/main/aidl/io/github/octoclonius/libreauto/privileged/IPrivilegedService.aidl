@@ -15,4 +15,6 @@ interface IPrivilegedService {
     oneway void sendTouch(long eventTimeNanos, int action, int actionIndex, in int[] pointerIds, in int[] xs, in int[] ys) = 4;
 
     oneway void exitAccessoryMode() = 5;
+
+    oneway void sendKey(int displayId, int keyCode) = 6;
 }

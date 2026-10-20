@@ -28,6 +28,7 @@ import io.github.octoclonius.libreauto.protocol.input.inputSource
 import io.github.octoclonius.libreauto.protocol.media.videoSink
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
@@ -165,6 +166,7 @@ class CarConnection(context: Context) {
                                             ChannelSender(writer, tls, source.channel),
                                             source.keycodes,
                                             videoChannel::layout,
+                                            CarButtons(context),
                                         )
                                         .also { it.open() }
                             }

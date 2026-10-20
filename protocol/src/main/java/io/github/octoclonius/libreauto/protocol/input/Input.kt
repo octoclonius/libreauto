@@ -25,3 +25,10 @@ fun parseInputBindingResponse(body: ByteArray): Int? =
 
 @Throws(IOException::class)
 fun parseInputReport(body: ByteArray): InputReport = InputReport.ADAPTER.decode(body)
+
+class ButtonPress(val code: Int, val isPressed: Boolean)
+
+fun buttonPresses(report: InputReport): List<ButtonPress> =
+    report.buttons.flatMap { it.events }.mapNotNull { event ->
+        event.code?.let { ButtonPress(it, event.pressed == true) }
+    }

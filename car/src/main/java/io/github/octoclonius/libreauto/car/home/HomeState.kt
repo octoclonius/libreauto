@@ -16,6 +16,10 @@ object HomeState {
         if (!isShown) _isDrawerOpen.value = false
     }
 
+    internal fun closeDrawer() {
+        _isDrawerOpen.value = false
+    }
+
     internal fun toggleDrawer() {
         _isDrawerOpen.value = !_isDrawerOpen.value
     }

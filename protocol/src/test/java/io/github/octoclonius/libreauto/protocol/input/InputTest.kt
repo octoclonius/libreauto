@@ -97,6 +97,41 @@ class InputTest {
     }
 
     @Test
+    fun aReportsButtonEventsAreField4WithTheCodeAsField1AndPressedAsField2() {
+        val presses =
+            buttonPresses(
+                parseInputReport(bytes(0x22, 0x06, 0x0A, 0x04, 0x08, 0x03, 0x10, 0x01))
+            )
+        assertEquals(listOf(3 to true), presses.map { it.code to it.isPressed })
+    }
+
+    @Test
+    fun aButtonEventWithoutPressedIsAReleaseAndOneWithoutACodeIsSkipped() {
+        val presses =
+            buttonPresses(
+                parseInputReport(
+                    bytes(0x22, 0x08, 0x0A, 0x02, 0x08, 0x04, 0x0A, 0x02, 0x10, 0x01)
+                )
+            )
+        assertEquals(listOf(4 to false), presses.map { it.code to it.isPressed })
+    }
+
+    @Test
+    fun aReportKeepsItsButtonEventsInOrder() {
+        val presses =
+            buttonPresses(
+                parseInputReport(
+                    bytes(
+                        0x22, 0x0C,
+                        0x0A, 0x04, 0x08, 0x55, 0x10, 0x01,
+                        0x0A, 0x04, 0x08, 0x57, 0x10, 0x00,
+                    )
+                )
+            )
+        assertEquals(listOf(85 to true, 87 to false), presses.map { it.code to it.isPressed })
+    }
+
+    @Test
     fun aTruncatedReportIsRefused() {
         assertThrows<IOException> { parseInputReport(bytes(0x1A, 0x04, 0x0A, 0x02, 0x08)) }
     }
