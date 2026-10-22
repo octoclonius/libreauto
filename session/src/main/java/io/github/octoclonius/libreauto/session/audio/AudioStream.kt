@@ -18,6 +18,7 @@ import kotlin.concurrent.withLock
 
 internal class AudioStream(
     private val config: PcmConfig,
+    private val frameSamples: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Unit,
     private val onStartedOrStopped: () -> Unit,
@@ -25,9 +26,9 @@ internal class AudioStream(
 
     companion object {
         private const val TAG = "AudioStream"
-        private const val FRAME_MILLIS = 40
-        private val FRAME_NANOS = TimeUnit.MILLISECONDS.toNanos(FRAME_MILLIS.toLong())
     }
+
+    private val frameNanos = TimeUnit.SECONDS.toNanos(frameSamples.toLong()) / config.sampleRate
 
     private val lock = ReentrantLock()
     private val acked = lock.newCondition()
@@ -102,7 +103,7 @@ internal class AudioStream(
     }
 
     private fun readFrames(input: InputStream) {
-        val frameBytes = pcmFrameBytes(config, FRAME_MILLIS)
+        val frameBytes = pcmFrameBytes(config, frameSamples)
         try {
             while (!isClosed) {
                 val frame = ByteArray(frameBytes)
@@ -182,7 +183,7 @@ internal class AudioStream(
     }
 
     private fun sendLocked(pcm: ByteArray, capturedNanos: Long) {
-        var remainingNanos = FRAME_NANOS
+        var remainingNanos = frameNanos
         while (unacked >= maxUnacked && isStarted && !isClosed) {
             if (remainingNanos <= 0) return
             remainingNanos = acked.awaitNanos(remainingNanos)
@@ -190,6 +191,6 @@ internal class AudioStream(
         if (!isStarted || isClosed) return
         unacked++
         send(MediaMessageType.DATA, mediaData(TimeUnit.NANOSECONDS.toMicros(capturedNanos), pcm))
-        carQueueEndNanos = maxOf(carQueueEndNanos, System.nanoTime()) + FRAME_NANOS
+        carQueueEndNanos = maxOf(carQueueEndNanos, System.nanoTime()) + frameNanos
     }
 }

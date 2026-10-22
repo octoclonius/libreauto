@@ -39,5 +39,5 @@ private fun pcmConfig(index: Int, config: AudioConfig): PcmConfig? {
 
 fun audioSetupRequest(): ByteArray = MediaSetupRequest(codec = CODEC_PCM).encode()
 
-fun pcmFrameBytes(config: PcmConfig, frameMillis: Int): Int =
-    config.sampleRate * frameMillis / 1000 * config.channelCount * BIT_DEPTH_16 / 8
+fun pcmFrameBytes(config: PcmConfig, frameSamples: Int): Int =
+    frameSamples * config.channelCount * BIT_DEPTH_16 / 8

@@ -18,6 +18,13 @@ internal fun divertedUsages(audioType: Int): IntArray? =
         else -> null
     }
 
+internal fun audioFrameSamples(audioType: Int): Int? =
+    when (audioType) {
+        AudioType.MEDIA -> 2048
+        AudioType.GUIDANCE -> 1024
+        else -> null
+    }
+
 internal fun carFocusRequest(
     players: List<AudioPlayer>,
     focusHolders: List<AudioFocusHolder>,

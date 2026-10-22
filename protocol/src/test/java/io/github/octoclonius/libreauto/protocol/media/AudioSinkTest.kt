@@ -81,9 +81,9 @@ class AudioSinkTest {
     }
 
     @Test
-    fun aFrameIsTheSampleRateOverTheFrameLengthTimesTheChannelsTimesTwoBytes() {
-        assertEquals(7680, pcmFrameBytes(PcmConfig(0, 48000, 2), 40))
-        assertEquals(1280, pcmFrameBytes(PcmConfig(0, 16000, 1), 40))
+    fun aFrameIsTheSamplesTimesTheChannelsTimesTwoBytes() {
+        assertEquals(8192, pcmFrameBytes(PcmConfig(0, 48000, 2), 2048))
+        assertEquals(2048, pcmFrameBytes(PcmConfig(0, 16000, 1), 1024))
     }
 
     @Test

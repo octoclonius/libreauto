@@ -31,6 +31,9 @@ internal class AudioChannel(
 
     val usages: IntArray = checkNotNull(divertedUsages(audioType)) { "No usages for $audioType" }
 
+    private val frameSamples =
+        checkNotNull(audioFrameSamples(audioType)) { "No frame size for $audioType" }
+
     val channel: Int
         get() = sender.channel
 
@@ -107,7 +110,13 @@ internal class AudioChannel(
         state =
             AudioChannelState.Ready(
                 config,
-                AudioStream(config, maxUnacked, sender::send, onStreamStartedOrStopped),
+                AudioStream(
+                    config,
+                    frameSamples,
+                    maxUnacked,
+                    sender::send,
+                    onStreamStartedOrStopped,
+                ),
             )
         onSettled()
     }
