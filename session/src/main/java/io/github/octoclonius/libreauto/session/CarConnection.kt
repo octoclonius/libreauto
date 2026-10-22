@@ -197,7 +197,7 @@ class CarConnection(context: Context) {
                                         type,
                                         ChannelSender(writer, tls, audioSink.channel),
                                         audioSink.configs,
-                                        carAudio::onChannelReady,
+                                        carAudio::onChannelSettled,
                                         carAudio::onStreamStartedOrStopped,
                                     )
                                 }

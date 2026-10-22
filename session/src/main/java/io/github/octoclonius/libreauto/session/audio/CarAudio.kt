@@ -24,14 +24,15 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     private val negotiation = FocusNegotiation()
     private val androidFocus = AndroidAudioFocus(context)
     private var channels: List<AudioChannel> = emptyList()
+    private var streaming: List<AudioChannel> = emptyList()
     private var privileged: PrivilegedAudio? = null
 
     fun start(channels: List<AudioChannel>) {
         executor.execute { this.channels = channels }
     }
 
-    fun onChannelReady() {
-        executor.execute(::divertWhenReady)
+    fun onChannelSettled() {
+        executor.execute(::divertWhenSettled)
     }
 
     fun onStreamStartedOrStopped() {
@@ -45,7 +46,7 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
         executor.execute {
             Log.i(TAG, "Car audio focus $state, unsolicited $isUnsolicited")
             act(negotiation.onCarFocus(state, isUnsolicited))
-            for (channel in channels) {
+            for (channel in streaming) {
                 channel.ready?.stream?.setAllowed(
                     isStreamAllowed(channel.audioType, negotiation.carState)
                 )
@@ -66,12 +67,17 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
         executor.shutdown()
     }
 
-    private fun divertWhenReady() {
-        if (privileged != null || channels.isEmpty()) return
-        val ready = channels.map { it.ready ?: return }
+    private fun divertWhenSettled() {
+        if (privileged != null || !channels.all(AudioChannel::isSettled)) return
+        streaming = channels.filter { it.ready != null }
+        if (streaming.isEmpty()) {
+            Log.w(TAG, "No audio channel of the car is usable; audio stays on the phone")
+            return
+        }
         val outputs =
-            channels.zip(ready) { channel, state ->
-                AudioOutput(channel.usages, state.config.sampleRate, state.config.channelCount)
+            streaming.map { channel ->
+                val config = checkNotNull(channel.ready).config
+                AudioOutput(channel.usages, config.sampleRate, config.channelCount)
             }
         privileged =
             PrivilegedAudio(outputs, ::onPipes, ::onActivity).also(PrivilegedAudio::start)
@@ -79,14 +85,14 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
 
     private fun onPipes(pipes: List<ParcelFileDescriptor>) {
         executor.execute {
-            for ((channel, pipe) in channels.zip(pipes)) channel.ready?.stream?.read(pipe)
+            for ((channel, pipe) in streaming.zip(pipes)) channel.ready?.stream?.read(pipe)
         }
     }
 
     private fun onActivity(players: List<AudioPlayer>, focusHolders: List<AudioFocusHolder>) {
         executor.execute {
             val divertedPlayers = players.filter { isDiverted(it.usage) }
-            for (channel in channels) {
+            for (channel in streaming) {
                 channel.ready?.stream?.setActive(
                     divertedPlayers.any { it.usage in channel.usages }
                 )
@@ -101,9 +107,9 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
         }
     }
 
-    private fun isDiverted(usage: Int): Boolean = channels.any { usage in it.usages }
+    private fun isDiverted(usage: Int): Boolean = streaming.any { usage in it.usages }
 
-    private fun isIdle(): Boolean = channels.all { it.ready?.stream?.isIdle != false }
+    private fun isIdle(): Boolean = streaming.all { it.ready?.stream?.isIdle != false }
 
     private fun act(actions: List<FocusNegotiation.Action>) {
         for (action in actions) {

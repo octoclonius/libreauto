@@ -17,7 +17,7 @@ internal class AudioChannel(
     val audioType: Int,
     private val sender: ChannelSender,
     private val configs: List<PcmConfig>,
-    private val onReady: () -> Unit,
+    private val onSettled: () -> Unit,
     private val onStreamStartedOrStopped: () -> Unit,
 ) : Closeable {
 
@@ -37,6 +37,9 @@ internal class AudioChannel(
     val ready: AudioChannelState.Ready?
         get() = state as? AudioChannelState.Ready
 
+    val isSettled: Boolean
+        get() = state == null || state is AudioChannelState.Ready
+
     fun open() {
         Log.i(TAG, "Opening the audio channel $channel for audio type $audioType")
         sender.sendOpenRequest()
@@ -47,13 +50,12 @@ internal class AudioChannel(
         when {
             current == AudioChannelState.Opening &&
                 message.type == MessageType.CHANNEL_OPEN_RESPONSE ->
-                state =
-                    if (isChannelOpened(TAG, message, "audio")) {
-                        sender.send(MediaMessageType.SETUP_REQUEST, audioSetupRequest())
-                        AudioChannelState.SettingUp
-                    } else {
-                        null
-                    }
+                if (isChannelOpened(TAG, message, "audio")) {
+                    sender.send(MediaMessageType.SETUP_REQUEST, audioSetupRequest())
+                    state = AudioChannelState.SettingUp
+                } else {
+                    settleUnusable()
+                }
             current == AudioChannelState.SettingUp &&
                 message.type == MediaMessageType.SETUP_RESPONSE -> onSetupResponse(message)
             current is AudioChannelState.Ready && message.type == MediaMessageType.ACK -> {
@@ -92,13 +94,27 @@ internal class AudioChannel(
         val config =
             response.config_indexes.firstNotNullOfOrNull { index ->
                 configs.firstOrNull { it.index == index }
-            } ?: configs.first()
+            }
+        if (config == null) {
+            Log.w(
+                TAG,
+                "The car accepted none of the audio configs LibreAuto plays on channel $channel: " +
+                    "accepted ${response.config_indexes}, playable ${configs.map { it.index }}",
+            )
+            settleUnusable()
+            return
+        }
         state =
             AudioChannelState.Ready(
                 config,
                 AudioStream(config, maxUnacked, sender::send, onStreamStartedOrStopped),
             )
-        onReady()
+        onSettled()
+    }
+
+    private fun settleUnusable() {
+        state = null
+        onSettled()
     }
 }
 
