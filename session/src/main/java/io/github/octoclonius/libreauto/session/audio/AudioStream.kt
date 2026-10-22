@@ -32,6 +32,7 @@ internal class AudioStream(
     private val lock = ReentrantLock()
     private val acked = lock.newCondition()
     private var isActive = false
+    private var isTailing = false
     private var isAllowed = false
     private var isStarted = false
     private var session = 0
@@ -54,18 +55,17 @@ internal class AudioStream(
     }
 
     fun setActive(isActive: Boolean) {
-        val stopped =
-            lock.withLock {
-                this.isActive = isActive
-                stopWhenCarQueueEmptyLocked()
-            }
-        if (stopped) onStartedOrStopped()
+        lock.withLock {
+            this.isActive = isActive
+            isTailing = !isActive && isStarted
+        }
     }
 
     fun setAllowed(isAllowed: Boolean) {
         val stopped =
             lock.withLock {
                 this.isAllowed = isAllowed
+                if (!isAllowed) isTailing = false
                 if (!isAllowed && isStarted) {
                     stopLocked()
                     true
@@ -112,12 +112,17 @@ internal class AudioStream(
         } catch (e: IOException) {
             if (!isClosed) Log.w(TAG, "Reading the diverted audio failed", e)
         }
+        endTail()
     }
 
     private fun onFrame(frame: ByteArray, capturedNanos: Long) {
+        if (isTailingWith(frame)) {
+            endTail()
+            return
+        }
         val started =
             lock.withLock {
-                if (!isActive || !isAllowed) return
+                if (!isAllowed || (!isActive && !isTailing)) return
                 val starting = !isStarted
                 if (starting) startLocked()
                 sendLocked(frame, capturedNanos)
@@ -126,8 +131,20 @@ internal class AudioStream(
         if (started) onStartedOrStopped()
     }
 
+    private fun isTailingWith(frame: ByteArray): Boolean =
+        lock.withLock { isTailing } && frame.all { it == 0.toByte() }
+
+    private fun endTail() {
+        val stopped =
+            lock.withLock {
+                isTailing = false
+                stopWhenCarQueueEmptyLocked()
+            }
+        if (stopped) onStartedOrStopped()
+    }
+
     private fun stopWhenCarQueueEmptyLocked(): Boolean {
-        if (!isStarted || isActive) return false
+        if (!isStarted || isActive || isTailing) return false
         val remainingNanos = carQueueEndNanos - System.nanoTime()
         if (remainingNanos > 0) {
             val drainingSession = session
