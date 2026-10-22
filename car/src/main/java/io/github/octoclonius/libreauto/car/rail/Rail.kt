@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.car.rail
 
+import android.telephony.CellSignalStrength
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,8 @@ private val STATUS_SPACING = 4.dp
 private val STATUS_ICON_SIZE = 24.dp
 private val APPS_ICON_SIZE = 40.dp
 private const val FULL_PERCENT = 100
+private val SIGNAL_LEVELS =
+    CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 
 private val WIFI_ICONS =
     listOf(
@@ -188,7 +191,7 @@ private fun Clock(time: String) {
 
 @Composable
 private fun Wifi(level: Int) {
-    StatusIcon(WIFI_ICONS[level.coerceIn(0, MAX_SIGNAL_LEVEL)])
+    StatusIcon(WIFI_ICONS[level.coerceIn(SIGNAL_LEVELS)])
 }
 
 @Composable
@@ -197,7 +200,7 @@ private fun CellularIcon(cellular: Cellular) {
         when (cellular) {
             Cellular.AirplaneMode -> R.drawable.ic_airplane_mode
             Cellular.NoService -> R.drawable.ic_cellular_no_service
-            is Cellular.Signal -> CELLULAR_ICONS[cellular.level.coerceIn(0, MAX_SIGNAL_LEVEL)]
+            is Cellular.Signal -> CELLULAR_ICONS[cellular.level.coerceIn(SIGNAL_LEVELS)]
         }
     )
 }

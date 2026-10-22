@@ -14,6 +14,7 @@ import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.telephony.CellSignalStrength
 import android.telephony.ServiceState
 import android.telephony.SignalStrength
 import android.telephony.TelephonyCallback
@@ -21,8 +22,6 @@ import android.telephony.TelephonyManager
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-
-const val MAX_SIGNAL_LEVEL = 4
 
 data class Connectivity(val wifiLevel: Int?, val cellular: Cellular?)
 
@@ -65,8 +64,10 @@ fun phoneConnectivity(context: Context): Flow<Connectivity> = callbackFlow {
             ) {
                 val rssi = (capabilities.transportInfo as? WifiInfo)?.rssi
                 wifiLevels[network] =
-                    if (rssi == null) 0
-                    else wifi.calculateSignalLevel(rssi) * MAX_SIGNAL_LEVEL / wifi.maxSignalLevel
+                    if (rssi == null) CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN
+                    else
+                        wifi.calculateSignalLevel(rssi) *
+                            CellSignalStrength.SIGNAL_STRENGTH_GREAT / wifi.maxSignalLevel
                 update()
             }
 
