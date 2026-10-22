@@ -20,13 +20,7 @@ internal class CompanionAssociation(private val context: Context) {
         private const val SELF_MANAGED = "true"
     }
 
-    private val manager: CompanionDeviceManager =
-        SystemServices.manager(
-            CompanionDeviceManager::class.java,
-            "android.companion.ICompanionDeviceManager",
-            Context.COMPANION_DEVICE_SERVICE,
-            context,
-        )
+    private val manager: CompanionDeviceManager = SystemServices.companionDeviceManager(context)
 
     fun acquire(): Int {
         ours()?.let {

@@ -1,28 +1,42 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.companion.CompanionDeviceManager
+import android.companion.ICompanionDeviceManager
+import android.companion.virtual.IVirtualDeviceManager
+import android.companion.virtual.VirtualDeviceManager
 import android.content.Context
 import android.os.IBinder
+import android.os.ServiceManager
 
 internal object SystemServices {
 
-    fun <T> manager(
+    fun companionDeviceManager(context: Context): CompanionDeviceManager =
+        construct(
+            CompanionDeviceManager::class.java,
+            ICompanionDeviceManager::class.java,
+            ICompanionDeviceManager.Stub.asInterface(service(Context.COMPANION_DEVICE_SERVICE)),
+            context,
+        )
+
+    fun virtualDeviceManager(context: Context): VirtualDeviceManager =
+        construct(
+            VirtualDeviceManager::class.java,
+            IVirtualDeviceManager::class.java,
+            IVirtualDeviceManager.Stub.asInterface(service(Context.VIRTUAL_DEVICE_SERVICE)),
+            context,
+        )
+
+    private fun <T> construct(
         type: Class<T>,
-        interfaceName: String,
-        serviceName: String,
+        serviceType: Class<*>,
+        service: Any,
         context: Context,
     ): T =
         type
-            .getDeclaredConstructor(Class.forName(interfaceName), Context::class.java)
+            .getDeclaredConstructor(serviceType, Context::class.java)
             .apply { isAccessible = true }
-            .newInstance(service(interfaceName, serviceName), context)
+            .newInstance(service, context)
 
-    private fun service(interfaceName: String, serviceName: String): Any {
-        val binder =
-            Class.forName("android.os.ServiceManager")
-                .getMethod("getService", String::class.java)
-                .invoke(null, serviceName) as IBinder? ?: error("No $serviceName service")
-        return Class.forName("$interfaceName\$Stub")
-            .getMethod("asInterface", IBinder::class.java)
-            .invoke(null, binder)!!
-    }
+    private fun service(name: String): IBinder =
+        ServiceManager.getService(name) ?: error("No $name service")
 }

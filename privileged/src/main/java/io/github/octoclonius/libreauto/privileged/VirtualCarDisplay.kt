@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.companion.virtual.VirtualDeviceManager
+import android.companion.virtual.VirtualDeviceParams
 import android.content.ComponentName
 import android.content.Context
 import android.hardware.display.DisplayManager
@@ -23,9 +24,7 @@ private constructor(
     companion object {
         private const val TAG = "VirtualCarDisplay"
         private const val NAME = "LibreAuto"
-        private const val LOCK_STATE_ALWAYS_UNLOCKED = 1
         private const val VIRTUAL_DISPLAY_FLAG_TRUSTED = 1 shl 10
-        private const val PARAMS = "android.companion.virtual.VirtualDeviceParams"
 
         fun create(
             context: Context,
@@ -74,30 +73,21 @@ private constructor(
             associationId: Int,
             home: ComponentName,
         ): AutoCloseable {
-            val manager =
-                SystemServices.manager(
-                    VirtualDeviceManager::class.java,
-                    "android.companion.virtual.IVirtualDeviceManager",
-                    Context.VIRTUAL_DEVICE_SERVICE,
-                    context,
-                )
-            val builder = Class.forName("$PARAMS\$Builder").getConstructor().newInstance()
-            builder.javaClass.getMethod("setName", String::class.java).invoke(builder, NAME)
-            builder.javaClass
-                .getMethod("setLockState", Int::class.javaPrimitiveType)
-                .invoke(builder, LOCK_STATE_ALWAYS_UNLOCKED)
-            builder.javaClass
-                .getMethod("setHomeComponent", ComponentName::class.java)
-                .invoke(builder, home)
-            val params = builder.javaClass.getMethod("build").invoke(builder)
+            val params =
+                VirtualDeviceParams.Builder()
+                    .setName(NAME)
+                    .setLockState(VirtualDeviceParams.LOCK_STATE_ALWAYS_UNLOCKED)
+                    .setHomeComponent(home)
+                    .build()
             return VirtualDeviceManager::class
                 .java
                 .getMethod(
                     "createVirtualDevice",
                     Int::class.javaPrimitiveType,
-                    Class.forName(PARAMS),
+                    VirtualDeviceParams::class.java,
                 )
-                .invoke(manager, associationId, params) as AutoCloseable
+                .invoke(SystemServices.virtualDeviceManager(context), associationId, params)
+                as AutoCloseable
         }
 
         private fun createDisplay(
