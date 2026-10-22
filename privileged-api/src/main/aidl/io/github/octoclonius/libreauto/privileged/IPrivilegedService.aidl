@@ -1,7 +1,10 @@
 package io.github.octoclonius.libreauto.privileged;
 
 import android.content.ComponentName;
+import android.os.ParcelFileDescriptor;
 import android.view.Surface;
+import io.github.octoclonius.libreauto.privileged.AudioOutput;
+import io.github.octoclonius.libreauto.privileged.IAudioActivityListener;
 
 interface IPrivilegedService {
     void destroy() = 16777114;
@@ -17,4 +20,8 @@ interface IPrivilegedService {
     oneway void exitAccessoryMode() = 5;
 
     oneway void sendKey(int displayId, int keyCode) = 6;
+
+    ParcelFileDescriptor[] startAudio(in AudioOutput[] outputs, IAudioActivityListener listener) = 7;
+
+    void stopAudio() = 8;
 }

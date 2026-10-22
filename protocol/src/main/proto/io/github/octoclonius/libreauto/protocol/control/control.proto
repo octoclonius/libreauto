@@ -23,6 +23,15 @@ message PingResponse {
   optional int64 timestamp = 1;
 }
 
+message AudioFocusRequest {
+  optional int32 type = 1;
+}
+
+message AudioFocusNotification {
+  optional int32 state = 1;
+  optional bool unsolicited = 2;
+}
+
 message ByeByeRequest {
   optional int32 reason = 1;
 }

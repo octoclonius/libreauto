@@ -5,6 +5,7 @@ import android.content.Context
 import android.hardware.usb.UsbManager
 import android.os.Binder
 import android.os.Parcel
+import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
 import android.view.Surface
@@ -25,6 +26,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val keys = DisplayKeys(shellContext)
     private val lock = Any()
     private var display: VirtualCarDisplay? = null
+    private var audio: CarAudioPolicy? = null
+    private var audioActivity: AudioActivityMonitor? = null
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         val caller = Binder.getCallingUid()
@@ -36,7 +39,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun destroy() {
-        synchronized(lock) { release() }
+        synchronized(lock) {
+            release()
+            releaseAudio()
+        }
         exitProcess(0)
     }
 
@@ -128,6 +134,46 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
+    override fun startAudio(
+        outputs: Array<AudioOutput>,
+        listener: IAudioActivityListener,
+    ): Array<ParcelFileDescriptor> {
+        val error = audioRequestError(outputs.toList())
+        if (error != null) throw IllegalArgumentException(error)
+        synchronized(lock) {
+            releaseAudio()
+            val identity = Binder.clearCallingIdentity()
+            try {
+                val monitor = AudioActivityMonitor(shellContext, listener)
+                audioActivity = monitor
+                val policy =
+                    CarAudioPolicy.register(
+                        shellContext,
+                        outputs.toList(),
+                        monitor.looper,
+                        monitor::onFocusChanged,
+                    )
+                audio = policy
+                monitor.start(policy::focusStack)
+                return policy.pipes.toTypedArray()
+            } catch (e: Exception) {
+                releaseAudio()
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Diverting audio to the car failed", cause)
+                throw IllegalStateException(
+                    "Diverting audio to the car failed: ${cause.javaClass.simpleName}: " +
+                        cause.message
+                )
+            } finally {
+                Binder.restoreCallingIdentity(identity)
+            }
+        }
+    }
+
+    override fun stopAudio() {
+        synchronized(lock) { releaseAudio() }
+    }
+
     override fun exitAccessoryMode() {
         try {
             UsbManager::class
@@ -148,6 +194,24 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             released.close()
         } catch (e: Exception) {
             Log.e(TAG, "Releasing the car display ${released.id} failed", e)
+        }
+    }
+
+    private fun releaseAudio() {
+        val monitor = audioActivity
+        val policy = audio
+        audioActivity = null
+        audio = null
+        try {
+            monitor?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Stopping the audio activity monitor failed", e)
+        }
+        try {
+            policy?.close()
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "Unregistering the car audio policy failed", cause)
         }
     }
 }

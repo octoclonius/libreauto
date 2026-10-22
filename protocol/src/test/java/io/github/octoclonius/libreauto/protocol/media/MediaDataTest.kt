@@ -19,7 +19,19 @@ class MediaDataTest {
 
     @Test
     fun theDhusAckIsOfOneFrame() {
-        assertEquals(1, parseMediaAck(bytes(0x08, 0x00, 0x10, 0x01)))
+        assertEquals(1, parseMediaAck(bytes(0x08, 0x00, 0x10, 0x01)).count)
+    }
+
+    @Test
+    fun anAckHasTheSessionAsField1AndTheCountAsField2() {
+        val ack = parseMediaAck(bytes(0x08, 0x03, 0x10, 0x05))
+        assertEquals(3, ack.session)
+        assertEquals(5, ack.count)
+    }
+
+    @Test
+    fun anAckWithoutASessionHasNone() {
+        assertEquals(null, parseMediaAck(bytes(0x10, 0x01)).session)
     }
 
     @Test

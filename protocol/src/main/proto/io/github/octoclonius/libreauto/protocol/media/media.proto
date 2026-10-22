@@ -28,5 +28,6 @@ message MediaStart {
 }
 
 message MediaAck {
+  optional int32 session = 1;
   optional int32 count = 2;
 }

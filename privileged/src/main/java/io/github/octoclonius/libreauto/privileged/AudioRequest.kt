@@ -1,0 +1,33 @@
+package io.github.octoclonius.libreauto.privileged
+
+import android.media.AudioAttributes
+
+private const val MAX_CHANNELS = 2
+
+private val USAGES =
+    setOf(
+        AudioAttributes.USAGE_MEDIA,
+        AudioAttributes.USAGE_GAME,
+        AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE,
+        AudioAttributes.USAGE_ASSISTANT,
+    )
+
+internal fun audioRequestError(outputs: List<AudioOutput>): String? {
+    if (outputs.isEmpty()) return "There are no audio outputs"
+    for (output in outputs) {
+        val error =
+            when {
+                output.usages.isEmpty() -> "An audio output has no usages"
+                output.usages.any { it !in USAGES } ->
+                    "The usages ${output.usages.toList()} aren't ones that may be diverted"
+                output.sampleRate <= 0 -> "The sample rate ${output.sampleRate} isn't positive"
+                output.channelCount !in 1..MAX_CHANNELS ->
+                    "${output.channelCount} channels aren't 1 or $MAX_CHANNELS"
+                else -> null
+            }
+        if (error != null) return error
+    }
+    val usages = outputs.flatMap { it.usages.toList() }
+    if (usages.size != usages.toSet().size) return "A usage is in more than one audio output"
+    return null
+}

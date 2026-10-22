@@ -15,5 +15,10 @@ class MediaStartTest {
         assertArrayEquals(bytes(0x08, 0x00, 0x10, 0x01), videoStart(1))
     }
 
+    @Test
+    fun theStartCarriesTheSessionAsField1() {
+        assertArrayEquals(bytes(0x08, 0x02, 0x10, 0x00), mediaStart(2, 0))
+    }
+
     private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

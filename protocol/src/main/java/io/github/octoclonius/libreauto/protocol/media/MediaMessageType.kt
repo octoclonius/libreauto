@@ -5,6 +5,7 @@ object MediaMessageType {
     const val CODEC_CONFIG = 0x0001
     const val SETUP_REQUEST = 0x8000
     const val START = 0x8001
+    const val STOP = 0x8002
     const val SETUP_RESPONSE = 0x8003
     const val ACK = 0x8004
     const val VIDEO_FOCUS_REQUEST = 0x8007

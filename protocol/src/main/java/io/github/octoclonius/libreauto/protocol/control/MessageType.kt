@@ -9,6 +9,8 @@ object MessageType {
     const val SERVICE_DISCOVERY_RESPONSE = 0x0006
     const val CHANNEL_OPEN_REQUEST = 0x0007
     const val CHANNEL_OPEN_RESPONSE = 0x0008
+    const val AUDIO_FOCUS_REQUEST = 0x0012
+    const val AUDIO_FOCUS_NOTIFICATION = 0x0013
     const val PING_REQUEST = 0x000B
     const val PING_RESPONSE = 0x000C
     const val BYE_BYE_REQUEST = 0x000F

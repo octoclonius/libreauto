@@ -25,7 +25,11 @@ import io.github.octoclonius.libreauto.protocol.control.pingResponse
 import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.input.inputSource
+import io.github.octoclonius.libreauto.protocol.media.AudioType
+import io.github.octoclonius.libreauto.protocol.media.audioSink
 import io.github.octoclonius.libreauto.protocol.media.videoSink
+import io.github.octoclonius.libreauto.session.audio.AudioChannel
+import io.github.octoclonius.libreauto.session.audio.CarAudio
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import io.github.octoclonius.libreauto.session.input.CarButtons
@@ -103,6 +107,8 @@ class CarConnection(context: Context) {
     ) {
         var video: VideoChannel? = null
         var input: InputChannel? = null
+        var audio: CarAudio? = null
+        var audioChannels: List<AudioChannel> = emptyList()
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -118,6 +124,11 @@ class CarConnection(context: Context) {
                 }
                 if (input != null && message.channel == input.channel) {
                     if (!input.onMessage(message)) logUnhandled(message)
+                    continue
+                }
+                val audioChannel = audioChannels.firstOrNull { it.channel == message.channel }
+                if (audioChannel != null) {
+                    if (!audioChannel.onMessage(message)) logUnhandled(message)
                     continue
                 }
                 if (message.channel != CONTROL_CHANNEL) {
@@ -171,7 +182,31 @@ class CarConnection(context: Context) {
                                         .also { it.open() }
                             }
                         }
+                        val audioSinks =
+                            listOf(AudioType.MEDIA, AudioType.GUIDANCE).mapNotNull { type ->
+                                audioSink(response, type)?.let { type to it }
+                            }
+                        if (audioSinks.isEmpty()) {
+                            Log.w(TAG, "The car has no media or guidance audio channel")
+                        } else {
+                            val carAudio = CarAudio(context, control)
+                            audio = carAudio
+                            audioChannels =
+                                audioSinks.map { (type, audioSink) ->
+                                    AudioChannel(
+                                        type,
+                                        ChannelSender(writer, tls, audioSink.channel),
+                                        audioSink.configs,
+                                        carAudio::onChannelReady,
+                                        carAudio::onStreamStartedOrStopped,
+                                    )
+                                }
+                            carAudio.start(audioChannels)
+                            audioChannels.forEach(AudioChannel::open)
+                        }
                     }
+                    MessageType.AUDIO_FOCUS_NOTIFICATION ->
+                        audio?.onFocusNotification(message) ?: logUnhandled(message)
                     MessageType.PING_REQUEST ->
                         control.send(
                             MessageType.PING_RESPONSE,
@@ -187,6 +222,7 @@ class CarConnection(context: Context) {
                 }
             }
         } finally {
+            audio?.close()
             video?.close()
         }
     }

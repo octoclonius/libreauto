@@ -70,7 +70,7 @@ internal class VideoChannel(
                 message.type == MediaMessageType.VIDEO_FOCUS_NOTIFICATION ->
                 state = onFocus(current, message)
             current is VideoChannelState.Started && message.type == MediaMessageType.ACK ->
-                current.stream.acknowledge(parseMediaAck(message.body))
+                current.stream.acknowledge(parseMediaAck(message.body).count)
             else -> return false
         }
         return true

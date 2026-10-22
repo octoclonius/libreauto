@@ -36,9 +36,18 @@ message Service {
 message SensorSourceService {}
 
 message MediaSinkService {
+  optional int32 codec = 1;
+  optional int32 audio_type = 2;
+  repeated AudioConfig audio_configs = 3;
   repeated VideoConfig video_configs = 4;
   optional int32 display_id = 6;
   optional int32 display_type = 7;
+}
+
+message AudioConfig {
+  optional int32 sample_rate = 1;
+  optional int32 bit_depth = 2;
+  optional int32 channel_count = 3;
 }
 
 message VideoConfig {
