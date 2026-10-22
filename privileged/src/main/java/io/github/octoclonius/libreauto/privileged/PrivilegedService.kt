@@ -24,7 +24,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val shellContext = ShellContext(context)
     private val association = CompanionAssociation(shellContext)
     private val keys = DisplayKeys(shellContext)
-    private val lock = Any()
+    private val displayLock = Any()
+    private val audioLock = Any()
     private var display: VirtualCarDisplay? = null
     private var audio: CarAudioPolicy? = null
     private var audioActivity: AudioActivityMonitor? = null
@@ -39,10 +40,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun destroy() {
-        synchronized(lock) {
-            release()
-            releaseAudio()
-        }
+        synchronized(displayLock) { release() }
+        synchronized(audioLock) { releaseAudio() }
         exitProcess(0)
     }
 
@@ -57,7 +56,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     ): Int {
         val error = displayRequestError(width, height, densityDpi, home.packageName, appPackage)
         if (error != null) throw IllegalArgumentException(error)
-        synchronized(lock) {
+        synchronized(displayLock) {
             release()
             val created =
                 try {
@@ -84,7 +83,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun releaseDisplay(displayId: Int) {
-        synchronized(lock) {
+        synchronized(displayLock) {
             if (display?.id == displayId) release()
         }
     }
@@ -103,7 +102,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             return
         }
         val pointers = pointerIds.indices.map { TouchPointer(pointerIds[it], xs[it], ys[it]) }
-        synchronized(lock) {
+        synchronized(displayLock) {
             val current = display
             if (current == null) {
                 Log.w(TAG, "Dropped a touch without a car display")
@@ -119,7 +118,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun sendKey(displayId: Int, keyCode: Int) {
-        synchronized(lock) {
+        synchronized(displayLock) {
             val error = keyRequestError(displayId, keyCode, display?.id)
             if (error != null) {
                 Log.w(TAG, "Dropped a key: $error")
@@ -140,7 +139,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     ): Array<ParcelFileDescriptor> {
         val error = audioRequestError(outputs.toList())
         if (error != null) throw IllegalArgumentException(error)
-        synchronized(lock) {
+        synchronized(audioLock) {
             releaseAudio()
             val identity = Binder.clearCallingIdentity()
             try {
@@ -171,7 +170,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun stopAudio() {
-        synchronized(lock) { releaseAudio() }
+        synchronized(audioLock) { releaseAudio() }
     }
 
     override fun exitAccessoryMode() {
