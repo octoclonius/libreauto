@@ -17,6 +17,6 @@ open class LibreAutoApplication : Application() {
             carHome = ComponentName(this, CarHomeActivity::class.java),
         )
         RailHost(this).start()
-        CarButtonHost(this).start()
+        CarButtonHost().start()
     }
 }

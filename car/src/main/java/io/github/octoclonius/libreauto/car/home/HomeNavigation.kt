@@ -1,19 +1,15 @@
 package io.github.octoclonius.libreauto.car.home
 
-import android.app.ActivityOptions
-import android.content.Context
-import android.content.Intent
 import android.view.KeyEvent
-import io.github.octoclonius.libreauto.car.CarHomeActivity
 import io.github.octoclonius.libreauto.session.input.PrivilegedKeys
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 
-fun onAppsButton(context: Context) {
-    if (HomeState.isHomeShown.value) HomeState.toggleDrawer() else bringHomeToFront(context)
+fun onAppsButton() {
+    if (HomeState.isHomeShown.value) HomeState.toggleDrawer() else showHome()
 }
 
-fun onHomeButton(context: Context) {
-    if (HomeState.isHomeShown.value) HomeState.closeDrawer() else bringHomeToFront(context)
+fun onHomeButton() {
+    if (HomeState.isHomeShown.value) HomeState.closeDrawer() else showHome()
 }
 
 fun onBackButton() {
@@ -24,17 +20,6 @@ fun onBackButton() {
     }
 }
 
-private fun bringHomeToFront(context: Context) {
-    val display = CarDisplay.state.value ?: return
-    val intent =
-        Intent(context, CarHomeActivity::class.java)
-            .addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-            )
-    context.startActivity(
-        intent,
-        ActivityOptions.makeBasic().setLaunchDisplayId(display.id).toBundle(),
-    )
+private fun showHome() {
+    CarDisplay.state.value?.let { PrivilegedKeys.send(it.id, KeyEvent.KEYCODE_HOME) }
 }
