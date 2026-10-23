@@ -33,7 +33,7 @@ private val TILE_CORNER = 18.dp
 private val TILE_PADDING = 4.dp
 private val GRID_SPACING = 16.dp
 private val GRID_PADDING = 16.dp
-private val APP_ICON_SIZE = 60.dp
+internal val APP_ICON_SIZE = 60.dp
 private val LABEL_SPACING = 8.dp
 private val LABEL_SIZE = 16.sp
 

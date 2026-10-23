@@ -28,6 +28,7 @@ import io.github.octoclonius.libreauto.car.apps.phoneApps
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.touch.TouchIndicator
 import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
+import io.github.octoclonius.libreauto.car.ui.ProvideCarDensity
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 
@@ -51,18 +52,20 @@ class CarHomeActivity : ComponentActivity() {
             val isDrawerOpen by HomeState.isDrawerOpen.collectAsState()
             val isHomeShown by HomeState.isHomeShown.collectAsState()
             val carDisplay by CarDisplay.state.collectAsStateWithLifecycle()
-            val contentInsets =
-                carDisplay?.takeIf { it.id == display.displayId }?.contentInsets ?: Insets.NONE
-            CarTheme {
-                AnimatedVisibility(
-                    visible = isDrawerOpen,
-                    modifier = Modifier.fillMaxSize().padding(contentPadding(contentInsets)),
-                    enter = fadeIn(),
-                    exit = if (isHomeShown) fadeOut() else ExitTransition.None,
-                ) {
-                    AppDrawer(apps, onAppClick = ::launch, modifier = Modifier.fillMaxSize())
+            val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
+            val contentInsets = shownDisplay?.contentInsets ?: Insets.NONE
+            ProvideCarDensity(shownDisplay?.carDensity) {
+                CarTheme {
+                    AnimatedVisibility(
+                        visible = isDrawerOpen,
+                        modifier = Modifier.fillMaxSize().padding(contentPadding(contentInsets)),
+                        enter = fadeIn(),
+                        exit = if (isHomeShown) fadeOut() else ExitTransition.None,
+                    ) {
+                        AppDrawer(apps, onAppClick = ::launch, modifier = Modifier.fillMaxSize())
+                    }
+                    indicator?.let { TouchIndicator(it) }
                 }
-                indicator?.let { TouchIndicator(it) }
             }
         }
     }

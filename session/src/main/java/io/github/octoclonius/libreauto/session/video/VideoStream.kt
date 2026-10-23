@@ -87,7 +87,8 @@ internal class VideoStream(
                     "${format.visibleWidth}x${format.visibleHeight} inside margins " +
                     "${format.margins} from a " +
                     "${format.displayWidth}x${format.displayHeight} area at " +
-                    "${format.density} dpi: apps in ${layout.apps}, rail in ${layout.rail}",
+                    "${format.density} dpi: apps in ${layout.apps} at ${layout.appsDensity} dpi, " +
+                    "rail in ${layout.rail}",
             )
             val created =
                 VideoCompositor(

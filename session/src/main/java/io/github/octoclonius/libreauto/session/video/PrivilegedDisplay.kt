@@ -50,7 +50,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private val layou
                     surface,
                     layout.apps.width,
                     layout.apps.height,
-                    layout.format.density,
+                    layout.appsDensity,
                     PrivilegedServiceConnection.carHome,
                 )
             } catch (e: RemoteException) {
@@ -61,7 +61,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private val layou
                 return null
             }
         Log.i(TAG, "The privileged service created the car display $id")
-        CarDisplay.onCreated(id, layout.appsContentInsets)
+        CarDisplay.onCreated(id, layout.appsContentInsets, layout.format.density)
         return id
     }
 

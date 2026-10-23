@@ -75,4 +75,29 @@ class CarLayoutTest {
             )
         assertEquals(RailSide.Bottom, layout.railSide)
     }
+
+    @Test
+    fun theAppsDensityMakesTheAppsAreaTabletSized() {
+        val layout = carLayout(VideoFormat(800, 480, 30, 160), isDriverOnRight = false)
+        assertEquals(128, layout.appsDensity)
+    }
+
+    @Test
+    fun theAppsDensityRoundsDown() {
+        val layout = carLayout(VideoFormat(800, 479, 30, 160), isDriverOnRight = false)
+        assertEquals(127, layout.appsDensity)
+    }
+
+    @Test
+    fun theAppsDensityFollowsTheShorterSideOfTheAppsArea() {
+        val layout = carLayout(VideoFormat(720, 1280, 30, 240), isDriverOnRight = false)
+        assertEquals(RailSide.Bottom, layout.railSide)
+        assertEquals(192, layout.appsDensity)
+    }
+
+    @Test
+    fun aTabletSizedCarKeepsItsDensity() {
+        val layout = carLayout(VideoFormat(1920, 1080, 30, 160), isDriverOnRight = false)
+        assertEquals(160, layout.appsDensity)
+    }
 }
