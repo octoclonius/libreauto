@@ -22,7 +22,6 @@ import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 
 internal class VideoCompositor(
-    output: Surface,
     private val format: VideoFormat,
     private val areas: List<Area>,
     private val decoderDepth: Int,
@@ -80,7 +79,9 @@ internal class VideoCompositor(
     private lateinit var choreographer: Choreographer
 
     private var eglDisplay = EGL14.EGL_NO_DISPLAY
+    private var eglConfig: EGLConfig? = null
     private var eglContext = EGL14.EGL_NO_CONTEXT
+    private var idleSurface = EGL14.EGL_NO_SURFACE
     private var eglSurface = EGL14.EGL_NO_SURFACE
     private var program = 0
     private var layers: List<Layer> = emptyList()
@@ -94,7 +95,7 @@ internal class VideoCompositor(
     val inputs: List<Surface>
 
     init {
-        val setUp = FutureTask { setUp(output) }
+        val setUp = FutureTask(::setUp)
         handler.post(setUp)
         inputs =
             try {
@@ -105,19 +106,68 @@ internal class VideoCompositor(
             }
     }
 
+    fun attach(output: Surface) {
+        onThread {
+            check(!isReleased && !isFailed) { "The compositor stopped" }
+            detachOutput()
+            eglSurface =
+                EGL14.eglCreateWindowSurface(
+                    eglDisplay,
+                    eglConfig,
+                    output,
+                    intArrayOf(EGL14.EGL_NONE),
+                    0,
+                )
+            checkEgl(eglSurface != EGL14.EGL_NO_SURFACE, "eglCreateWindowSurface")
+            checkEgl(
+                EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext),
+                "eglMakeCurrent",
+            )
+            dueNanos = 0L
+            hasNewPicture = true
+            schedule()
+        }
+    }
+
+    fun detach() {
+        onThread(::detachOutput)
+    }
+
     override fun close() {
         handler.post(::release)
         thread.quitSafely()
         thread.join()
     }
 
-    private fun setUp(output: Surface): List<Surface> {
+    private fun <T> onThread(block: () -> T): T {
+        val task = FutureTask(block)
+        check(handler.post(task)) { "The compositor is closed" }
+        return try {
+            task.get()
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
+    }
+
+    private fun detachOutput() {
+        if (eglSurface == EGL14.EGL_NO_SURFACE) return
+        choreographer.removeFrameCallback(onVsync)
+        isScheduled = false
+        hasNewPicture = false
+        repeats = 0
+        EGL14.eglMakeCurrent(eglDisplay, idleSurface, idleSurface, eglContext)
+        EGL14.eglDestroySurface(eglDisplay, eglSurface)
+        eglSurface = EGL14.EGL_NO_SURFACE
+    }
+
+    private fun setUp(): List<Surface> {
         choreographer = Choreographer.getInstance()
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         check(eglDisplay != EGL14.EGL_NO_DISPLAY) { "No EGL display" }
         val version = IntArray(2)
         checkEgl(EGL14.eglInitialize(eglDisplay, version, 0, version, 1), "eglInitialize")
         val config = chooseConfig(eglDisplay)
+        eglConfig = config
         eglContext =
             EGL14.eglCreateContext(
                 eglDisplay,
@@ -127,11 +177,16 @@ internal class VideoCompositor(
                 0,
             )
         checkEgl(eglContext != EGL14.EGL_NO_CONTEXT, "eglCreateContext")
-        eglSurface =
-            EGL14.eglCreateWindowSurface(eglDisplay, config, output, intArrayOf(EGL14.EGL_NONE), 0)
-        checkEgl(eglSurface != EGL14.EGL_NO_SURFACE, "eglCreateWindowSurface")
+        idleSurface =
+            EGL14.eglCreatePbufferSurface(
+                eglDisplay,
+                config,
+                intArrayOf(EGL14.EGL_WIDTH, 1, EGL14.EGL_HEIGHT, 1, EGL14.EGL_NONE),
+                0,
+            )
+        checkEgl(idleSurface != EGL14.EGL_NO_SURFACE, "eglCreatePbufferSurface")
         checkEgl(
-            EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext),
+            EGL14.eglMakeCurrent(eglDisplay, idleSurface, idleSurface, eglContext),
             "eglMakeCurrent",
         )
         program = linkProgram()
@@ -180,6 +235,8 @@ internal class VideoCompositor(
                 8,
                 EGL14.EGL_RENDERABLE_TYPE,
                 EGL14.EGL_OPENGL_ES2_BIT,
+                EGL14.EGL_SURFACE_TYPE,
+                EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT,
                 EGLExt.EGL_RECORDABLE_ANDROID,
                 1,
                 EGL14.EGL_NONE,
@@ -224,7 +281,7 @@ internal class VideoCompositor(
             layer.texture.updateTexImage()
             layer.texture.getTransformMatrix(layer.matrix)
             hasNewPicture = true
-            schedule()
+            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
         }
     }
 
@@ -236,7 +293,8 @@ internal class VideoCompositor(
 
     private fun onVsync(vsyncNanos: Long) {
         isScheduled = false
-        if (isReleased || isFailed || (!hasNewPicture && repeats == 0)) return
+        if (isReleased || isFailed || eglSurface == EGL14.EGL_NO_SURFACE) return
+        if (!hasNewPicture && repeats == 0) return
         if (vsyncNanos < dueNanos - deviationNanos) {
             schedule()
             return
@@ -312,10 +370,12 @@ internal class VideoCompositor(
             EGL14.EGL_NO_CONTEXT,
         )
         if (eglSurface != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eglDisplay, eglSurface)
+        if (idleSurface != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eglDisplay, idleSurface)
         if (eglContext != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(eglDisplay, eglContext)
         EGL14.eglReleaseThread()
         EGL14.eglTerminate(eglDisplay)
         eglSurface = EGL14.EGL_NO_SURFACE
+        idleSurface = EGL14.EGL_NO_SURFACE
         eglContext = EGL14.EGL_NO_CONTEXT
         eglDisplay = EGL14.EGL_NO_DISPLAY
     }

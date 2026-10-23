@@ -18,7 +18,6 @@ import io.github.octoclonius.libreauto.protocol.media.preferredConfigIndex
 import io.github.octoclonius.libreauto.protocol.media.projectedVideoFocusRequest
 import io.github.octoclonius.libreauto.protocol.media.videoFormat
 import io.github.octoclonius.libreauto.protocol.media.videoSetupRequest
-import io.github.octoclonius.libreauto.protocol.media.videoStart
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import java.io.Closeable
@@ -69,8 +68,10 @@ internal class VideoChannel(
                 current !is VideoChannelState.Opening &&
                 message.type == MediaMessageType.VIDEO_FOCUS_NOTIFICATION ->
                 state = onFocus(current, message)
-            current is VideoChannelState.Started && message.type == MediaMessageType.ACK ->
-                current.stream.acknowledge(parseMediaAck(message.body).count)
+            current is VideoChannelState.Started && message.type == MediaMessageType.ACK -> {
+                val ack = parseMediaAck(message.body)
+                current.stream.acknowledge(ack.session, ack.count)
+            }
             else -> return false
         }
         return true
@@ -137,18 +138,34 @@ internal class VideoChannel(
             is VideoChannelState.SettingUp -> current.copy(pendingFocus = notification)
             is VideoChannelState.Ready ->
                 if (notification.isProjected) start(current) else current
+            is VideoChannelState.Started -> onFocusChanged(current, notification.isProjected)
             else -> current
         }
     }
 
+    private fun onFocusChanged(
+        current: VideoChannelState.Started,
+        isProjected: Boolean,
+    ): VideoChannelState.Started {
+        if (isProjected == current.isProjected) return current
+        if (isProjected) current.stream.resume() else current.stream.pause()
+        return current.copy(isProjected = isProjected)
+    }
+
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
-        sender.send(MediaMessageType.START, videoStart(ready.configIndex))
-        Log.i(TAG, "Started video on channel $channel with config ${ready.configIndex}")
+        Log.i(TAG, "Starting video on channel $channel with config ${ready.configIndex}")
         val layout = carLayout(ready.format, isDriverOnRight)
         val stream =
-            VideoStream(context, layout, ready.decoderDepth, ready.maxUnacked, sender::send)
+            VideoStream(
+                context,
+                layout,
+                ready.configIndex,
+                ready.decoderDepth,
+                ready.maxUnacked,
+                sender::send,
+            )
         stream.start()
-        return VideoChannelState.Started(layout, stream)
+        return VideoChannelState.Started(layout, stream, isProjected = true)
     }
 }
 
@@ -168,5 +185,6 @@ private sealed interface VideoChannelState {
         val maxUnacked: Int,
     ) : VideoChannelState
 
-    data class Started(val layout: CarLayout, val stream: VideoStream) : VideoChannelState
+    data class Started(val layout: CarLayout, val stream: VideoStream, val isProjected: Boolean) :
+        VideoChannelState
 }

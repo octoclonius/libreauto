@@ -7,12 +7,12 @@ class MediaStartTest {
 
     @Test
     fun theStartHasSession0AsField1AndTheConfigIndexAsField2() {
-        assertArrayEquals(bytes(0x08, 0x00, 0x10, 0x00), videoStart(0))
+        assertArrayEquals(bytes(0x08, 0x00, 0x10, 0x00), mediaStart(0, 0))
     }
 
     @Test
     fun theStartCarriesAnotherConfigIndex() {
-        assertArrayEquals(bytes(0x08, 0x00, 0x10, 0x01), videoStart(1))
+        assertArrayEquals(bytes(0x08, 0x00, 0x10, 0x01), mediaStart(0, 1))
     }
 
     @Test

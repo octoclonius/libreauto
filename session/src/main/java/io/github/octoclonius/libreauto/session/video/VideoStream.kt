@@ -1,20 +1,18 @@
 package io.github.octoclonius.libreauto.session.video
 
 import android.content.Context
-import android.media.MediaCodec
 import android.util.Log
-import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
-import io.github.octoclonius.libreauto.protocol.media.mediaData
+import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import java.io.Closeable
 import java.io.IOException
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.thread
-import kotlin.concurrent.withLock
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 internal class VideoStream(
     private val context: Context,
     private val layout: CarLayout,
+    private val configIndex: Int,
     private val decoderDepth: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Unit,
@@ -22,125 +20,95 @@ internal class VideoStream(
 
     companion object {
         private const val TAG = "VideoStream"
-        private const val DEQUEUE_TIMEOUT_US = 100_000L
+        private const val FIRST_SESSION = 0
     }
 
-    private val lock = ReentrantLock()
-    private val permitFreed = lock.newCondition()
-    private var unacked = 0
-    @Volatile private var isClosed = false
+    private val executor: ExecutorService =
+        Executors.newSingleThreadExecutor { Thread(it, "video-stream").apply { isDaemon = true } }
+    private var session = FIRST_SESSION
+    @Volatile private var encoder: VideoEncoder? = null
+    private var compositor: VideoCompositor? = null
+    private var rail: RailVirtualDisplay? = null
+    private var display: PrivilegedDisplay? = null
 
     fun start() {
-        thread(isDaemon = true, name = "video-encoder") { encode() }
+        executor.execute(::setUp)
+        resume()
     }
 
-    fun acknowledge(count: Int) {
-        lock.withLock {
-            unacked -= minOf(count, unacked)
-            permitFreed.signalAll()
+    fun resume() {
+        val started = VideoEncoder(layout, maxUnacked, session, send)
+        encoder = started
+        executor.execute {
+            val current = compositor
+            if (current == null) {
+                Log.w(TAG, "No video session ${started.session} without a compositor")
+                return@execute
+            }
+            if (!sendOrLog(MediaMessageType.START, mediaStart(started.session, configIndex))) {
+                return@execute
+            }
+            Log.i(TAG, "Started video session ${started.session} with config $configIndex")
+            started.run(current)
         }
+    }
+
+    fun pause() {
+        val stopped = encoder ?: return
+        encoder = null
+        stopped.close()
+        session++
+        executor.execute {
+            if (sendOrLog(MediaMessageType.STOP, ByteArray(0))) {
+                Log.i(TAG, "Stopped video session ${stopped.session}")
+            }
+        }
+    }
+
+    fun acknowledge(ackedSession: Int?, count: Int) {
+        val current = encoder ?: return
+        if (ackedSession != null && ackedSession != current.session) return
+        current.acknowledge(count)
     }
 
     override fun close() {
-        lock.withLock {
-            isClosed = true
-            permitFreed.signalAll()
-        }
+        encoder?.close()
+        encoder = null
+        executor.execute(::release)
+        executor.shutdown()
     }
 
-    private fun encode() {
-        val format = layout.format
-        val width = format.frameWidth
-        val height = format.frameHeight
-        val framesPerSecond = format.framesPerSecond
-        val name = H264Encoder.name(width, height, framesPerSecond)
-        if (name == null) {
-            Log.w(TAG, "No H.264 encoder for ${width}x$height at $framesPerSecond fps")
-            close()
-            return
-        }
-        val encoder =
-            try {
-                MediaCodec.createByCodecName(name)
-            } catch (e: IOException) {
-                Log.w(TAG, "Can't create the H.264 encoder $name", e)
-                close()
-                return
-            }
-        var surface: Surface? = null
-        var compositor: VideoCompositor? = null
-        var rail: RailVirtualDisplay? = null
-        var display: PrivilegedDisplay? = null
+    private fun setUp() {
         try {
-            encoder.configure(
-                H264Encoder.format(width, height, framesPerSecond),
-                null,
-                null,
-                MediaCodec.CONFIGURE_FLAG_ENCODE,
-            )
-            val input = encoder.createInputSurface()
-            surface = input
-            encoder.start()
-            Log.i(
-                TAG,
-                "Encoding ${width}x$height at $framesPerSecond fps with $name, showing " +
-                    "${format.visibleWidth}x${format.visibleHeight} inside margins " +
-                    "${format.margins} from a " +
-                    "${format.displayWidth}x${format.displayHeight} area at " +
-                    "${format.density} dpi: apps in ${layout.apps} at ${layout.appsDensity} dpi, " +
-                    "rail in ${layout.rail}",
-            )
             val created =
-                VideoCompositor(
-                    input,
-                    format,
-                    listOf(layout.apps, layout.rail),
-                    decoderDepth,
-                    ::close,
-                )
+                VideoCompositor(layout.format, listOf(layout.apps, layout.rail), decoderDepth) {
+                    encoder?.close()
+                }
             compositor = created
             val (appsInput, railInput) = created.inputs
             rail = RailVirtualDisplay(context, railInput, layout)
             display = PrivilegedDisplay(appsInput, layout).also { it.start() }
-            drain(encoder)
         } catch (e: IllegalStateException) {
-            Log.w(TAG, "The H.264 encoder or the compositor failed", e)
-        } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "The H.264 encoder refused the format", e)
-        } catch (e: IOException) {
-            Log.w(TAG, "Sending video to the car failed", e)
-        } finally {
-            close()
-            display?.close()
-            rail?.close()
-            encoder.release()
-            compositor?.close()
-            surface?.release()
+            Log.w(TAG, "The compositor failed", e)
+            release()
         }
     }
 
-    private fun drain(encoder: MediaCodec) {
-        val info = MediaCodec.BufferInfo()
-        while (!isClosed) {
-            val index = encoder.dequeueOutputBuffer(info, DEQUEUE_TIMEOUT_US)
-            if (index < 0) continue
-            val buffer = checkNotNull(encoder.getOutputBuffer(index))
-            val data = ByteArray(buffer.remaining()).also { buffer.get(it) }
-            encoder.releaseOutputBuffer(index, false)
-            when {
-                info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 ->
-                    send(MediaMessageType.CODEC_CONFIG, data)
-                data.isNotEmpty() && takePermit() ->
-                    send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))
-            }
-        }
-    }
-
-    private fun takePermit(): Boolean =
-        lock.withLock {
-            while (unacked >= maxUnacked && !isClosed) permitFreed.await()
-            if (isClosed) return false
-            unacked++
+    private fun sendOrLog(type: Int, body: ByteArray): Boolean =
+        try {
+            send(type, body)
             true
+        } catch (e: IOException) {
+            Log.w(TAG, "Sending video message $type to the car failed", e)
+            false
         }
+
+    private fun release() {
+        display?.close()
+        rail?.close()
+        compositor?.close()
+        display = null
+        rail = null
+        compositor = null
+    }
 }
