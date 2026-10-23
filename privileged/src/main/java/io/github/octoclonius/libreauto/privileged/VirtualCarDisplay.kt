@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.app.PendingIntent
 import android.companion.virtual.VirtualDeviceManager
 import android.companion.virtual.VirtualDeviceParams
 import android.content.ComponentName
@@ -11,6 +12,7 @@ import android.util.Log
 import android.view.Surface
 import java.io.Closeable
 import java.util.concurrent.Executor
+import java.util.function.IntConsumer
 
 internal class VirtualCarDisplay
 private constructor(
@@ -25,6 +27,7 @@ private constructor(
         private const val TAG = "VirtualCarDisplay"
         private const val NAME = "LibreAuto"
         private const val VIRTUAL_DISPLAY_FLAG_TRUSTED = 1 shl 10
+        private const val LAUNCH_SUCCESS = 0
 
         fun create(
             context: Context,
@@ -124,6 +127,26 @@ private constructor(
     }
 
     val id: Int = display.display.displayId
+
+    fun showHome(home: PendingIntent) {
+        device.javaClass
+            .getMethod(
+                "launchPendingIntent",
+                Int::class.javaPrimitiveType,
+                PendingIntent::class.java,
+                Executor::class.java,
+                IntConsumer::class.java,
+            )
+            .invoke(device, id, home, Executor(Runnable::run), IntConsumer(::onHomeLaunched))
+    }
+
+    private fun onHomeLaunched(result: Int) {
+        if (result == LAUNCH_SUCCESS) {
+            Log.i(TAG, "Showed the home on the display $id")
+        } else {
+            Log.w(TAG, "The home didn't launch on the display $id: result $result")
+        }
+    }
 
     fun onTouch(eventTimeNanos: Long, action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
         touchscreen.onTouch(eventTimeNanos, action, actionIndex, pointers)

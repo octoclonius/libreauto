@@ -2,7 +2,7 @@ package io.github.octoclonius.libreauto.privileged
 
 import android.view.KeyEvent
 
-private val KEY_CODES = setOf(KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_HOME)
+private val KEY_CODES = setOf(KeyEvent.KEYCODE_BACK)
 
 internal fun keyRequestError(displayId: Int, keyCode: Int, carDisplayId: Int?): String? =
     when {

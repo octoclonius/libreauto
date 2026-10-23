@@ -1,7 +1,9 @@
 package io.github.octoclonius.libreauto.session.privileged
 
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -36,9 +38,22 @@ object PrivilegedServiceConnection {
     internal lateinit var carHome: ComponentName
         private set
 
+    internal lateinit var carHomeIntent: PendingIntent
+        private set
+
     fun start(context: Context, service: ComponentName, carHome: ComponentName) {
         check(!::args.isInitialized) { "Already started" }
         this.carHome = carHome
+        carHomeIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_HOME)
+                    .setComponent(carHome)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         args =
             Shizuku.UserServiceArgs(service)

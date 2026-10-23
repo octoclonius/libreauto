@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged;
 
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.os.ParcelFileDescriptor;
 import android.view.Surface;
@@ -24,4 +25,6 @@ interface IPrivilegedService {
     ParcelFileDescriptor[] startAudio(in AudioOutput[] outputs, IAudioActivityListener listener) = 7;
 
     void stopAudio() = 8;
+
+    oneway void showHome(int displayId, in PendingIntent home) = 9;
 }

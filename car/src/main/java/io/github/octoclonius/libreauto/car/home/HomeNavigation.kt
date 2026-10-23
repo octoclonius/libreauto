@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.car.home
 import android.view.KeyEvent
 import io.github.octoclonius.libreauto.session.input.PrivilegedKeys
 import io.github.octoclonius.libreauto.session.video.CarDisplay
+import io.github.octoclonius.libreauto.session.video.PrivilegedHome
 
 fun onAppsButton() {
     if (HomeState.isHomeShown.value) HomeState.toggleDrawer() else showHome()
@@ -21,5 +22,5 @@ fun onBackButton() {
 }
 
 private fun showHome() {
-    CarDisplay.state.value?.let { PrivilegedKeys.send(it.id, KeyEvent.KEYCODE_HOME) }
+    CarDisplay.state.value?.let { PrivilegedHome.show(it.id) }
 }

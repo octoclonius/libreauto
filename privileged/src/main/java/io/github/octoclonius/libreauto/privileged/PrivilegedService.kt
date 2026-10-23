@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.hardware.usb.UsbManager
@@ -129,6 +130,24 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             } catch (e: Exception) {
                 val cause = if (e is InvocationTargetException) e.targetException else e
                 Log.e(TAG, "Sending the key $keyCode to the car display $displayId failed", cause)
+            }
+        }
+    }
+
+    override fun showHome(displayId: Int, home: PendingIntent) {
+        synchronized(displayLock) {
+            val current = display
+            val error =
+                homeRequestError(displayId, current?.id, home.isActivity, home.creatorUid, appUid)
+            if (current == null || error != null) {
+                Log.w(TAG, "Didn't show the home: $error")
+                return
+            }
+            try {
+                current.showHome(home)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Showing the home on the car display $displayId failed", cause)
             }
         }
     }

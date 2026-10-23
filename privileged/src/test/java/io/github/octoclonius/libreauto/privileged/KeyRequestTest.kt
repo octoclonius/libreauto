@@ -7,16 +7,10 @@ import org.junit.jupiter.api.Test
 class KeyRequestTest {
 
     private val back = 4
-    private val home = 3
 
     @Test
     fun backToTheCarDisplayIsAccepted() {
         assertNull(keyRequestError(7, back, carDisplayId = 7))
-    }
-
-    @Test
-    fun homeToTheCarDisplayIsAccepted() {
-        assertNull(keyRequestError(7, home, carDisplayId = 7))
     }
 
     @Test
@@ -31,7 +25,7 @@ class KeyRequestTest {
 
     @Test
     fun otherKeysAreRefused() {
-        for (keyCode in listOf(24, 26, 66, 85)) {
+        for (keyCode in listOf(3, 24, 26, 66, 85)) {
             assertNotNull(keyRequestError(7, keyCode, carDisplayId = 7))
         }
     }
