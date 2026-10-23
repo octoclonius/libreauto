@@ -50,7 +50,7 @@ class SessionService : Service() {
             override fun onReceive(context: Context, intent: Intent) {
                 val accessory = intent.accessory() ?: return
                 Log.i(TAG, "Car detached: ${accessory.model}")
-                sessions.detach(accessory)
+                sessions.detach()
             }
         }
 

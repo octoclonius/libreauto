@@ -87,8 +87,8 @@ class AccessorySessionsTest {
     }
 
     @Test
-    fun detachingItsAccessoryClosesTheSession() {
-        val link = FakeLink(during = { sessions.detach("car") })
+    fun detachingClosesTheRunningSession() {
+        val link = FakeLink(during = { sessions.detach() })
         sessions.start(1, "car") { link }
         executor.runNext()
         assertTrue(link.wasClosedWhileRunning)
@@ -96,19 +96,12 @@ class AccessorySessionsTest {
     }
 
     @Test
-    fun detachingAnotherAccessoryLeavesTheSessionRunning() {
-        val link = FakeLink(during = { sessions.detach("other") })
-        sessions.start(1, "car") { link }
-        executor.runNext()
-        assertFalse(link.wasClosedWhileRunning)
-    }
-
-    @Test
     fun aDetachAfterTheSessionEndedDoesNotCloseTheNextOne() {
         sessions.start(1, "car") { FakeLink() }
         executor.runNext()
-        val link = FakeLink(during = { sessions.detach("other") })
-        sessions.start(2, "next") { link }
+        sessions.detach()
+        val link = FakeLink()
+        sessions.start(2, "car") { link }
         executor.runNext()
         assertFalse(link.wasClosedWhileRunning)
         assertEquals(listOf(1, 2), stops)
@@ -140,7 +133,7 @@ class AccessorySessionsTest {
 
     @Test
     fun aLinkClosedByUsIsNotReportedEvenIfItsReadFailed() {
-        val detached = FakeLink(isLost = true, during = { sessions.detach("car") })
+        val detached = FakeLink(isLost = true, during = { sessions.detach() })
         sessions.start(1, "car") { detached }
         executor.runNext()
         val replaced = FakeLink(isLost = true, during = { sessions.start(3, "car") { FakeLink() } })

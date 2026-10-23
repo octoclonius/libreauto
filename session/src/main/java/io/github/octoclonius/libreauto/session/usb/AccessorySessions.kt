@@ -25,8 +25,8 @@ internal class AccessorySessions<A>(
         executor.execute { run(session, open) }
     }
 
-    fun detach(accessory: A) {
-        synchronized(lock) { current?.takeIf { it.accessory == accessory }?.close() }
+    fun detach() {
+        synchronized(lock) { current?.close() }
     }
 
     fun close() {
