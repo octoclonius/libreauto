@@ -108,6 +108,9 @@ private constructor(
             builder.javaClass
                 .getMethod("setHomeSupported", Boolean::class.javaPrimitiveType)
                 .invoke(builder, true)
+            builder.javaClass
+                .getMethod("setIgnoreActivitySizeRestrictions", Boolean::class.javaPrimitiveType)
+                .invoke(builder, true)
             return device.javaClass
                 .getMethod(
                     "createVirtualDisplay",
