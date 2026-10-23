@@ -154,9 +154,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     override fun startAudio(
         outputs: Array<AudioOutput>,
+        input: AudioInput?,
         listener: IAudioActivityListener,
     ): Array<ParcelFileDescriptor> {
-        val error = audioRequestError(outputs.toList())
+        val error = audioRequestError(outputs.toList(), input)
         if (error != null) throw IllegalArgumentException(error)
         synchronized(audioLock) {
             releaseAudio()
@@ -168,11 +169,12 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                     CarAudioPolicy.register(
                         shellContext,
                         outputs.toList(),
+                        input,
                         monitor.looper,
                         monitor::onFocusChanged,
                     )
                 audio = policy
-                monitor.start(policy::focusStack)
+                monitor.start(policy::focusStack, input != null)
                 return policy.pipes.toTypedArray()
             } catch (e: Exception) {
                 releaseAudio()

@@ -2,6 +2,7 @@ package android.media.audiopolicy;
 
 public class AudioMixingRule {
     public static final int RULE_MATCH_ATTRIBUTE_USAGE = 1;
+    public static final int RULE_MATCH_ATTRIBUTE_CAPTURE_PRESET = 2;
 
     public static class Builder {
         public Builder() {

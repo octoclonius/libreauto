@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.AudioInput
 import io.github.octoclonius.libreauto.privileged.AudioOutput
 import io.github.octoclonius.libreauto.privileged.AudioPlayer
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
@@ -25,10 +26,14 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     private val androidFocus = AndroidAudioFocus(context)
     private var channels: List<AudioChannel> = emptyList()
     private var streaming: List<AudioChannel> = emptyList()
+    private var microphone: MicrophoneChannel? = null
     private var privileged: PrivilegedAudio? = null
 
-    fun start(channels: List<AudioChannel>) {
-        executor.execute { this.channels = channels }
+    fun start(channels: List<AudioChannel>, microphone: MicrophoneChannel?) {
+        executor.execute {
+            this.channels = channels
+            this.microphone = microphone
+        }
     }
 
     fun onChannelSettled() {
@@ -61,6 +66,7 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
                 privileged?.close()
                 privileged = null
                 channels.forEach(AudioChannel::close)
+                microphone?.close()
                 androidFocus.abandon()
             }
             .get()
@@ -69,24 +75,36 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
 
     private fun divertWhenSettled() {
         if (privileged != null || !channels.all(AudioChannel::isSettled)) return
+        if (microphone?.isSettled == false) return
         streaming = channels.filter { it.ready != null }
         if (streaming.isEmpty()) {
             Log.w(TAG, "No audio channel of the car is usable; audio stays on the phone")
-            return
         }
+        val input =
+            microphone
+                ?.takeIf { it.isReady }
+                ?.let { AudioInput(it.config.sampleRate, it.config.channelCount) }
+        if (input == null) Log.i(TAG, "Recordings keep the phone's microphone")
+        if (streaming.isEmpty() && input == null) return
         val outputs =
             streaming.map { channel ->
                 val config = checkNotNull(channel.ready).config
                 AudioOutput(channel.usages, config.sampleRate, config.channelCount)
             }
         privileged =
-            PrivilegedAudio(outputs, ::onPipes, ::onActivity).also(PrivilegedAudio::start)
+            PrivilegedAudio(outputs, input, ::onPipes, ::onActivity, ::onMicrophoneActivity)
+                .also(PrivilegedAudio::start)
     }
 
     private fun onPipes(pipes: List<ParcelFileDescriptor>) {
         executor.execute {
             for ((channel, pipe) in streaming.zip(pipes)) channel.ready?.stream?.read(pipe)
+            pipes.getOrNull(streaming.size)?.let { microphone?.inject(it) }
         }
+    }
+
+    private fun onMicrophoneActivity(isRecording: Boolean) {
+        executor.execute { microphone?.setRecording(isRecording) }
     }
 
     private fun onActivity(players: List<AudioPlayer>, focusHolders: List<AudioFocusHolder>) {

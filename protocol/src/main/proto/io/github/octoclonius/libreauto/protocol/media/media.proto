@@ -31,3 +31,15 @@ message MediaAck {
   optional int32 session = 1;
   optional int32 count = 2;
 }
+
+message MicrophoneRequest {
+  optional bool is_open = 1;
+  optional bool noise_suppression = 2;
+  optional bool echo_cancellation = 3;
+  optional int32 max_unacked = 4;
+}
+
+message MicrophoneResponse {
+  optional int32 status = 1;
+  optional int32 session = 2;
+}

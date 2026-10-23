@@ -4,6 +4,7 @@ import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.AudioInput
 import io.github.octoclonius.libreauto.privileged.AudioOutput
 import io.github.octoclonius.libreauto.privileged.AudioPlayer
 import io.github.octoclonius.libreauto.privileged.IAudioActivityListener
@@ -19,8 +20,10 @@ import kotlinx.coroutines.runBlocking
 
 internal class PrivilegedAudio(
     private val outputs: List<AudioOutput>,
+    private val input: AudioInput?,
     private val onPipes: (List<ParcelFileDescriptor>) -> Unit,
     private val onActivity: (List<AudioPlayer>, List<AudioFocusHolder>) -> Unit,
+    private val onMicrophoneActivity: (Boolean) -> Unit,
 ) : Closeable {
 
     companion object {
@@ -36,6 +39,10 @@ internal class PrivilegedAudio(
                 focusHolders: Array<AudioFocusHolder>,
             ) {
                 onActivity(players.toList(), focusHolders.toList())
+            }
+
+            override fun onMicrophoneActivity(isRecording: Boolean) {
+                this@PrivilegedAudio.onMicrophoneActivity(isRecording)
             }
         }
 
@@ -54,13 +61,14 @@ internal class PrivilegedAudio(
         current?.let(::stop)
         current = null
         onActivity(emptyList(), emptyList())
+        onMicrophoneActivity(false)
         if (service == null) {
             Log.i(TAG, "No audio for the car while the privileged service isn't running")
             return
         }
         val pipes =
             try {
-                service.startAudio(outputs.toTypedArray(), listener)
+                service.startAudio(outputs.toTypedArray(), input, listener)
             } catch (e: RemoteException) {
                 Log.w(TAG, "The privileged service didn't divert audio to the car", e)
                 return
@@ -69,7 +77,11 @@ internal class PrivilegedAudio(
                 return
             }
         current = service
-        Log.i(TAG, "The privileged service diverts ${pipes.size} outputs to the car")
+        Log.i(
+            TAG,
+            "The privileged service diverts ${outputs.size} outputs to the car" +
+                if (input != null) " and injects its microphone" else "",
+        )
         onPipes(pipes.toList())
     }
 

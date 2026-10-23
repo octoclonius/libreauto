@@ -4,6 +4,7 @@ import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.os.ParcelFileDescriptor;
 import android.view.Surface;
+import io.github.octoclonius.libreauto.privileged.AudioInput;
 import io.github.octoclonius.libreauto.privileged.AudioOutput;
 import io.github.octoclonius.libreauto.privileged.IAudioActivityListener;
 
@@ -22,7 +23,7 @@ interface IPrivilegedService {
 
     oneway void sendKey(int displayId, int keyCode) = 6;
 
-    ParcelFileDescriptor[] startAudio(in AudioOutput[] outputs, IAudioActivityListener listener) = 7;
+    ParcelFileDescriptor[] startAudio(in AudioOutput[] outputs, in @nullable AudioInput input, IAudioActivityListener listener) = 7;
 
     void stopAudio() = 8;
 

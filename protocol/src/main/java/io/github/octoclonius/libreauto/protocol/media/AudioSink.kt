@@ -3,7 +3,7 @@ package io.github.octoclonius.libreauto.protocol.media
 import io.github.octoclonius.libreauto.protocol.control.AudioConfig
 import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 
-private const val CODEC_PCM = 1
+internal const val CODEC_PCM = 1
 private const val BIT_DEPTH_16 = 16
 private const val MAX_CHANNELS = 2
 
@@ -29,7 +29,7 @@ fun audioSink(response: ServiceDiscoveryResponse, type: Int): AudioSink? {
     return null
 }
 
-private fun pcmConfig(index: Int, config: AudioConfig): PcmConfig? {
+internal fun pcmConfig(index: Int, config: AudioConfig): PcmConfig? {
     val sampleRate = config.sample_rate ?: return null
     val channelCount = config.channel_count ?: return null
     if (sampleRate <= 0 || config.bit_depth != BIT_DEPTH_16) return null

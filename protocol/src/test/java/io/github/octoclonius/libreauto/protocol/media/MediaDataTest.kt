@@ -18,6 +18,24 @@ class MediaDataTest {
     }
 
     @Test
+    fun thePayloadIsWhatFollowsTheEightByteTimestamp() {
+        assertArrayEquals(
+            bytes(0x34, 0x12),
+            mediaDataPayload(bytes(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x34, 0x12)),
+        )
+    }
+
+    @Test
+    fun dataShorterThanTheTimestampIsRefused() {
+        assertThrows<ProtocolException> { mediaDataPayload(bytes(0x01, 0x02, 0x03)) }
+    }
+
+    @Test
+    fun anAckSentHasTheSessionAsField1AndTheCountAsField2() {
+        assertArrayEquals(bytes(0x08, 0x03, 0x10, 0x01), mediaAck(3, 1))
+    }
+
+    @Test
     fun theDhusAckIsOfOneFrame() {
         assertEquals(1, parseMediaAck(bytes(0x08, 0x00, 0x10, 0x01)).count)
     }

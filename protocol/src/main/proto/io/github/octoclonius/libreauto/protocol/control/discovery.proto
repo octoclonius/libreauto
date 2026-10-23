@@ -78,7 +78,10 @@ message InputSourceService {
   optional int32 display_id = 5;
 }
 
-message MediaSourceService {}
+message MediaSourceService {
+  optional int32 codec = 1;
+  optional AudioConfig audio_config = 2;
+}
 
 message BluetoothService {}
 

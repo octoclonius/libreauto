@@ -3,11 +3,16 @@ package android.media.audiopolicy;
 import android.content.Context;
 import android.media.AudioFocusInfo;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.os.Looper;
 import java.util.List;
 
 public class AudioPolicy {
     public AudioRecord createAudioRecordSink(AudioMix mix, AudioRecord.Builder audioRecordBuilder) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public AudioTrack createAudioTrackSource(AudioMix mix, AudioTrack.Builder audioTrackBuilder) {
         throw new RuntimeException("Stub!");
     }
 

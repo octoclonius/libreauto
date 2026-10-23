@@ -27,9 +27,11 @@ import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.protocol.input.inputSource
 import io.github.octoclonius.libreauto.protocol.media.AudioType
 import io.github.octoclonius.libreauto.protocol.media.audioSink
+import io.github.octoclonius.libreauto.protocol.media.audioSource
 import io.github.octoclonius.libreauto.protocol.media.videoSink
 import io.github.octoclonius.libreauto.session.audio.AudioChannel
 import io.github.octoclonius.libreauto.session.audio.CarAudio
+import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import io.github.octoclonius.libreauto.session.input.CarButtons
@@ -109,6 +111,7 @@ class CarConnection(context: Context) {
         var input: InputChannel? = null
         var audio: CarAudio? = null
         var audioChannels: List<AudioChannel> = emptyList()
+        var microphone: MicrophoneChannel? = null
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -129,6 +132,10 @@ class CarConnection(context: Context) {
                 val audioChannel = audioChannels.firstOrNull { it.channel == message.channel }
                 if (audioChannel != null) {
                     if (!audioChannel.onMessage(message)) logUnhandled(message)
+                    continue
+                }
+                if (microphone != null && message.channel == microphone.channel) {
+                    if (!microphone.onMessage(message)) logUnhandled(message)
                     continue
                 }
                 if (message.channel != CONTROL_CHANNEL) {
@@ -188,7 +195,10 @@ class CarConnection(context: Context) {
                             }
                         if (audioSinks.isEmpty()) {
                             Log.w(TAG, "The car has no media or guidance audio channel")
-                        } else {
+                        }
+                        val audioSource = audioSource(response)
+                        if (audioSource == null) Log.w(TAG, "The car has no microphone")
+                        if (audioSinks.isNotEmpty() || audioSource != null) {
                             val carAudio = CarAudio(context, control)
                             audio = carAudio
                             audioChannels =
@@ -201,8 +211,17 @@ class CarConnection(context: Context) {
                                         carAudio::onStreamStartedOrStopped,
                                     )
                                 }
-                            carAudio.start(audioChannels)
+                            microphone =
+                                audioSource?.let {
+                                    MicrophoneChannel(
+                                        ChannelSender(writer, tls, it.channel),
+                                        it.config,
+                                        carAudio::onChannelSettled,
+                                    )
+                                }
+                            carAudio.start(audioChannels, microphone)
                             audioChannels.forEach(AudioChannel::open)
+                            microphone?.open()
                         }
                     }
                     MessageType.AUDIO_FOCUS_NOTIFICATION ->

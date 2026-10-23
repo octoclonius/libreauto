@@ -5,4 +5,6 @@ import io.github.octoclonius.libreauto.privileged.AudioPlayer;
 
 oneway interface IAudioActivityListener {
     void onAudioActivity(in AudioPlayer[] players, in AudioFocusHolder[] focusHolders);
+
+    void onMicrophoneActivity(boolean isRecording);
 }

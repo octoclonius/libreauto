@@ -12,8 +12,16 @@ private val USAGES =
         AudioAttributes.USAGE_ASSISTANT,
     )
 
-internal fun audioRequestError(outputs: List<AudioOutput>): String? {
-    if (outputs.isEmpty()) return "There are no audio outputs"
+internal fun audioRequestError(outputs: List<AudioOutput>, input: AudioInput?): String? {
+    if (outputs.isEmpty() && input == null) return "There are no audio outputs and no input"
+    if (input != null) {
+        if (input.sampleRate <= 0) {
+            return "The input sample rate ${input.sampleRate} isn't positive"
+        }
+        if (input.channelCount !in 1..MAX_CHANNELS) {
+            return "${input.channelCount} input channels aren't 1 or $MAX_CHANNELS"
+        }
+    }
     for (output in outputs) {
         val error =
             when {

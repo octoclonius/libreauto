@@ -9,6 +9,15 @@ private const val TIMESTAMP_SIZE = 8
 fun mediaData(timestampUs: Long, data: ByteArray): ByteArray =
     ByteBuffer.allocate(TIMESTAMP_SIZE + data.size).putLong(timestampUs).put(data).array()
 
+@Throws(ProtocolException::class)
+fun mediaDataPayload(body: ByteArray): ByteArray {
+    if (body.size < TIMESTAMP_SIZE) throw ProtocolException("Media data of ${body.size} bytes")
+    return body.copyOfRange(TIMESTAMP_SIZE, body.size)
+}
+
+fun mediaAck(session: Int, count: Int): ByteArray =
+    MediaAck(session = session, count = count).encode()
+
 class MediaAcknowledgment(val session: Int?, val count: Int)
 
 @Throws(IOException::class)
