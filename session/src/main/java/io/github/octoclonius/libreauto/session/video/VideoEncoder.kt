@@ -46,7 +46,10 @@ internal class VideoEncoder(
         val width = format.frameWidth
         val height = format.frameHeight
         val framesPerSecond = format.framesPerSecond
-        val name = H264Encoder.name(width, height, framesPerSecond)
+        val bitRate =
+            H264Encoder.bitRate(format.visibleWidth * format.visibleHeight, framesPerSecond)
+        val encoderFormat = H264Encoder.format(width, height, framesPerSecond, bitRate)
+        val name = H264Encoder.name(encoderFormat)
         if (name == null) {
             Log.w(TAG, "No H.264 encoder for ${width}x$height at $framesPerSecond fps")
             return
@@ -60,19 +63,15 @@ internal class VideoEncoder(
             }
         var surface: Surface? = null
         try {
-            encoder.configure(
-                H264Encoder.format(width, height, framesPerSecond),
-                null,
-                null,
-                MediaCodec.CONFIGURE_FLAG_ENCODE,
-            )
+            encoder.configure(encoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             val input = encoder.createInputSurface()
             surface = input
             encoder.start()
             Log.i(
                 TAG,
-                "Encoding session $session: ${width}x$height at $framesPerSecond fps with " +
-                    "$name, showing ${format.visibleWidth}x${format.visibleHeight} inside " +
+                "Encoding session $session: ${width}x$height at $framesPerSecond fps and " +
+                    "$bitRate bit/s with $name, showing " +
+                    "${format.visibleWidth}x${format.visibleHeight} inside " +
                     "margins ${format.margins} from a " +
                     "${format.displayWidth}x${format.displayHeight} area at " +
                     "${format.density} dpi: apps in ${layout.apps} at ${layout.appsDensity} dpi, " +
