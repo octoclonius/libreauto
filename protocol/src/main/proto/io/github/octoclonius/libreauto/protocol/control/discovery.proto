@@ -64,6 +64,18 @@ message VideoConfig {
 message UiConfig {
   optional UiInsets margins = 1;
   optional UiInsets content_insets = 2;
+  repeated UiCutout cutouts = 7;
+}
+
+message UiCutout {
+  optional UiRect bounds = 1;
+}
+
+message UiRect {
+  optional uint32 top = 1;
+  optional uint32 bottom = 2;
+  optional uint32 left = 3;
+  optional uint32 right = 4;
 }
 
 message UiInsets {

@@ -288,6 +288,73 @@ class VideoFormatTest {
     }
 
     @Test
+    fun theCutoutsAreUiConfigField7WithTheirBoundsAsField1() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, message(7, sides(1, top = 0, bottom = 40, left = 300, right = 500))),
+            )
+        assertEquals(
+            listOf(CarRect(left = 300, top = 0, right = 500, bottom = 40)),
+            format?.cutouts,
+        )
+    }
+
+    @Test
+    fun aCutoutWithoutBoundsIsSkipped() {
+        assertEquals(
+            emptyList<CarRect>(),
+            format(varint(1, 1), varint(5, 160), message(11, message(7)))?.cutouts,
+        )
+    }
+
+    @Test
+    fun cutoutsAreTakenOutOfTheVisiblePixels() {
+        val format =
+            VideoFormat(
+                1280,
+                720,
+                30,
+                160,
+                margins = CarInsets(top = 0, bottom = 0, left = 40, right = 40),
+                cutouts = listOf(CarRect(left = 300, top = 0, right = 500, bottom = 40)),
+            )
+        assertEquals(1200 * 720 - 200 * 40, format.pixelsOutsideCutouts)
+    }
+
+    @Test
+    fun emptyOrInvertedCutoutsTakeNothingOut() {
+        val format =
+            VideoFormat(
+                800,
+                480,
+                30,
+                160,
+                cutouts =
+                    listOf(
+                        CarRect(left = 300, top = 0, right = 300, bottom = 40),
+                        CarRect(left = 500, top = 0, right = 300, bottom = 40),
+                        CarRect(left = 300, top = 40, right = 500, bottom = 0),
+                    ),
+            )
+        assertEquals(800 * 480, format.pixelsOutsideCutouts)
+    }
+
+    @Test
+    fun cutoutsCoveringMoreThanTheVisibleAreaLeaveNoPixels() {
+        val format =
+            VideoFormat(
+                800,
+                480,
+                30,
+                160,
+                cutouts = listOf(CarRect(left = 0, top = 0, right = 2000, bottom = 2000)),
+            )
+        assertEquals(0, format.pixelsOutsideCutouts)
+    }
+
+    @Test
     fun displayPointsScaleBackToTheVisibleArea() {
         val format = VideoFormat(1280, 720, 30, 160, pixelAspectRatioE4 = 15000)
         assertEquals(640, format.visibleX(960))

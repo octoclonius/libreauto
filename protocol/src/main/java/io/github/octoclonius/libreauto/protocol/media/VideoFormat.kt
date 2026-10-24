@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.protocol.media
 
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.UiInsets
+import io.github.octoclonius.libreauto.protocol.control.UiRect
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import java.net.ProtocolException
 import kotlin.math.roundToInt
@@ -28,6 +29,13 @@ data class CarInsets(val top: Int, val bottom: Int, val left: Int, val right: In
     }
 }
 
+data class CarRect(val left: Int, val top: Int, val right: Int, val bottom: Int) {
+    val area: Long
+        get() =
+            if (right > left && bottom > top) (right.toLong() - left) * (bottom.toLong() - top)
+            else 0
+}
+
 data class VideoFormat(
     val frameWidth: Int,
     val frameHeight: Int,
@@ -36,12 +44,19 @@ data class VideoFormat(
     val margins: CarInsets = CarInsets.NONE,
     val contentInsets: CarInsets = CarInsets.NONE,
     val pixelAspectRatioE4: Int = SQUARE_PIXEL_ASPECT_RATIO_E4,
+    val cutouts: List<CarRect> = emptyList(),
 ) {
     val visibleWidth: Int
         get() = frameWidth - margins.left - margins.right
 
     val visibleHeight: Int
         get() = frameHeight - margins.top - margins.bottom
+
+    val pixelsOutsideCutouts: Int
+        get() =
+            (visibleWidth.toLong() * visibleHeight - cutouts.sumOf { it.area })
+                .coerceAtLeast(0)
+                .toInt()
 
     val displayWidth: Int
         get() =
@@ -136,6 +151,7 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         margins,
         config.ui_config?.content_insets?.let(::insets) ?: CarInsets.NONE,
         pixelAspectRatioE4,
+        config.ui_config?.cutouts.orEmpty().mapNotNull { it.bounds?.let(::rect) },
     )
 }
 
@@ -181,6 +197,14 @@ private fun insets(sides: UiInsets): CarInsets =
         bottom = sides.bottom ?: 0,
         left = sides.left ?: 0,
         right = sides.right ?: 0,
+    )
+
+private fun rect(bounds: UiRect): CarRect =
+    CarRect(
+        left = bounds.left ?: 0,
+        top = bounds.top ?: 0,
+        right = bounds.right ?: 0,
+        bottom = bounds.bottom ?: 0,
     )
 
 private fun CarInsets.leavesArea(width: Int, height: Int): Boolean =

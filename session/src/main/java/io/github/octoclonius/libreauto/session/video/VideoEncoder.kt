@@ -46,8 +46,7 @@ internal class VideoEncoder(
         val width = format.frameWidth
         val height = format.frameHeight
         val framesPerSecond = format.framesPerSecond
-        val bitRate =
-            H264Encoder.bitRate(format.visibleWidth * format.visibleHeight, framesPerSecond)
+        val bitRate = H264Encoder.bitRate(format.pixelsOutsideCutouts, framesPerSecond)
         val encoderFormat = H264Encoder.format(width, height, framesPerSecond, bitRate)
         val name = H264Encoder.name(encoderFormat)
         if (name == null) {
