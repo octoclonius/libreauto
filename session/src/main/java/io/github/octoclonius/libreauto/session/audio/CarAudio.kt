@@ -11,14 +11,20 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.audioFocusRequest
 import io.github.octoclonius.libreauto.protocol.control.parseAudioFocusNotification
+import io.github.octoclonius.libreauto.protocol.media.AudioType
 import io.github.octoclonius.libreauto.session.ChannelSender
+import io.github.octoclonius.libreauto.session.media.MediaResumption
 import java.io.Closeable
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-internal class CarAudio(context: Context, private val control: ChannelSender) : Closeable {
+internal class CarAudio(private val context: Context, private val control: ChannelSender) :
+    Closeable {
 
     companion object {
         private const val TAG = "CarAudio"
+        private const val PAUSE_TIMEOUT_MILLIS = 1_000L
     }
 
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "car-audio") }
@@ -28,6 +34,11 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     private var streaming: List<AudioChannel> = emptyList()
     private var microphone: MicrophoneChannel? = null
     private var privileged: PrivilegedAudio? = null
+    private var mediaResumption: MediaResumption? = null
+    private var isMediaResumed = false
+    private var isMediaPlaying = false
+    private var mediaPaused: CountDownLatch? = null
+    private var isClosing = false
 
     fun start(channels: List<AudioChannel>, microphone: MicrophoneChannel?) {
         executor.execute {
@@ -61,6 +72,10 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     }
 
     override fun close() {
+        val paused = executor.submit(::pauseMedia).get()
+        if (paused?.await(PAUSE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS) == false) {
+            Log.w(TAG, "Media still plays $PAUSE_TIMEOUT_MILLIS ms after pausing it")
+        }
         executor
             .submit {
                 privileged?.close()
@@ -91,15 +106,34 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
                 val config = checkNotNull(channel.ready).config
                 AudioOutput(channel.usages, config.sampleRate, config.channelCount)
             }
+        if (streaming.any { it.audioType == AudioType.MEDIA }) {
+            mediaResumption = MediaResumption(context)
+        }
         privileged =
             PrivilegedAudio(outputs, input, ::onPipes, ::onActivity, ::onMicrophoneActivity)
                 .also(PrivilegedAudio::start)
+    }
+
+    private fun pauseMedia(): CountDownLatch? {
+        isClosing = true
+        val resumption = mediaResumption ?: return null
+        if (!isMediaPlaying) {
+            resumption.forget()
+            return null
+        }
+        resumption.pause()
+        return CountDownLatch(1).also { mediaPaused = it }
     }
 
     private fun onPipes(pipes: List<ParcelFileDescriptor>) {
         executor.execute {
             for ((channel, pipe) in streaming.zip(pipes)) channel.ready?.stream?.read(pipe)
             pipes.getOrNull(streaming.size)?.let { microphone?.inject(it) }
+            val resumption = mediaResumption
+            if (resumption != null && !isMediaResumed) {
+                isMediaResumed = true
+                resumption.resume()
+            }
         }
     }
 
@@ -110,6 +144,8 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     private fun onActivity(players: List<AudioPlayer>, focusHolders: List<AudioFocusHolder>) {
         executor.execute {
             val divertedPlayers = players.filter { isDiverted(it.usage) }
+            isMediaPlaying = isMediaPlaying(divertedPlayers)
+            if (!isMediaPlaying) mediaPaused?.countDown()
             for (channel in streaming) {
                 channel.ready?.stream?.setActive(
                     divertedPlayers.any { it.usage in channel.usages }
@@ -130,6 +166,7 @@ internal class CarAudio(context: Context, private val control: ChannelSender) : 
     private fun isIdle(): Boolean = streaming.all { it.ready?.stream?.isIdle != false }
 
     private fun act(actions: List<FocusNegotiation.Action>) {
+        if (isClosing) return
         for (action in actions) {
             when (action) {
                 is FocusNegotiation.Action.RequestCarFocus -> {

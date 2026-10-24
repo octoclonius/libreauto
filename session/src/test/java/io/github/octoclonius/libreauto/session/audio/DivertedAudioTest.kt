@@ -4,7 +4,9 @@ import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
 import io.github.octoclonius.libreauto.privileged.AudioPlayer
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class DivertedAudioTest {
@@ -33,6 +35,14 @@ class DivertedAudioTest {
     @Test
     fun systemAudioTakesNothing() {
         assertNull(divertedUsages(2))
+    }
+
+    @Test
+    fun onlyMediaPlayersCountAsMediaPlaying() {
+        assertFalse(isMediaPlaying(emptyList()))
+        assertTrue(isMediaPlaying(listOf(player(app, media))))
+        assertFalse(isMediaPlaying(listOf(player(app, game), player(otherApp, navigation))))
+        assertTrue(isMediaPlaying(listOf(player(app, game), player(otherApp, media))))
     }
 
     @Test

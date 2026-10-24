@@ -2,9 +2,9 @@ package io.github.octoclonius.libreauto.session.input
 
 import android.content.Context
 import android.media.AudioManager
-import android.os.SystemClock
 import android.view.KeyEvent
 import io.github.octoclonius.libreauto.protocol.input.CarButton
+import io.github.octoclonius.libreauto.session.pressMediaKey
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -37,10 +37,7 @@ class CarButtons(context: Context) {
     fun onPress(code: Int) {
         val mediaKey = MEDIA_KEYS[code]
         if (mediaKey != null) {
-            val now = SystemClock.uptimeMillis()
-            for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
-                audioManager.dispatchMediaKeyEvent(KeyEvent(now, now, action, mediaKey, 0))
-            }
+            audioManager.pressMediaKey(mediaKey)
         } else if (code == CarButton.HOME) {
             _presses.tryEmit(NavigationButton.Home)
         } else if (code == CarButton.BACK) {
