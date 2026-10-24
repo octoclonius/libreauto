@@ -61,7 +61,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private val layou
                 return null
             }
         Log.i(TAG, "The privileged service created the car display $id")
-        CarDisplay.onCreated(id, layout.appsContentInsets, layout.format.density)
+        CarDisplay.onCreated(id, layout.format.density)
         return id
     }
 

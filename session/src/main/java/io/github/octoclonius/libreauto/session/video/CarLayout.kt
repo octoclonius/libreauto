@@ -31,7 +31,6 @@ internal data class CarLayout(
     val rail: Area,
     val railContentInsets: CarInsets,
     val apps: Area,
-    val appsContentInsets: CarInsets,
 ) {
     val appsDensity: Int
         get() =
@@ -45,30 +44,30 @@ internal data class CarLayout(
 internal fun carLayout(format: VideoFormat, isDriverOnRight: Boolean): CarLayout {
     val width = format.displayWidth
     val height = format.displayHeight
-    val stable = format.displayStableInsets
-    val content = format.displayContentInsets
+    val permanent = format.displayStableInsets.union(format.displayCutoutInsets)
+    val covered = permanent.union(format.displayContentInsets)
     val thickness =
         (RAIL_THICKNESS_DP.toDouble() * format.density / DisplayMetrics.DENSITY_DEFAULT)
             .roundToInt()
     val side =
         railSide(
-            width - stable.left - stable.right,
-            height - stable.top - stable.bottom,
+            width - permanent.left - permanent.right,
+            height - permanent.top - permanent.bottom,
             thickness,
             isDriverOnRight,
         )
-    val (rail, apps) =
+    val (rail, besideRail) =
         when (side) {
             RailSide.Left -> {
-                val edge = stable.left + thickness
+                val edge = permanent.left + thickness
                 Area(0, 0, edge, height) to Area(edge, 0, width, height)
             }
             RailSide.Right -> {
-                val edge = width - stable.right - thickness
+                val edge = width - permanent.right - thickness
                 Area(edge, 0, width, height) to Area(0, 0, edge, height)
             }
             RailSide.Bottom -> {
-                val edge = height - stable.bottom - thickness
+                val edge = height - permanent.bottom - thickness
                 Area(0, edge, width, height) to Area(0, 0, width, edge)
             }
         }
@@ -76,11 +75,18 @@ internal fun carLayout(format: VideoFormat, isDriverOnRight: Boolean): CarLayout
         format,
         side,
         rail = rail,
-        railContentInsets = content.within(rail, width, height),
-        apps = apps,
-        appsContentInsets = content.within(apps, width, height),
+        railContentInsets = covered.within(rail, width, height),
+        apps = besideRail.inset(covered.within(besideRail, width, height)),
     )
 }
+
+private fun CarInsets.union(other: CarInsets): CarInsets =
+    CarInsets(
+        top = maxOf(top, other.top),
+        bottom = maxOf(bottom, other.bottom),
+        left = maxOf(left, other.left),
+        right = maxOf(right, other.right),
+    )
 
 private fun CarInsets.within(area: Area, width: Int, height: Int): CarInsets =
     CarInsets(
@@ -89,6 +95,9 @@ private fun CarInsets.within(area: Area, width: Int, height: Int): CarInsets =
         left = (left - area.left).coerceAtLeast(0),
         right = (right - (width - area.right)).coerceAtLeast(0),
     )
+
+private fun Area.inset(insets: CarInsets): Area =
+    Area(left + insets.left, top + insets.top, right - insets.right, bottom - insets.bottom)
 
 private fun railSide(width: Int, height: Int, thickness: Int, isDriverOnRight: Boolean): RailSide =
     when {

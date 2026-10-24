@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.session.video
 
 import io.github.octoclonius.libreauto.protocol.media.CarInsets
+import io.github.octoclonius.libreauto.protocol.media.CarRect
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -58,11 +59,7 @@ class CarLayoutTest {
             CarInsets(top = 10, bottom = 20, left = 30, right = 0),
             layout.railContentInsets,
         )
-        assertEquals(Area(30 + RAIL_THICKNESS_DP, 0, 800, 480), layout.apps)
-        assertEquals(
-            CarInsets(top = 10, bottom = 20, left = 0, right = 40),
-            layout.appsContentInsets,
-        )
+        assertEquals(Area(30 + RAIL_THICKNESS_DP, 10, 760, 460), layout.apps)
     }
 
     @Test
@@ -91,6 +88,59 @@ class CarLayoutTest {
             )
         assertEquals(RailSide.Left, layout.railSide)
         assertEquals(Area(0, 0, RAIL_THICKNESS_DP, 480), layout.rail)
+        assertEquals(Area(130, 0, 670, 480), layout.apps)
+    }
+
+    @Test
+    fun aCutoutOnTheLeftKeepsItsWholeColumnOutOfTheApps() {
+        val layout =
+            carLayout(
+                VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(0, 100, 300, 200))),
+                isDriverOnRight = false,
+            )
+        assertEquals(Area(0, 0, 300 + RAIL_THICKNESS_DP, 720), layout.rail)
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 300, right = 0),
+            layout.railContentInsets,
+        )
+        assertEquals(Area(300 + RAIL_THICKNESS_DP, 0, 1280, 720), layout.apps)
+    }
+
+    @Test
+    fun aCutoutAwayFromTheLeftEdgeTakesItsWidthFromTheRight() {
+        val layout =
+            carLayout(
+                VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(900, 100, 1100, 300))),
+                isDriverOnRight = false,
+            )
+        assertEquals(Area(RAIL_THICKNESS_DP, 0, 1080, 720), layout.apps)
+    }
+
+    @Test
+    fun onlyTheFirstCutoutIsKeptOut() {
+        val layout =
+            carLayout(
+                VideoFormat(
+                    1280,
+                    720,
+                    30,
+                    160,
+                    cutouts = listOf(CarRect(900, 0, 1100, 100), CarRect(0, 0, 300, 100)),
+                ),
+                isDriverOnRight = false,
+            )
+        assertEquals(Area(RAIL_THICKNESS_DP, 0, 1080, 720), layout.apps)
+    }
+
+    @Test
+    fun theRailSideCountsTheCutout() {
+        val layout =
+            carLayout(
+                VideoFormat(800, 480, 30, 160, cutouts = listOf(CarRect(0, 0, 300, 100))),
+                isDriverOnRight = false,
+            )
+        assertEquals(RailSide.Bottom, layout.railSide)
+        assertEquals(Area(300, 0, 800, 480 - RAIL_THICKNESS_DP), layout.apps)
     }
 
     @Test
@@ -112,11 +162,11 @@ class CarLayoutTest {
             CarInsets(top = 10, bottom = 0, left = 50, right = 0),
             layout.railContentInsets,
         )
-        assertEquals(CarInsets(top = 10, bottom = 0, left = 0, right = 0), layout.appsContentInsets)
+        assertEquals(Area(20 + RAIL_THICKNESS_DP, 10, 800, 480), layout.apps)
     }
 
     @Test
-    fun contentInsetsReachingPastTheRailPadTheApps() {
+    fun contentInsetsReachingPastTheRailShrinkTheApps() {
         val layout =
             carLayout(
                 VideoFormat(
@@ -128,10 +178,7 @@ class CarLayoutTest {
                 ),
                 isDriverOnRight = false,
             )
-        assertEquals(
-            CarInsets(top = 0, bottom = 0, left = 100 - RAIL_THICKNESS_DP, right = 0),
-            layout.appsContentInsets,
-        )
+        assertEquals(Area(100, 0, 800, 480), layout.apps)
     }
 
     @Test

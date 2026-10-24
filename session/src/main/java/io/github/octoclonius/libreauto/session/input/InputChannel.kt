@@ -92,7 +92,7 @@ internal class InputChannel(
         when {
             touch == null -> Log.w(TAG, "Dropped touch report $report")
             layout == null -> Log.w(TAG, "Dropped touch $touch before the video started")
-            else -> send(receivedNanos, router.route(touch, layout))
+            else -> router.route(touch, layout)?.let { send(receivedNanos, it) }
         }
     }
 

@@ -1,9 +1,11 @@
 package io.github.octoclonius.libreauto.session.input
 
+import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
 import io.github.octoclonius.libreauto.session.video.carLayout
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class TouchRouterTest {
@@ -39,7 +41,7 @@ class TouchRouterTest {
         )
         assertEquals(
             TouchTarget.Rail,
-            router.route(Touch(1, 0, listOf(TouchPointer(0, 400, 100))), layout).target,
+            router.route(Touch(1, 0, listOf(TouchPointer(0, 400, 100))), layout)?.target,
         )
     }
 
@@ -71,7 +73,7 @@ class TouchRouterTest {
         router.route(Touch(1, 0, listOf(TouchPointer(0, 40, 100))), layout)
         assertEquals(
             TouchTarget.Apps,
-            router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 100))), layout).target,
+            router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 100))), layout)?.target,
         )
     }
 
@@ -80,7 +82,7 @@ class TouchRouterTest {
         router.route(Touch(0, 0, listOf(TouchPointer(0, 40, 100))), layout)
         assertEquals(
             TouchTarget.Apps,
-            router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 100))), layout).target,
+            router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 100))), layout)?.target,
         )
     }
 
@@ -88,7 +90,7 @@ class TouchRouterTest {
     fun aMoveWithoutADownGoesWhereItIs() {
         assertEquals(
             TouchTarget.Rail,
-            router.route(Touch(2, 0, listOf(TouchPointer(0, 40, 100))), layout).target,
+            router.route(Touch(2, 0, listOf(TouchPointer(0, 40, 100))), layout)?.target,
         )
     }
 
@@ -98,6 +100,28 @@ class TouchRouterTest {
         assertEquals(
             RoutedTouch(TouchTarget.Rail, Touch(0, 0, listOf(TouchPointer(0, 60, 100)))),
             router.route(Touch(0, 0, listOf(TouchPointer(0, 30, 100))), wide),
+        )
+    }
+
+    @Test
+    fun aGestureStartingOutsideTheRailAndTheAppsIsDropped() {
+        val inset =
+            carLayout(
+                VideoFormat(
+                    800,
+                    480,
+                    30,
+                    160,
+                    stableInsets = CarInsets(top = 40, bottom = 0, left = 0, right = 0),
+                ),
+                isDriverOnRight = false,
+            )
+        assertNull(router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 10))), inset))
+        assertNull(router.route(Touch(2, 0, listOf(TouchPointer(0, 400, 100))), inset))
+        assertNull(router.route(Touch(1, 0, listOf(TouchPointer(0, 400, 100))), inset))
+        assertEquals(
+            TouchTarget.Apps,
+            router.route(Touch(0, 0, listOf(TouchPointer(0, 400, 100))), inset)?.target,
         )
     }
 }

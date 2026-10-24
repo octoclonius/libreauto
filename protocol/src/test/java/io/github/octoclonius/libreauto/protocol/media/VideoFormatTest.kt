@@ -420,6 +420,68 @@ class VideoFormatTest {
     }
 
     @Test
+    fun aCutoutAtTheLeftEdgeIsAColumnOnTheLeft() {
+        val format = VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(0, 100, 300, 200)))
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 300, right = 0),
+            format.displayCutoutInsets,
+        )
+    }
+
+    @Test
+    fun anyOtherCutoutIsAColumnOfItsWidthOnTheRight() {
+        val format =
+            VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(500, 300, 700, 400)))
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 0, right = 200),
+            format.displayCutoutInsets,
+        )
+    }
+
+    @Test
+    fun onlyTheFirstCutoutMakesAColumn() {
+        val format =
+            VideoFormat(
+                1280,
+                720,
+                30,
+                160,
+                cutouts = listOf(CarRect(1180, 0, 1280, 100), CarRect(0, 0, 400, 100)),
+            )
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 0, right = 100),
+            format.displayCutoutInsets,
+        )
+    }
+
+    @Test
+    fun theCutoutColumnScalesLikeTheDisplay() {
+        val format =
+            VideoFormat(
+                1280,
+                720,
+                30,
+                160,
+                pixelAspectRatioE4 = 15000,
+                cutouts = listOf(CarRect(0, 0, 200, 100)),
+            )
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 300, right = 0),
+            format.displayCutoutInsets,
+        )
+    }
+
+    @Test
+    fun aCutoutAsWideAsTheDisplayOrEmptyMakesNoColumn() {
+        for (cutout in listOf(CarRect(0, 0, 1280, 100), CarRect(300, 0, 300, 100))) {
+            assertEquals(
+                CarInsets.NONE,
+                VideoFormat(1280, 720, 30, 160, cutouts = listOf(cutout)).displayCutoutInsets,
+            )
+        }
+    }
+
+    @Test
     fun displayPointsScaleBackToTheVisibleArea() {
         val format = VideoFormat(1280, 720, 30, 160, pixelAspectRatioE4 = 15000)
         assertEquals(640, format.visibleX(960))

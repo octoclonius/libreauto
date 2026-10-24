@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
+import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
@@ -125,6 +126,21 @@ internal class VideoChannel(
                 TAG,
                 "Ignored the stable insets ${format.stableInsets} of video config " +
                     "$configIndex: they leave no content area in the visible " +
+                    "${format.visibleWidth}x${format.visibleHeight}",
+            )
+        }
+        if (format.cutouts.size > 1) {
+            Log.w(
+                TAG,
+                "Only the first of the cutouts ${format.cutouts} of video config $configIndex " +
+                    "is kept out of the layout",
+            )
+        }
+        if (format.cutouts.isNotEmpty() && format.displayCutoutInsets == CarInsets.NONE) {
+            Log.w(
+                TAG,
+                "Ignored the cutout ${format.cutouts.first()} of video config $configIndex: " +
+                    "it leaves no content area in the visible " +
                     "${format.visibleWidth}x${format.visibleHeight}",
             )
         }

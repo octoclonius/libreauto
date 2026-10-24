@@ -89,6 +89,18 @@ data class VideoFormat(
     val displayStableInsets: CarInsets
         get() = if (areStableInsetsUsable) displayInsets(stableInsets) else CarInsets.NONE
 
+    val displayCutoutInsets: CarInsets
+        get() {
+            val cutout = cutouts.firstOrNull() ?: return CarInsets.NONE
+            val width = displayX(cutout.right) - displayX(cutout.left)
+            if (width <= 0 || width >= displayWidth) return CarInsets.NONE
+            return if (cutout.left == 0) {
+                CarInsets(top = 0, bottom = 0, left = width, right = 0)
+            } else {
+                CarInsets(top = 0, bottom = 0, left = 0, right = width)
+            }
+        }
+
     private fun displayInsets(insets: CarInsets): CarInsets =
         CarInsets(
             top = displayY(insets.top),

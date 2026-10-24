@@ -2,7 +2,6 @@ package io.github.octoclonius.libreauto.car
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.graphics.Insets
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
@@ -12,15 +11,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
@@ -53,12 +48,11 @@ class CarHomeActivity : ComponentActivity() {
             val isHomeShown by HomeState.isHomeShown.collectAsState()
             val carDisplay by CarDisplay.state.collectAsStateWithLifecycle()
             val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
-            val contentInsets = shownDisplay?.contentInsets ?: Insets.NONE
             ProvideCarDensity(shownDisplay?.carDensity) {
                 CarTheme {
                     AnimatedVisibility(
                         visible = isDrawerOpen,
-                        modifier = Modifier.fillMaxSize().padding(contentPadding(contentInsets)),
+                        modifier = Modifier.fillMaxSize(),
                         enter = fadeIn(),
                         exit = if (isHomeShown) fadeOut() else ExitTransition.None,
                     ) {
@@ -99,15 +93,4 @@ class CarHomeActivity : ComponentActivity() {
             Log.w(TAG, "${app.component} refused to launch", e)
         }
     }
-
-    @Composable
-    private fun contentPadding(contentInsets: Insets): PaddingValues =
-        with(LocalDensity.current) {
-            PaddingValues.Absolute(
-                left = contentInsets.left.toDp(),
-                top = contentInsets.top.toDp(),
-                right = contentInsets.right.toDp(),
-                bottom = contentInsets.bottom.toDp(),
-            )
-        }
 }
