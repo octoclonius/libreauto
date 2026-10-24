@@ -45,53 +45,50 @@ internal data class CarLayout(
 internal fun carLayout(format: VideoFormat, isDriverOnRight: Boolean): CarLayout {
     val width = format.displayWidth
     val height = format.displayHeight
-    val insets = format.displayContentInsets
+    val stable = format.displayStableInsets
+    val content = format.displayContentInsets
     val thickness =
         (RAIL_THICKNESS_DP.toDouble() * format.density / DisplayMetrics.DENSITY_DEFAULT)
             .roundToInt()
     val side =
         railSide(
-            width - insets.left - insets.right,
-            height - insets.top - insets.bottom,
+            width - stable.left - stable.right,
+            height - stable.top - stable.bottom,
             thickness,
             isDriverOnRight,
         )
-    return when (side) {
-        RailSide.Left -> {
-            val edge = insets.left + thickness
-            CarLayout(
-                format,
-                side,
-                rail = Area(0, 0, edge, height),
-                railContentInsets = insets.copy(right = 0),
-                apps = Area(edge, 0, width, height),
-                appsContentInsets = insets.copy(left = 0),
-            )
+    val (rail, apps) =
+        when (side) {
+            RailSide.Left -> {
+                val edge = stable.left + thickness
+                Area(0, 0, edge, height) to Area(edge, 0, width, height)
+            }
+            RailSide.Right -> {
+                val edge = width - stable.right - thickness
+                Area(edge, 0, width, height) to Area(0, 0, edge, height)
+            }
+            RailSide.Bottom -> {
+                val edge = height - stable.bottom - thickness
+                Area(0, edge, width, height) to Area(0, 0, width, edge)
+            }
         }
-        RailSide.Right -> {
-            val edge = width - insets.right - thickness
-            CarLayout(
-                format,
-                side,
-                rail = Area(edge, 0, width, height),
-                railContentInsets = insets.copy(left = 0),
-                apps = Area(0, 0, edge, height),
-                appsContentInsets = insets.copy(right = 0),
-            )
-        }
-        RailSide.Bottom -> {
-            val edge = height - insets.bottom - thickness
-            CarLayout(
-                format,
-                side,
-                rail = Area(0, edge, width, height),
-                railContentInsets = insets.copy(top = 0),
-                apps = Area(0, 0, width, edge),
-                appsContentInsets = insets.copy(bottom = 0),
-            )
-        }
-    }
+    return CarLayout(
+        format,
+        side,
+        rail = rail,
+        railContentInsets = content.within(rail, width, height),
+        apps = apps,
+        appsContentInsets = content.within(apps, width, height),
+    )
 }
+
+private fun CarInsets.within(area: Area, width: Int, height: Int): CarInsets =
+    CarInsets(
+        top = (top - area.top).coerceAtLeast(0),
+        bottom = (bottom - (height - area.bottom)).coerceAtLeast(0),
+        left = (left - area.left).coerceAtLeast(0),
+        right = (right - (width - area.right)).coerceAtLeast(0),
+    )
 
 private fun railSide(width: Int, height: Int, thickness: Int, isDriverOnRight: Boolean): RailSide =
     when {

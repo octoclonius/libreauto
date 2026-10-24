@@ -43,6 +43,7 @@ data class VideoFormat(
     val density: Int,
     val margins: CarInsets = CarInsets.NONE,
     val contentInsets: CarInsets = CarInsets.NONE,
+    val stableInsets: CarInsets = CarInsets.NONE,
     val pixelAspectRatioE4: Int = SQUARE_PIXEL_ASPECT_RATIO_E4,
     val cutouts: List<CarRect> = emptyList(),
 ) {
@@ -79,18 +80,22 @@ data class VideoFormat(
     val areContentInsetsUsable: Boolean
         get() = contentInsets.leavesArea(visibleWidth, visibleHeight)
 
+    val areStableInsetsUsable: Boolean
+        get() = stableInsets.leavesArea(visibleWidth, visibleHeight)
+
     val displayContentInsets: CarInsets
-        get() =
-            if (areContentInsetsUsable) {
-                CarInsets(
-                    top = displayY(contentInsets.top),
-                    bottom = displayY(contentInsets.bottom),
-                    left = displayX(contentInsets.left),
-                    right = displayX(contentInsets.right),
-                )
-            } else {
-                CarInsets.NONE
-            }
+        get() = if (areContentInsetsUsable) displayInsets(contentInsets) else CarInsets.NONE
+
+    val displayStableInsets: CarInsets
+        get() = if (areStableInsetsUsable) displayInsets(stableInsets) else CarInsets.NONE
+
+    private fun displayInsets(insets: CarInsets): CarInsets =
+        CarInsets(
+            top = displayY(insets.top),
+            bottom = displayY(insets.bottom),
+            left = displayX(insets.left),
+            right = displayX(insets.right),
+        )
 
     fun displayX(visibleX: Int): Int =
         (visibleX.toDouble() * displayWidth / visibleWidth).roundToInt()
@@ -138,6 +143,8 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         )
     }
     val margins = margins(config)
+    val contentInsets = config.ui_config?.content_insets?.let(::insets)
+    val stableInsets = config.ui_config?.stable_insets?.let(::insets)
     if (!margins.leavesArea(width, height)) {
         throw ProtocolException(
             "The car's video config has margins $margins for a ${width}x$height frame"
@@ -149,7 +156,8 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         framesPerSecond,
         density,
         margins,
-        config.ui_config?.content_insets?.let(::insets) ?: CarInsets.NONE,
+        contentInsets ?: stableInsets ?: CarInsets.NONE,
+        stableInsets ?: contentInsets ?: CarInsets.NONE,
         pixelAspectRatioE4,
         config.ui_config?.cutouts.orEmpty().mapNotNull { it.bounds?.let(::rect) },
     )

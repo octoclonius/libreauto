@@ -172,6 +172,71 @@ class VideoFormatTest {
     }
 
     @Test
+    fun theStableInsetsAreUiConfigField3() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(
+                    11,
+                    sides(2, top = 30, bottom = 0, left = 0, right = 0),
+                    sides(3, top = 10, bottom = 0, left = 0, right = 0),
+                ),
+            )
+        assertEquals(CarInsets(top = 30, bottom = 0, left = 0, right = 0), format?.contentInsets)
+        assertEquals(CarInsets(top = 10, bottom = 0, left = 0, right = 0), format?.stableInsets)
+    }
+
+    @Test
+    fun onlyContentInsetsAreTheStableInsetsToo() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, sides(2, top = 30, bottom = 0, left = 0, right = 0)),
+            )
+        assertEquals(CarInsets(top = 30, bottom = 0, left = 0, right = 0), format?.stableInsets)
+    }
+
+    @Test
+    fun onlyStableInsetsAreTheContentInsetsToo() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, sides(3, top = 10, bottom = 0, left = 0, right = 0)),
+            )
+        assertEquals(CarInsets(top = 10, bottom = 0, left = 0, right = 0), format?.contentInsets)
+    }
+
+    @Test
+    fun stableInsetsThatLeaveNoContentAreaAreIgnored() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                message(11, sides(3, top = 0, bottom = 0, left = 400, right = 400)),
+            )
+        assertEquals(false, format?.areStableInsetsUsable)
+        assertEquals(CarInsets.NONE, format?.displayStableInsets)
+    }
+
+    @Test
+    fun theDisplaysStableInsetsAreScaledLikeItsSize() {
+        val format =
+            format(
+                varint(1, 1),
+                varint(5, 160),
+                varint(8, 20000),
+                message(11, sides(3, top = 30, bottom = 30, left = 40, right = 200)),
+            )
+        assertEquals(
+            CarInsets(top = 30, bottom = 30, left = 80, right = 400),
+            format?.displayStableInsets,
+        )
+    }
+
+    @Test
     fun anEmptyContentInsetsMessageIsNoInsets() {
         assertEquals(
             CarInsets.NONE,

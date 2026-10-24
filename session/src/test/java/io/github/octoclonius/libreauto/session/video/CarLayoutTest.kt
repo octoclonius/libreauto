@@ -50,7 +50,7 @@ class CarLayoutTest {
         val insets = CarInsets(top = 10, bottom = 20, left = 30, right = 40)
         val layout =
             carLayout(
-                VideoFormat(800, 480, 30, 160, contentInsets = insets),
+                VideoFormat(800, 480, 30, 160, contentInsets = insets, stableInsets = insets),
                 isDriverOnRight = false,
             )
         assertEquals(Area(0, 0, 30 + RAIL_THICKNESS_DP, 480), layout.rail)
@@ -66,14 +66,72 @@ class CarLayoutTest {
     }
 
     @Test
-    fun theRailSideFollowsTheContentArea() {
+    fun theRailSideFollowsTheStableContentArea() {
         val insets = CarInsets(top = 0, bottom = 0, left = 130, right = 130)
         val layout =
             carLayout(
-                VideoFormat(800, 480, 30, 160, contentInsets = insets),
+                VideoFormat(800, 480, 30, 160, stableInsets = insets),
                 isDriverOnRight = false,
             )
         assertEquals(RailSide.Bottom, layout.railSide)
+    }
+
+    @Test
+    fun theContentInsetsDontMoveTheRail() {
+        val layout =
+            carLayout(
+                VideoFormat(
+                    800,
+                    480,
+                    30,
+                    160,
+                    contentInsets = CarInsets(top = 0, bottom = 0, left = 130, right = 130),
+                ),
+                isDriverOnRight = false,
+            )
+        assertEquals(RailSide.Left, layout.railSide)
+        assertEquals(Area(0, 0, RAIL_THICKNESS_DP, 480), layout.rail)
+    }
+
+    @Test
+    fun theRailSitsInsideTheStableInsetsAndPadsByTheContentInsets() {
+        val layout =
+            carLayout(
+                VideoFormat(
+                    800,
+                    480,
+                    30,
+                    160,
+                    contentInsets = CarInsets(top = 10, bottom = 0, left = 50, right = 0),
+                    stableInsets = CarInsets(top = 0, bottom = 0, left = 20, right = 0),
+                ),
+                isDriverOnRight = false,
+            )
+        assertEquals(Area(0, 0, 20 + RAIL_THICKNESS_DP, 480), layout.rail)
+        assertEquals(
+            CarInsets(top = 10, bottom = 0, left = 50, right = 0),
+            layout.railContentInsets,
+        )
+        assertEquals(CarInsets(top = 10, bottom = 0, left = 0, right = 0), layout.appsContentInsets)
+    }
+
+    @Test
+    fun contentInsetsReachingPastTheRailPadTheApps() {
+        val layout =
+            carLayout(
+                VideoFormat(
+                    800,
+                    480,
+                    30,
+                    160,
+                    contentInsets = CarInsets(top = 0, bottom = 0, left = 100, right = 0),
+                ),
+                isDriverOnRight = false,
+            )
+        assertEquals(
+            CarInsets(top = 0, bottom = 0, left = 100 - RAIL_THICKNESS_DP, right = 0),
+            layout.appsContentInsets,
+        )
     }
 
     @Test

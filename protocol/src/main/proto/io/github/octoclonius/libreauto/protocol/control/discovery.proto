@@ -64,6 +64,7 @@ message VideoConfig {
 message UiConfig {
   optional UiInsets margins = 1;
   optional UiInsets content_insets = 2;
+  optional UiInsets stable_insets = 3;
   repeated UiCutout cutouts = 7;
 }
 

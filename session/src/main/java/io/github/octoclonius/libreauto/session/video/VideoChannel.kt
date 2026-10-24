@@ -120,6 +120,14 @@ internal class VideoChannel(
                     "${format.visibleWidth}x${format.visibleHeight}",
             )
         }
+        if (!format.areStableInsetsUsable) {
+            Log.w(
+                TAG,
+                "Ignored the stable insets ${format.stableInsets} of video config " +
+                    "$configIndex: they leave no content area in the visible " +
+                    "${format.visibleWidth}x${format.visibleHeight}",
+            )
+        }
         val ready = VideoChannelState.Ready(configIndex, format, decoderDepth, maxUnacked)
         if (current.pendingFocus?.isProjected == true) return start(ready)
         sender.send(MediaMessageType.VIDEO_FOCUS_REQUEST, projectedVideoFocusRequest())
