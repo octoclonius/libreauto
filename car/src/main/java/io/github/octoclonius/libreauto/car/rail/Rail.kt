@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -27,6 +28,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.ui.component.BatteryBadge
+import io.github.octoclonius.libreauto.car.ui.component.BatteryIndicator
+import io.github.octoclonius.libreauto.car.ui.component.GlyphText
 import io.github.octoclonius.libreauto.session.CarStatusBar
 import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
 import io.github.octoclonius.libreauto.session.video.RailSide
@@ -34,8 +38,12 @@ import io.github.octoclonius.libreauto.session.video.RailSide
 private val RAIL_THICKNESS = RAIL_THICKNESS_DP.dp
 private val RAIL_PADDING = 12.dp
 private val STATUS_SPACING = 4.dp
+private val STATUS_ROW_SPACING = 8.dp
 private val STATUS_ICON_SIZE = 24.dp
 private val APPS_ICON_SIZE = 40.dp
+private val BATTERY_HEIGHT = 16.dp
+private val CLOCK_HEIGHT = 16.dp
+private val ICON_PADDING = 2.dp
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 
@@ -46,40 +54,6 @@ private val WIFI_ICONS =
         R.drawable.ic_wifi_2,
         R.drawable.ic_wifi_3,
         R.drawable.ic_wifi_4,
-    )
-
-private class BatteryIcons(val levels: List<Int>, @param:DrawableRes val charging: Int)
-
-private val HORIZONTAL_BATTERY =
-    BatteryIcons(
-        levels =
-            listOf(
-                R.drawable.ic_battery_horiz_0,
-                R.drawable.ic_battery_horiz_1,
-                R.drawable.ic_battery_horiz_2,
-                R.drawable.ic_battery_horiz_3,
-                R.drawable.ic_battery_horiz_4,
-                R.drawable.ic_battery_horiz_5,
-                R.drawable.ic_battery_horiz_6,
-                R.drawable.ic_battery_horiz_full,
-            ),
-        charging = R.drawable.ic_battery_horiz_charging,
-    )
-
-private val VERTICAL_BATTERY =
-    BatteryIcons(
-        levels =
-            listOf(
-                R.drawable.ic_battery_vert_0,
-                R.drawable.ic_battery_vert_1,
-                R.drawable.ic_battery_vert_2,
-                R.drawable.ic_battery_vert_3,
-                R.drawable.ic_battery_vert_4,
-                R.drawable.ic_battery_vert_5,
-                R.drawable.ic_battery_vert_6,
-                R.drawable.ic_battery_vert_full,
-            ),
-        charging = R.drawable.ic_battery_vert_charging,
     )
 
 private val CELLULAR_ICONS =
@@ -135,15 +109,15 @@ private fun SideRail(status: RailStatus, onAppsClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(STATUS_SPACING),
+            verticalArrangement = Arrangement.spacedBy(STATUS_ROW_SPACING),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             status.clock?.let { Clock(it) }
-            Row {
+            Row(horizontalArrangement = Arrangement.spacedBy(STATUS_SPACING)) {
                 status.wifiLevel?.let { Wifi(it) }
                 status.cellular?.let { CellularIcon(it) }
             }
-            status.battery?.let { Battery(it, HORIZONTAL_BATTERY) }
+            status.battery?.let { Battery(it, isBodyCentered = true) }
         }
         Spacer(Modifier.weight(1f))
         AppsCell(onAppsClick)
@@ -171,13 +145,16 @@ private fun BottomRail(status: RailStatus, isDriverOnRight: Boolean, onAppsClick
 private fun BottomStatus(status: RailStatus, modifier: Modifier = Modifier) {
     Column(
         modifier,
-        verticalArrangement = Arrangement.spacedBy(STATUS_SPACING),
+        verticalArrangement = Arrangement.spacedBy(STATUS_ROW_SPACING),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(STATUS_SPACING),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             status.wifiLevel?.let { Wifi(it) }
             status.cellular?.let { CellularIcon(it) }
-            status.battery?.let { Battery(it, VERTICAL_BATTERY) }
+            status.battery?.let { Battery(it) }
         }
         status.clock?.let { Clock(it) }
     }
@@ -185,7 +162,7 @@ private fun BottomStatus(status: RailStatus, modifier: Modifier = Modifier) {
 
 @Composable
 private fun Clock(time: String) {
-    Text(time, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+    GlyphText(time, CLOCK_HEIGHT, Modifier.padding(vertical = ICON_PADDING))
 }
 
 @Composable
@@ -205,13 +182,21 @@ private fun CellularIcon(cellular: Cellular) {
 }
 
 @Composable
-private fun Battery(battery: BatteryState, icons: BatteryIcons, modifier: Modifier = Modifier) {
-    val level = battery.percent * icons.levels.lastIndex / PERCENT
-    StatusIcon(
-        if (battery.isPluggedIn) icons.charging
-        else icons.levels[level.coerceIn(0, icons.levels.lastIndex)],
-        modifier,
-    )
+private fun Battery(battery: BatteryState, isBodyCentered: Boolean = false) {
+    Box(Modifier.height(STATUS_ICON_SIZE), contentAlignment = Alignment.Center) {
+        BatteryIndicator(
+            percent = battery.percent,
+            badge =
+                when {
+                    battery.isPowerSaveMode -> BatteryBadge.PowerSave
+                    battery.isChargingPaused -> BatteryBadge.ChargingPaused
+                    battery.isPluggedIn -> BatteryBadge.Charging
+                    else -> null
+                },
+            height = BATTERY_HEIGHT,
+            isBodyCentered = isBodyCentered,
+        )
+    }
 }
 
 @Composable

@@ -1,0 +1,8 @@
+{
+  "uniqueId": "com.android.systemui.battery-glyphs",
+  "name": "SystemUI battery glyphs",
+  "description": "Digit outlines from Android's SystemUI, used for the car display's clock and battery percentage.",
+  "website": "https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android16-qpr2-release/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/battery/shared/ui/BatteryGlyph.kt",
+  "developers": [{ "name": "The Android Open Source Project" }],
+  "licenses": ["Apache-2.0"]
+}
