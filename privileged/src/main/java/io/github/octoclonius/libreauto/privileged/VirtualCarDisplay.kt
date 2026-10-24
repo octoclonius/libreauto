@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.companion.virtual.VirtualDeviceManager
 import android.companion.virtual.VirtualDeviceParams
@@ -12,7 +13,6 @@ import android.util.Log
 import android.view.Surface
 import java.io.Closeable
 import java.util.concurrent.Executor
-import java.util.function.IntConsumer
 
 internal class VirtualCarDisplay
 private constructor(
@@ -128,31 +128,19 @@ private constructor(
 
     val id: Int = display.display.displayId
 
-    fun showHome(home: PendingIntent) {
-        val success = VirtualDeviceManager::class.java.getField("LAUNCH_SUCCESS").getInt(null)
-        device.javaClass
-            .getMethod(
-                "launchPendingIntent",
-                Int::class.javaPrimitiveType,
-                PendingIntent::class.java,
-                Executor::class.java,
-                IntConsumer::class.java,
-            )
-            .invoke(
-                device,
-                id,
-                home,
-                Executor(Runnable::run),
-                IntConsumer { onHomeLaunched(it, success) },
-            )
-    }
-
-    private fun onHomeLaunched(result: Int, success: Int) {
-        if (result == success) {
-            Log.i(TAG, "Showed the home on the display $id")
-        } else {
-            Log.w(TAG, "The home didn't launch on the display $id: result $result")
-        }
+    fun showHome(context: Context, home: PendingIntent) {
+        val options =
+            ActivityOptions.makeCustomAnimation(context, 0, 0)
+                .setLaunchDisplayId(id)
+                .setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
+                )
+        ActivityOptions::class
+            .java
+            .getMethod("setOverrideTaskTransition", Boolean::class.javaPrimitiveType)
+            .invoke(options, true)
+        home.send(context, 0, null, null, null, null, options.toBundle())
+        Log.i(TAG, "Showed the home on the display $id")
     }
 
     fun resize(width: Int, height: Int, densityDpi: Int) {

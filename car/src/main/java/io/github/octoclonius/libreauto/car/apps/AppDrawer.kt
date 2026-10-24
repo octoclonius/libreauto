@@ -42,7 +42,6 @@ private val LABEL_SIZE = 16.sp
 @Composable
 fun AppDrawer(
     apps: List<PhoneApp>,
-    isEnabled: Boolean,
     onAppClick: (PhoneApp) -> Unit,
     modifier: Modifier = Modifier,
     state: LazyGridState = rememberLazyGridState(),
@@ -55,21 +54,20 @@ fun AppDrawer(
             verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
             horizontalArrangement =
                 Arrangement.spacedBy(GRID_SPACING, Alignment.CenterHorizontally),
-            userScrollEnabled = isEnabled,
         ) {
             items(apps, key = { it.component.flattenToShortString() }) { app ->
-                AppTile(app, isEnabled, onClick = { onAppClick(app) })
+                AppTile(app, onClick = { onAppClick(app) })
             }
         }
     }
 }
 
 @Composable
-private fun AppTile(app: PhoneApp, isEnabled: Boolean, onClick: () -> Unit) {
+private fun AppTile(app: PhoneApp, onClick: () -> Unit) {
     Column(
         Modifier.size(TILE_SIZE)
             .clip(RoundedCornerShape(TILE_CORNER))
-            .clickable(enabled = isEnabled, onClick = onClick)
+            .clickable(onClick = onClick)
             .padding(horizontal = TILE_PADDING),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,

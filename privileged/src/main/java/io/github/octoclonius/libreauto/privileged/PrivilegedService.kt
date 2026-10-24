@@ -161,7 +161,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                 return
             }
             try {
-                current.showHome(home)
+                current.showHome(shellContext, home)
             } catch (e: Exception) {
                 val cause = if (e is InvocationTargetException) e.targetException else e
                 Log.e(TAG, "Showing the home on the car display $displayId failed", cause)
