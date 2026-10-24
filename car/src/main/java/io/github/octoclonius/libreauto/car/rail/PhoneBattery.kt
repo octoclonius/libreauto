@@ -9,7 +9,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-private const val PERCENT = 100
+internal const val PERCENT = 100
 
 data class BatteryState(val percent: Int, val isPluggedIn: Boolean)
 

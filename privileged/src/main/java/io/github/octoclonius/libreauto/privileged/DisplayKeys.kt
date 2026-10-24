@@ -8,10 +8,6 @@ import android.view.KeyEvent
 
 internal class DisplayKeys(context: Context) {
 
-    companion object {
-        private const val INJECT_INPUT_EVENT_MODE_ASYNC = 0
-    }
-
     private val inputManager = context.getSystemService(InputManager::class.java)
     private val setDisplayId =
         InputEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
@@ -19,6 +15,8 @@ internal class DisplayKeys(context: Context) {
         InputManager::class
             .java
             .getMethod("injectInputEvent", InputEvent::class.java, Int::class.javaPrimitiveType)
+    private val asyncMode =
+        InputManager::class.java.getField("INJECT_INPUT_EVENT_MODE_ASYNC").getInt(null)
 
     fun press(displayId: Int, keyCode: Int) {
         val downTime = SystemClock.uptimeMillis()
@@ -29,6 +27,6 @@ internal class DisplayKeys(context: Context) {
 
     private fun inject(displayId: Int, event: KeyEvent) {
         setDisplayId.invoke(event, displayId)
-        injectInputEvent.invoke(inputManager, event, INJECT_INPUT_EVENT_MODE_ASYNC)
+        injectInputEvent.invoke(inputManager, event, asyncMode)
     }
 }

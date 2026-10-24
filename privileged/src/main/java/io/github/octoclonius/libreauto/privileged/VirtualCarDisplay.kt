@@ -26,8 +26,6 @@ private constructor(
     companion object {
         private const val TAG = "VirtualCarDisplay"
         private const val NAME = "LibreAuto"
-        private const val VIRTUAL_DISPLAY_FLAG_TRUSTED = 1 shl 10
-        private const val LAUNCH_SUCCESS = 0
 
         fun create(
             context: Context,
@@ -100,12 +98,14 @@ private constructor(
             height: Int,
             densityDpi: Int,
         ): VirtualDisplay {
+            val trusted =
+                DisplayManager::class.java.getField("VIRTUAL_DISPLAY_FLAG_TRUSTED").getInt(null)
             val builder =
                 VirtualDisplayConfig.Builder(NAME, width, height, densityDpi)
                     .setFlags(
                         DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or
                             DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or
-                            VIRTUAL_DISPLAY_FLAG_TRUSTED
+                            trusted
                     )
                     .setSurface(surface)
             builder.javaClass
@@ -129,6 +129,7 @@ private constructor(
     val id: Int = display.display.displayId
 
     fun showHome(home: PendingIntent) {
+        val success = VirtualDeviceManager::class.java.getField("LAUNCH_SUCCESS").getInt(null)
         device.javaClass
             .getMethod(
                 "launchPendingIntent",
@@ -137,11 +138,17 @@ private constructor(
                 Executor::class.java,
                 IntConsumer::class.java,
             )
-            .invoke(device, id, home, Executor(Runnable::run), IntConsumer(::onHomeLaunched))
+            .invoke(
+                device,
+                id,
+                home,
+                Executor(Runnable::run),
+                IntConsumer { onHomeLaunched(it, success) },
+            )
     }
 
-    private fun onHomeLaunched(result: Int) {
-        if (result == LAUNCH_SUCCESS) {
+    private fun onHomeLaunched(result: Int, success: Int) {
+        if (result == success) {
             Log.i(TAG, "Showed the home on the display $id")
         } else {
             Log.w(TAG, "The home didn't launch on the display $id: result $result")

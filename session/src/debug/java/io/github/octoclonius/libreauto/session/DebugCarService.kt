@@ -12,6 +12,7 @@ import android.net.LocalServerSocket
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
 import android.os.IBinder
+import android.os.Process
 import android.util.Log
 import java.io.IOException
 import kotlin.concurrent.thread
@@ -21,7 +22,6 @@ class DebugCarService : Service() {
     companion object {
         private const val TAG = "DebugCarService"
         private const val SOCKET_NAME = "libreauto"
-        private const val SHELL_UID = 2000
         private const val CHANNEL_ID = "debug_car"
         private const val NOTIFICATION_ID = 1
 
@@ -87,7 +87,7 @@ class DebugCarService : Service() {
 
     private fun accept(client: LocalSocket, connection: CarConnection) {
         val peer = client.peerCredentials
-        if (peer.uid != SHELL_UID) {
+        if (peer.uid != Process.SHELL_UID) {
             Log.w(TAG, "Refused uid ${peer.uid} (pid ${peer.pid}) on @$SOCKET_NAME")
             return
         }

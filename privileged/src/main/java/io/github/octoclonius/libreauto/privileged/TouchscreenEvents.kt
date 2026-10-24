@@ -2,8 +2,6 @@ package io.github.octoclonius.libreauto.privileged
 
 import android.view.MotionEvent
 
-internal const val TOUCHSCREEN_POINTERS = 16
-
 internal data class TouchPointer(val id: Int, val x: Int, val y: Int)
 
 internal data class TouchscreenEvent(val pointerId: Int, val action: Int, val x: Int, val y: Int)

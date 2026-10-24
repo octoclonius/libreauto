@@ -4,6 +4,7 @@ import android.companion.AssociationRequest
 import android.companion.CompanionDeviceManager
 import android.content.Context
 import android.os.Process
+import android.os.UserHandle
 import android.os.SystemClock
 import android.util.Log
 import java.util.concurrent.TimeUnit
@@ -13,7 +14,6 @@ internal class CompanionAssociation(private val context: Context) {
     companion object {
         private const val TAG = "CompanionAssociation"
         private const val PROFILE = AssociationRequest.DEVICE_PROFILE_APP_STREAMING
-        private const val PER_USER_RANGE = 100_000
         private const val COMMAND_TIMEOUT_SECONDS = 5L
         private const val STORE_TIMEOUT_MILLIS = 5_000L
         private const val POLL_INTERVAL_MILLIS = 100L
@@ -52,13 +52,16 @@ internal class CompanionAssociation(private val context: Context) {
             PROFILE,
         )
 
+    private fun userId(): Int =
+        UserHandle::class.java.getMethod("getIdentifier").invoke(Process.myUserHandle()) as Int
+
     private fun associate() {
         val command =
             listOf(
                 "cmd",
                 "companiondevice",
                 "associate",
-                (Process.myUid() / PER_USER_RANGE).toString(),
+                userId().toString(),
                 context.packageName,
                 ASSOCIATION_ADDRESS,
                 PROFILE,

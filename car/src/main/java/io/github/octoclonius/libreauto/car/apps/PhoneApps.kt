@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.mapNotNull
 
 private const val LEGACY_ICON_SIZE_DP = 48f
 private const val ADAPTIVE_ICON_LAYER_SIZE_DP = 108f
-private const val ADAPTIVE_ICON_LAYER_SCALE = 1.5f
 
 class PhoneApp(val component: ComponentName, val label: String, val icon: Drawable)
 
@@ -87,7 +86,7 @@ private fun ResolveInfo.loadCarIcon(packageManager: PackageManager, carDensity: 
             null -> loadIcon(packageManager)
             is AdaptiveIconDrawable -> {
                 val layerScale =
-                    APP_ICON_SIZE.value * ADAPTIVE_ICON_LAYER_SCALE / ADAPTIVE_ICON_LAYER_SIZE_DP
+                    APP_ICON_SIZE.value * adaptiveIconLayerScale() / ADAPTIVE_ICON_LAYER_SIZE_DP
                 val layerDensity = iconDensity(carDensity, layerScale)
                 resources.getDrawableForDensity(iconResource, layerDensity, null) ?: icon
             }
@@ -99,5 +98,8 @@ private fun ResolveInfo.loadCarIcon(packageManager: PackageManager, carDensity: 
         loadIcon(packageManager)
     }
 }
+
+private fun adaptiveIconLayerScale(): Float =
+    1 + 2 * AdaptiveIconDrawable.getExtraInsetFraction()
 
 private fun iconDensity(carDensity: Int, scale: Float): Int = ceil(carDensity * scale).toInt()

@@ -36,7 +36,6 @@ private val RAIL_PADDING = 12.dp
 private val STATUS_SPACING = 4.dp
 private val STATUS_ICON_SIZE = 24.dp
 private val APPS_ICON_SIZE = 40.dp
-private const val FULL_PERCENT = 100
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 
@@ -207,7 +206,7 @@ private fun CellularIcon(cellular: Cellular) {
 
 @Composable
 private fun Battery(battery: BatteryState, icons: BatteryIcons, modifier: Modifier = Modifier) {
-    val level = battery.percent * icons.levels.lastIndex / FULL_PERCENT
+    val level = battery.percent * icons.levels.lastIndex / PERCENT
     StatusIcon(
         if (battery.isPluggedIn) icons.charging
         else icons.levels[level.coerceIn(0, icons.levels.lastIndex)],

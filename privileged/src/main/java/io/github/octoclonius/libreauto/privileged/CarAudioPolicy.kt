@@ -24,7 +24,6 @@ import java.io.IOException
 import java.io.InterruptedIOException
 
 private const val CHUNK_MILLIS = 20
-private const val BYTES_PER_SAMPLE = 2
 
 internal class CarAudioPolicy
 private constructor(
@@ -36,7 +35,6 @@ private constructor(
 
     companion object {
         private const val TAG = "CarAudioPolicy"
-        private const val REGISTERED = 0
 
         val MICROPHONE_SOURCES =
             setOf(
@@ -78,21 +76,20 @@ private constructor(
             )
             val policy = builder.build()
             val audioManager = context.getSystemService(AudioManager::class.java)
+            val success = AudioManager::class.java.getField("SUCCESS").getInt(null)
             val status =
                 AudioManager::class
                     .java
                     .getMethod("registerAudioPolicy", AudioPolicy::class.java)
                     .invoke(audioManager, policy) as Int
-            check(status == REGISTERED) { "Registering the audio policy failed: $status" }
+            check(status == success) { "Registering the audio policy failed: $status" }
             val sinks = mutableListOf<MixSink>()
             val source =
                 try {
                     for ((mix, output) in mixes.zip(outputs)) {
-                        sinks += MixSink(record(context, policy, mix, output), output)
+                        sinks += MixSink(record(context, policy, mix, output))
                     }
-                    inputMix?.let { (input, mix) ->
-                        MixSource(inject(context, policy, mix, input), input)
-                    }
+                    inputMix?.let { (input, mix) -> MixSource(inject(context, policy, mix, input)) }
                 } catch (e: Exception) {
                     sinks.forEach(MixSink::close)
                     unregister(audioManager, policy)
@@ -227,11 +224,11 @@ private constructor(
         }
     }
 
-    private class MixSink(private val record: AudioRecord, output: AudioOutput) : Closeable {
+    private class MixSink(private val record: AudioRecord) : Closeable {
 
         private val pipe = ParcelFileDescriptor.createPipe()
         private val chunkBytes =
-            output.sampleRate * CHUNK_MILLIS / 1000 * output.channelCount * BYTES_PER_SAMPLE
+            record.format.frameSizeInBytes * record.sampleRate * CHUNK_MILLIS / 1000
         private val thread = Thread(::copy, "audio-mix-sink")
         @Volatile private var isClosed = false
 
@@ -270,12 +267,12 @@ private constructor(
         }
     }
 
-    private class MixSource(private val track: AudioTrack, input: AudioInput) : Closeable {
+    private class MixSource(private val track: AudioTrack) : Closeable {
 
         private val pipe = ParcelFileDescriptor.createPipe()
         private val wakeUp = ParcelFileDescriptor.createPipe()
         private val chunkBytes =
-            input.sampleRate * CHUNK_MILLIS / 1000 * input.channelCount * BYTES_PER_SAMPLE
+            track.format.frameSizeInBytes * track.sampleRate * CHUNK_MILLIS / 1000
         private val thread = Thread(::copy, "audio-mix-source")
 
         val writeEnd: ParcelFileDescriptor

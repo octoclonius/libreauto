@@ -17,7 +17,6 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     companion object {
         private const val TAG = "PrivilegedService"
-        private const val USB_FUNCTION_NONE = 0L
     }
 
     private val appUid = context.applicationInfo.uid
@@ -196,10 +195,11 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     override fun exitAccessoryMode() {
         try {
+            val none = UsbManager::class.java.getField("FUNCTION_NONE").getLong(null)
             UsbManager::class
                 .java
                 .getMethod("setCurrentFunctions", Long::class.javaPrimitiveType)
-                .invoke(shellContext.getSystemService(UsbManager::class.java), USB_FUNCTION_NONE)
+                .invoke(shellContext.getSystemService(UsbManager::class.java), none)
             Log.i(TAG, "Left USB accessory mode")
         } catch (e: Exception) {
             val cause = if (e is InvocationTargetException) e.targetException else e
