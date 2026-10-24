@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,28 +40,36 @@ private val LABEL_SPACING = 8.dp
 private val LABEL_SIZE = 16.sp
 
 @Composable
-fun AppDrawer(apps: List<PhoneApp>, onAppClick: (PhoneApp) -> Unit, modifier: Modifier = Modifier) {
+fun AppDrawer(
+    apps: List<PhoneApp>,
+    isEnabled: Boolean,
+    onAppClick: (PhoneApp) -> Unit,
+    modifier: Modifier = Modifier,
+    state: LazyGridState = rememberLazyGridState(),
+) {
     Surface(modifier) {
         LazyVerticalGrid(
+            state = state,
             columns = GridCells.FixedSize(TILE_SIZE),
             contentPadding = PaddingValues(GRID_PADDING),
             verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
             horizontalArrangement =
                 Arrangement.spacedBy(GRID_SPACING, Alignment.CenterHorizontally),
+            userScrollEnabled = isEnabled,
         ) {
             items(apps, key = { it.component.flattenToShortString() }) { app ->
-                AppTile(app, onClick = { onAppClick(app) })
+                AppTile(app, isEnabled, onClick = { onAppClick(app) })
             }
         }
     }
 }
 
 @Composable
-private fun AppTile(app: PhoneApp, onClick: () -> Unit) {
+private fun AppTile(app: PhoneApp, isEnabled: Boolean, onClick: () -> Unit) {
     Column(
         Modifier.size(TILE_SIZE)
             .clip(RoundedCornerShape(TILE_CORNER))
-            .clickable(onClick = onClick)
+            .clickable(enabled = isEnabled, onClick = onClick)
             .padding(horizontal = TILE_PADDING),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,

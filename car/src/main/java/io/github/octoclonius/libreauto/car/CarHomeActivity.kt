@@ -7,15 +7,19 @@ import android.util.Log
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
@@ -26,6 +30,7 @@ import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
 import io.github.octoclonius.libreauto.car.ui.ProvideCarDensity
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.video.CarDisplay
+import kotlinx.coroutines.flow.first
 
 class CarHomeActivity : ComponentActivity() {
 
@@ -50,14 +55,30 @@ class CarHomeActivity : ComponentActivity() {
             val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
             ProvideCarDensity(shownDisplay?.carDensity) {
                 CarTheme {
-                    AnimatedVisibility(
-                        visible = isDrawerOpen,
-                        modifier = Modifier.fillMaxSize(),
-                        enter = fadeIn(),
-                        exit = if (isHomeShown) fadeOut() else ExitTransition.None,
-                    ) {
-                        AppDrawer(apps, onAppClick = ::launch, modifier = Modifier.fillMaxSize())
+                    val drawerAlpha by
+                        animateFloatAsState(
+                            targetValue = if (isDrawerOpen) 1f else 0f,
+                            animationSpec =
+                                if (isDrawerOpen || isHomeShown) {
+                                    spring(stiffness = Spring.StiffnessMediumLow)
+                                } else {
+                                    snap()
+                                },
+                        )
+                    val drawerGrid = rememberLazyGridState()
+                    LaunchedEffect(isDrawerOpen) {
+                        if (!isDrawerOpen) {
+                            snapshotFlow { drawerAlpha }.first { it == 0f }
+                            drawerGrid.scrollToItem(0)
+                        }
                     }
+                    AppDrawer(
+                        apps,
+                        isEnabled = isDrawerOpen,
+                        onAppClick = ::launch,
+                        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = drawerAlpha },
+                        state = drawerGrid,
+                    )
                     indicator?.let { TouchIndicator(it) }
                 }
             }
