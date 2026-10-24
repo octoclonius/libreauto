@@ -1,5 +1,6 @@
 plugins {
     id("libreauto.android.application")
+    id("libreauto.aboutlibraries")
 }
 
 android {

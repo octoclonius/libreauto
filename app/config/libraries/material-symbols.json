@@ -1,0 +1,8 @@
+{
+  "uniqueId": "com.google.material-design-icons",
+  "name": "Material Symbols",
+  "description": "Icons by Google, used in the app's drawables.",
+  "website": "https://github.com/google/material-design-icons",
+  "developers": [{ "name": "Google" }],
+  "licenses": ["Apache-2.0"]
+}

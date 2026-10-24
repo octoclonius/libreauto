@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    compileOnly(libs.aboutlibraries.gradlePlugin)
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.wire.gradlePlugin)
@@ -10,6 +11,10 @@ dependencies {
 
 gradlePlugin {
     plugins {
+        register("aboutLibraries") {
+            id = "libreauto.aboutlibraries"
+            implementationClass = "io.github.octoclonius.libreauto.buildlogic.AboutLibrariesConventionPlugin"
+        }
         register("androidApplication") {
             id = "libreauto.android.application"
             implementationClass = "io.github.octoclonius.libreauto.buildlogic.AndroidApplicationConventionPlugin"

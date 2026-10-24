@@ -26,4 +26,14 @@
     <string name="certificate_invalid_until">Invalid until %1$s (%2$s)</string>
     <string name="certificate_valid_until">Valid until %1$s (%2$s)</string>
     <string name="certificate_invalid_since">Invalid since %1$s (%2$s)</string>
+
+    <string name="navigate_back">Back</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="about_title">About</string>
+    <string name="version_title">Version</string>
+
+    <string name="licenses_title">Open source licenses</string>
+    <string name="license_title">License</string>
+    <string name="license_no_text">No license text</string>
 </resources>
