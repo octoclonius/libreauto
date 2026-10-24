@@ -205,4 +205,28 @@ class CarLayoutTest {
         val layout = carLayout(VideoFormat(1920, 1080, 30, 160), isDriverOnRight = false)
         assertEquals(160, layout.appsDensity)
     }
+
+    @Test
+    fun theAppsDensityStaysAtItsCeilingWhenTheAppsAreaAllowsMore() {
+        val layout =
+            carLayout(VideoFormat(800, 480, 30, 160), isDriverOnRight = false, maxAppsDensity = 100)
+        assertEquals(100, layout.appsDensity)
+    }
+
+    @Test
+    fun theAppsDensityDropsBelowItsCeilingToKeepTheTabletLayout() {
+        val layout =
+            carLayout(
+                VideoFormat(
+                    800,
+                    480,
+                    30,
+                    160,
+                    contentInsets = CarInsets(top = 40, bottom = 0, left = 0, right = 0),
+                ),
+                isDriverOnRight = false,
+                maxAppsDensity = 128,
+            )
+        assertEquals(440 * 160 / 600, layout.appsDensity)
+    }
 }

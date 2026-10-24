@@ -82,6 +82,24 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
+    override fun resizeDisplay(displayId: Int, width: Int, height: Int, densityDpi: Int) {
+        synchronized(displayLock) {
+            val current = display
+            val error = resizeRequestError(displayId, width, height, densityDpi, current?.id)
+            if (current == null || error != null) throw IllegalArgumentException(error)
+            try {
+                current.resize(width, height, densityDpi)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Resizing the car display $displayId failed", cause)
+                throw IllegalStateException(
+                    "Resizing the car display failed: ${cause.javaClass.simpleName}: " +
+                        cause.message
+                )
+            }
+        }
+    }
+
     override fun releaseDisplay(displayId: Int) {
         synchronized(displayLock) {
             if (display?.id == displayId) release()

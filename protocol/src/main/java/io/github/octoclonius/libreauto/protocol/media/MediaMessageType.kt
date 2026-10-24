@@ -12,4 +12,6 @@ object MediaMessageType {
     const val MICROPHONE_RESPONSE = 0x8006
     const val VIDEO_FOCUS_REQUEST = 0x8007
     const val VIDEO_FOCUS_NOTIFICATION = 0x8008
+    const val UPDATE_UI_CONFIG_REQUEST = 0x8009
+    const val UPDATE_UI_CONFIG_REPLY = 0x800A
 }

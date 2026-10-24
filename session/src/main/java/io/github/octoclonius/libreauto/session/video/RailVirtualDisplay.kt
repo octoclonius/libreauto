@@ -38,6 +38,16 @@ internal class RailVirtualDisplay(context: Context, surface: Surface, layout: Ca
         RailDisplay.onCreated(id, layout.railSide, layout.railContentInsets)
     }
 
+    fun resize(layout: CarLayout) {
+        display.resize(layout.rail.width, layout.rail.height, layout.format.density)
+        Log.i(
+            TAG,
+            "Resized the rail display $id to ${layout.rail.width}x${layout.rail.height} on the " +
+                "${layout.railSide} side",
+        )
+        RailDisplay.onCreated(id, layout.railSide, layout.railContentInsets)
+    }
+
     override fun close() {
         RailDisplay.onReleased(id)
         display.release()

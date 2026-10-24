@@ -13,7 +13,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-internal class PrivilegedDisplay(private val surface: Surface, private val layout: CarLayout) :
+internal class PrivilegedDisplay(private val surface: Surface, private var layout: CarLayout) :
     Closeable {
 
     companion object {
@@ -21,6 +21,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private val layou
     }
 
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val lock = Any()
     private var current: OwnedDisplay<IPrivilegedService>? = null
 
     fun start() {
@@ -29,18 +30,49 @@ internal class PrivilegedDisplay(private val surface: Surface, private val layou
 
     override fun close() {
         runBlocking { scope.coroutineContext.job.cancelAndJoin() }
-        current?.let(::release)
-        current = null
+        synchronized(lock) {
+            current?.let(::release)
+            current = null
+        }
+    }
+
+    fun resize(layout: CarLayout) {
+        synchronized(lock) {
+            this.layout = layout
+            val display = current ?: return
+            val apps = layout.apps
+            try {
+                display.service.resizeDisplay(
+                    display.id,
+                    apps.width,
+                    apps.height,
+                    layout.appsDensity,
+                )
+                Log.i(
+                    TAG,
+                    "Resized the car display ${display.id} to ${apps.width}x${apps.height} at " +
+                        "${layout.appsDensity} dpi",
+                )
+            } catch (e: RemoteException) {
+                Log.w(TAG, "The privileged service didn't resize the car display", e)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "The privileged service refused to resize the car display", e)
+            }
+        }
     }
 
     private fun follow(service: IPrivilegedService?) {
         if (service == null) Log.i(TAG, "No car display while the privileged service isn't running")
-        val change = displayChange(current, service)
-        change.release?.let {
-            release(it)
-            current = null
+        synchronized(lock) {
+            val change = displayChange(current, service)
+            change.release?.let {
+                release(it)
+                current = null
+            }
+            change.createOn?.let { owner ->
+                current = create(owner)?.let { OwnedDisplay(owner, it) }
+            }
         }
-        change.createOn?.let { owner -> current = create(owner)?.let { OwnedDisplay(owner, it) } }
     }
 
     private fun create(service: IPrivilegedService): Int? {

@@ -1,12 +1,14 @@
 package io.github.octoclonius.libreauto.session.video
 
 import android.media.MediaCodec
+import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.mediaData
 import java.io.Closeable
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -25,7 +27,9 @@ internal class VideoEncoder(
     private val lock = ReentrantLock()
     private val permitFreed = lock.newCondition()
     private var unacked = 0
+    private val sentActions = FrameSentActions()
     @Volatile private var isClosed = false
+    @Volatile private var codec: MediaCodec? = null
 
     fun acknowledge(count: Int) {
         lock.withLock {
@@ -38,6 +42,23 @@ internal class VideoEncoder(
         lock.withLock {
             isClosed = true
             permitFreed.signalAll()
+        }
+        sentActions.close()
+    }
+
+    fun afterFrame(presentationNanos: Long, action: () -> Unit) {
+        sentActions.afterFrame(TimeUnit.NANOSECONDS.toMicros(presentationNanos), action)
+    }
+
+    fun setBitRate(bitRate: Int) {
+        val current = codec ?: return
+        try {
+            current.setParameters(
+                Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, bitRate) }
+            )
+            Log.i(TAG, "Changed the bit rate of session $session to $bitRate bit/s")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Changing the bit rate of session $session failed", e)
         }
     }
 
@@ -66,6 +87,7 @@ internal class VideoEncoder(
             val input = encoder.createInputSurface()
             surface = input
             encoder.start()
+            codec = encoder
             Log.i(
                 TAG,
                 "Encoding session $session: ${width}x$height at $framesPerSecond fps and " +
@@ -86,6 +108,7 @@ internal class VideoEncoder(
             Log.w(TAG, "Sending video to the car failed", e)
         } finally {
             close()
+            codec = null
             try {
                 compositor.detach()
             } catch (e: IllegalStateException) {
@@ -108,8 +131,10 @@ internal class VideoEncoder(
             when {
                 info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 ->
                     send(MediaMessageType.CODEC_CONFIG, data)
-                data.isNotEmpty() && takePermit() ->
+                data.isNotEmpty() && takePermit() -> {
                     send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))
+                    sentActions.onFrameSent(info.presentationTimeUs)
+                }
             }
         }
     }

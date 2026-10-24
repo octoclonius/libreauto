@@ -1,6 +1,8 @@
 package io.github.octoclonius.libreauto.protocol.media
 
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
+import io.github.octoclonius.libreauto.protocol.control.UiConfig
+import io.github.octoclonius.libreauto.protocol.control.UiInsets
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import java.net.ProtocolException
@@ -479,6 +481,31 @@ class VideoFormatTest {
                 VideoFormat(1280, 720, 30, 160, cutouts = listOf(cutout)).displayCutoutInsets,
             )
         }
+    }
+
+    @Test
+    fun aNewUiConfigReplacesTheInsetsAndCutoutsButKeepsTheMargins() {
+        val format =
+            VideoFormat(
+                1280,
+                720,
+                30,
+                160,
+                margins = CarInsets(top = 0, bottom = 0, left = 40, right = 40),
+                contentInsets = CarInsets(top = 10, bottom = 0, left = 0, right = 0),
+                cutouts = listOf(CarRect(0, 0, 100, 50)),
+            )
+        val updated =
+            format.withUiConfig(
+                UiConfig(
+                    margins = UiInsets(top = 0, bottom = 0, left = 0, right = 0),
+                    content_insets = UiInsets(top = 30, bottom = 0, left = 0, right = 0),
+                )
+            )
+        assertEquals(format.margins, updated.margins)
+        assertEquals(CarInsets(top = 30, bottom = 0, left = 0, right = 0), updated.contentInsets)
+        assertEquals(CarInsets(top = 30, bottom = 0, left = 0, right = 0), updated.stableInsets)
+        assertEquals(emptyList<CarRect>(), updated.cutouts)
     }
 
     @Test

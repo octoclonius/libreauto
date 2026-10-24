@@ -20,7 +20,7 @@ private constructor(
     private val associationId: Int,
     private val device: AutoCloseable,
     private val display: VirtualDisplay,
-    private val touchscreen: VirtualCarTouchscreen,
+    private var touchscreen: VirtualCarTouchscreen?,
 ) : Closeable {
 
     companion object {
@@ -155,15 +155,28 @@ private constructor(
         }
     }
 
+    fun resize(width: Int, height: Int, densityDpi: Int) {
+        touchscreen?.close()
+        touchscreen = null
+        display.resize(width, height, densityDpi)
+        touchscreen = VirtualCarTouchscreen.create(device, id, width, height)
+        Log.i(TAG, "Resized the display $id to ${width}x$height at $densityDpi dpi")
+    }
+
     fun onTouch(eventTimeNanos: Long, action: Int, actionIndex: Int, pointers: List<TouchPointer>) {
-        touchscreen.onTouch(eventTimeNanos, action, actionIndex, pointers)
+        val current = touchscreen
+        if (current == null) {
+            Log.w(TAG, "Dropped a touch: the display $id has no touchscreen")
+            return
+        }
+        current.onTouch(eventTimeNanos, action, actionIndex, pointers)
     }
 
     override fun close() {
         try {
             try {
                 try {
-                    touchscreen.close()
+                    touchscreen?.close()
                 } finally {
                     display.release()
                 }

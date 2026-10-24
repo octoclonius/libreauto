@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.protocol.media
 
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
+import io.github.octoclonius.libreauto.protocol.control.UiConfig
 import io.github.octoclonius.libreauto.protocol.control.UiInsets
 import io.github.octoclonius.libreauto.protocol.control.UiRect
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
@@ -155,23 +156,29 @@ fun videoFormat(config: VideoConfig): VideoFormat {
         )
     }
     val margins = margins(config)
-    val contentInsets = config.ui_config?.content_insets?.let(::insets)
-    val stableInsets = config.ui_config?.stable_insets?.let(::insets)
     if (!margins.leavesArea(width, height)) {
         throw ProtocolException(
             "The car's video config has margins $margins for a ${width}x$height frame"
         )
     }
     return VideoFormat(
-        width,
-        height,
-        framesPerSecond,
-        density,
-        margins,
-        contentInsets ?: stableInsets ?: CarInsets.NONE,
-        stableInsets ?: contentInsets ?: CarInsets.NONE,
-        pixelAspectRatioE4,
-        config.ui_config?.cutouts.orEmpty().mapNotNull { it.bounds?.let(::rect) },
+            width,
+            height,
+            framesPerSecond,
+            density,
+            margins,
+            pixelAspectRatioE4 = pixelAspectRatioE4,
+        )
+        .withUiConfig(config.ui_config ?: UiConfig())
+}
+
+fun VideoFormat.withUiConfig(ui: UiConfig): VideoFormat {
+    val content = ui.content_insets?.let(::insets)
+    val stable = ui.stable_insets?.let(::insets)
+    return copy(
+        contentInsets = content ?: stable ?: CarInsets.NONE,
+        stableInsets = stable ?: content ?: CarInsets.NONE,
+        cutouts = ui.cutouts.mapNotNull { it.bounds?.let(::rect) },
     )
 }
 

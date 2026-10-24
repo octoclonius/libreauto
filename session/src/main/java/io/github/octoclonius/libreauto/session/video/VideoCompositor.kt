@@ -61,7 +61,7 @@ internal class VideoCompositor(
     }
 
     private class Layer(
-        val area: Area,
+        var area: Area,
         val textureId: Int,
         val texture: SurfaceTexture,
         val surface: Surface,
@@ -86,6 +86,7 @@ internal class VideoCompositor(
     private var program = 0
     private var layers: List<Layer> = emptyList()
     private var dueNanos = 0L
+    private var lastFrameNanos: Long? = null
     private var hasNewPicture = false
     private var repeats = 0
     private var isScheduled = false
@@ -106,6 +107,24 @@ internal class VideoCompositor(
             }
     }
 
+    fun setAreas(areas: List<Area>, onApplied: (lastFrameNanos: Long?) -> Unit) {
+        val isPosted =
+            handler.post {
+                if (isReleased || isFailed) {
+                    onApplied(null)
+                    return@post
+                }
+                for ((layer, area) in layers.zip(areas)) {
+                    layer.area = area
+                    layer.texture.setDefaultBufferSize(area.width, area.height)
+                }
+                onApplied(lastFrameNanos)
+                hasNewPicture = true
+                if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+            }
+        if (!isPosted) onApplied(null)
+    }
+
     fun attach(output: Surface) {
         onThread {
             check(!isReleased && !isFailed) { "The compositor stopped" }
@@ -124,6 +143,7 @@ internal class VideoCompositor(
                 "eglMakeCurrent",
             )
             dueNanos = 0L
+            lastFrameNanos = null
             hasNewPicture = true
             schedule()
         }
@@ -155,6 +175,7 @@ internal class VideoCompositor(
         isScheduled = false
         hasNewPicture = false
         repeats = 0
+        lastFrameNanos = null
         EGL14.eglMakeCurrent(eglDisplay, idleSurface, idleSurface, eglContext)
         EGL14.eglDestroySurface(eglDisplay, eglSurface)
         eglSurface = EGL14.EGL_NO_SURFACE
@@ -339,6 +360,7 @@ internal class VideoCompositor(
         }
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationNanos)
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+        lastFrameNanos = presentationNanos
     }
 
     private fun setViewport(area: Area) {

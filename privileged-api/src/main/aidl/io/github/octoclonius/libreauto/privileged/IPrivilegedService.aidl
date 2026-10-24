@@ -28,4 +28,6 @@ interface IPrivilegedService {
     void stopAudio() = 8;
 
     oneway void showHome(int displayId, in PendingIntent home) = 9;
+
+    void resizeDisplay(int displayId, int width, int height, int densityDpi) = 10;
 }

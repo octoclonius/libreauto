@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.session.video
 import android.content.Context
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
+import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import java.io.Closeable
 import java.io.IOException
@@ -11,7 +12,7 @@ import java.util.concurrent.Executors
 
 internal class VideoStream(
     private val context: Context,
-    private val layout: CarLayout,
+    @Volatile private var layout: CarLayout,
     private val configIndex: Int,
     private val decoderDepth: Int,
     private val maxUnacked: Int,
@@ -27,6 +28,7 @@ internal class VideoStream(
         Executors.newSingleThreadExecutor { Thread(it, "video-stream").apply { isDaemon = true } }
     private var session = FIRST_SESSION
     @Volatile private var encoder: VideoEncoder? = null
+    private val displaysLock = Any()
     private var compositor: VideoCompositor? = null
     private var rail: RailVirtualDisplay? = null
     private var display: PrivilegedDisplay? = null
@@ -65,6 +67,33 @@ internal class VideoStream(
         }
     }
 
+    fun updateLayout(layout: CarLayout, onApplied: () -> Unit) {
+        val bitRate = bitRate(layout.format)
+        if (bitRate != bitRate(this.layout.format)) encoder?.setBitRate(bitRate)
+        synchronized(displaysLock) {
+            this.layout = layout
+            try {
+                rail?.resize(layout)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Resizing the rail display failed", e)
+            }
+            display?.resize(layout)
+            val current = compositor
+            if (current == null) {
+                onApplied()
+            } else {
+                current.setAreas(listOf(layout.apps, layout.rail)) { lastFrameNanos ->
+                    val drawing = encoder
+                    if (lastFrameNanos == null || drawing == null) {
+                        onApplied()
+                    } else {
+                        drawing.afterFrame(lastFrameNanos, onApplied)
+                    }
+                }
+            }
+        }
+    }
+
     fun acknowledge(ackedSession: Int?, count: Int) {
         val current = encoder ?: return
         if (ackedSession != null && ackedSession != current.session) return
@@ -79,20 +108,25 @@ internal class VideoStream(
     }
 
     private fun setUp() {
-        try {
-            val created =
-                VideoCompositor(layout.format, listOf(layout.apps, layout.rail), decoderDepth) {
-                    encoder?.close()
-                }
-            compositor = created
-            val (appsInput, railInput) = created.inputs
-            rail = RailVirtualDisplay(context, railInput, layout)
-            display = PrivilegedDisplay(appsInput, layout).also { it.start() }
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "The compositor failed", e)
-            release()
+        synchronized(displaysLock) {
+            try {
+                val created =
+                    VideoCompositor(layout.format, listOf(layout.apps, layout.rail), decoderDepth) {
+                        encoder?.close()
+                    }
+                compositor = created
+                val (appsInput, railInput) = created.inputs
+                rail = RailVirtualDisplay(context, railInput, layout)
+                display = PrivilegedDisplay(appsInput, layout).also { it.start() }
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "The compositor failed", e)
+                release()
+            }
         }
     }
+
+    private fun bitRate(format: VideoFormat): Int =
+        H264Encoder.bitRate(format.pixelsOutsideCutouts, format.framesPerSecond)
 
     private fun sendOrLog(type: Int, body: ByteArray): Boolean =
         try {
@@ -104,11 +138,13 @@ internal class VideoStream(
         }
 
     private fun release() {
-        display?.close()
-        rail?.close()
-        compositor?.close()
-        display = null
-        rail = null
-        compositor = null
+        synchronized(displaysLock) {
+            display?.close()
+            rail?.close()
+            compositor?.close()
+            display = null
+            rail = null
+            compositor = null
+        }
     }
 }

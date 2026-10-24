@@ -31,17 +31,14 @@ internal data class CarLayout(
     val rail: Area,
     val railContentInsets: CarInsets,
     val apps: Area,
-) {
-    val appsDensity: Int
-        get() =
-            minOf(
-                format.density,
-                minOf(apps.width, apps.height) * DisplayMetrics.DENSITY_DEFAULT /
-                    TABLET_SMALLEST_WIDTH_DP,
-            )
-}
+    val appsDensity: Int,
+)
 
-internal fun carLayout(format: VideoFormat, isDriverOnRight: Boolean): CarLayout {
+internal fun carLayout(
+    format: VideoFormat,
+    isDriverOnRight: Boolean,
+    maxAppsDensity: Int = format.density,
+): CarLayout {
     val width = format.displayWidth
     val height = format.displayHeight
     val permanent = format.displayStableInsets.union(format.displayCutoutInsets)
@@ -71,12 +68,19 @@ internal fun carLayout(format: VideoFormat, isDriverOnRight: Boolean): CarLayout
                 Area(0, edge, width, height) to Area(0, 0, width, edge)
             }
         }
+    val apps = besideRail.inset(covered.within(besideRail, width, height))
     return CarLayout(
         format,
         side,
         rail = rail,
         railContentInsets = covered.within(rail, width, height),
-        apps = besideRail.inset(covered.within(besideRail, width, height)),
+        apps = apps,
+        appsDensity =
+            minOf(
+                maxAppsDensity,
+                minOf(apps.width, apps.height) * DisplayMetrics.DENSITY_DEFAULT /
+                    TABLET_SMALLEST_WIDTH_DP,
+            ),
     )
 }
 

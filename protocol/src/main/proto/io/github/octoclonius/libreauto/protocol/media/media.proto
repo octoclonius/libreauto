@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package io.github.octoclonius.libreauto.protocol.media;
 
+import "io/github/octoclonius/libreauto/protocol/control/discovery.proto";
+
 message MediaSetupRequest {
   optional int32 codec = 1;
 }
@@ -42,4 +44,8 @@ message MicrophoneRequest {
 message MicrophoneResponse {
   optional int32 status = 1;
   optional int32 session = 2;
+}
+
+message UiConfigUpdate {
+  optional io.github.octoclonius.libreauto.protocol.control.UiConfig config = 1;
 }
