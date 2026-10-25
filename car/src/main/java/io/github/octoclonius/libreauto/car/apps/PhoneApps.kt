@@ -10,8 +10,12 @@ import android.content.pm.ResolveInfo
 import android.content.res.Resources
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.icu.text.AlphabeticIndex
+import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
+import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
+import android.os.LocaleList
 import io.github.octoclonius.libreauto.session.video.CarDisplay
-import java.text.Collator
+import java.util.Locale
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -27,10 +31,13 @@ import kotlinx.coroutines.flow.mapNotNull
 
 private const val LEGACY_ICON_SIZE_DP = 48f
 private const val ADAPTIVE_ICON_LAYER_SIZE_DP = 108f
+private const val UNDERFLOW_LABEL = "#"
 
 class PhoneApp(val component: ComponentName, val label: String, val icon: Drawable)
 
-fun phoneApps(context: Context): Flow<List<PhoneApp>> =
+class AppSection(val label: String, val apps: List<PhoneApp>)
+
+fun phoneApps(context: Context): Flow<List<AppSection>> =
     combine(packageChanges(context), carDensities()) { _, carDensity -> carDensity }
         .buffer(Channel.CONFLATED)
         .map { launcherApps(context, it) }
@@ -60,21 +67,36 @@ private fun packageChanges(context: Context): Flow<Unit> = callbackFlow {
     awaitClose { context.unregisterReceiver(receiver) }
 }
 
-private fun launcherApps(context: Context, carDensity: Int): List<PhoneApp> {
+private fun launcherApps(context: Context, carDensity: Int): List<AppSection> {
     val packageManager = context.packageManager
     val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-    val collator = Collator.getInstance()
-    return packageManager
+    val index = appIndex()
+    packageManager
         .queryIntentActivities(launcher, PackageManager.ResolveInfoFlags.of(0))
         .filter { it.activityInfo.packageName != context.packageName }
-        .map {
-            PhoneApp(
-                component = ComponentName(it.activityInfo.packageName, it.activityInfo.name),
-                label = it.loadLabel(packageManager).toString(),
-                icon = it.loadCarIcon(packageManager, carDensity),
-            )
+        .forEach {
+            val app =
+                PhoneApp(
+                    component = ComponentName(it.activityInfo.packageName, it.activityInfo.name),
+                    label = it.loadLabel(packageManager).toString(),
+                    icon = it.loadCarIcon(packageManager, carDensity),
+                )
+            index.addRecord(app.label, app)
         }
-        .sortedWith(compareBy(collator) { it.label })
+    return index.mapNotNull { bucket ->
+        val apps = bucket.map { it.data }
+        val type = bucket.labelType
+        if (apps.isEmpty() && type != NORMAL && type != UNDERFLOW) null
+        else AppSection(bucket.label, apps)
+    }
+}
+
+private fun appIndex(): AlphabeticIndex<PhoneApp> {
+    val locales = LocaleList.getDefault()
+    val additions = (1 until locales.size()).map { locales[it] } + Locale.ENGLISH
+    return AlphabeticIndex<PhoneApp>(locales[0])
+        .addLabels(*additions.toTypedArray())
+        .setUnderflowLabel(UNDERFLOW_LABEL)
 }
 
 private fun ResolveInfo.loadCarIcon(packageManager: PackageManager, carDensity: Int): Drawable {
