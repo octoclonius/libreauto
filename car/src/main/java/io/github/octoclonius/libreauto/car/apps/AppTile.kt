@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 
 data class AppTileSize(val tile: Dp, val icon: Dp, val labelSpacing: Dp, val label: TextUnit) {
     operator fun times(scale: Float): AppTileSize =
@@ -33,7 +33,6 @@ data class AppTileSize(val tile: Dp, val icon: Dp, val labelSpacing: Dp, val lab
 
 val DRAWER_TILE = AppTileSize(112.dp, 60.dp, 8.dp, 16.sp)
 
-val APP_TILE_CORNER = 18.dp
 private val TILE_PADDING = 4.dp
 
 @Composable
@@ -49,7 +48,7 @@ fun AppTile(
     Column(
         modifier
             .size(size.tile)
-            .clip(RoundedCornerShape(APP_TILE_CORNER))
+            .clip(CarShapes.largeIncreased)
             .combinedClickable(onLongClick = onLongClick, onClick = onClick)
             .padding(horizontal = TILE_PADDING),
         verticalArrangement = Arrangement.Center,

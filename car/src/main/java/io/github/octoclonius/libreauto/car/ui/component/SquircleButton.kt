@@ -12,15 +12,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
-import io.github.octoclonius.libreauto.car.ui.theme.SquircleShape
 
 @Composable
 fun SquircleButton(
     onClick: () -> Unit,
     inset: Dp,
-    corner: Dp,
+    shape: Shape,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -35,10 +35,7 @@ fun SquircleButton(
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.matchParentSize()
-                .padding(inset)
-                .clip(SquircleShape(corner))
-                .indication(interactions, ripple())
+            Modifier.matchParentSize().padding(inset).clip(shape).indication(interactions, ripple())
         )
         content()
     }

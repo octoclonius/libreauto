@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
@@ -46,10 +46,8 @@ import io.github.octoclonius.libreauto.session.video.RailSide
 
 private val PANEL_MARGIN = 12.dp
 private val PANEL_PADDING = 16.dp
-private val PANEL_CORNER = 28.dp
 private val TILE_SIZE = DpSize(176.dp, 72.dp)
 private val TILE_SPACING = 12.dp
-private val TILE_CORNER = 20.dp
 private val TILE_PADDING = 16.dp
 private val TILE_ICON_SIZE = 28.dp
 private const val MAX_COLUMNS = 3
@@ -148,7 +146,7 @@ private fun tiles(settings: PhoneSettingsState): List<SettingTile> =
 private fun Panel(tiles: List<SettingTile>, columns: Int, modifier: Modifier = Modifier) {
     Surface(
         modifier,
-        shape = RoundedCornerShape(PANEL_CORNER),
+        shape = CarShapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
@@ -169,7 +167,7 @@ private fun Tile(tile: SettingTile) {
     val context = LocalContext.current
     val isOn = tile.isOn == true
     Surface(
-        shape = RoundedCornerShape(TILE_CORNER),
+        shape = CarShapes.largeIncreased,
         color =
             if (isOn) MaterialTheme.colorScheme.primaryFixed
             else MaterialTheme.colorScheme.surfaceContainerHighest,

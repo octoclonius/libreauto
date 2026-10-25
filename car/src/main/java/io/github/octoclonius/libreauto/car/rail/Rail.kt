@@ -57,6 +57,7 @@ import io.github.octoclonius.libreauto.car.ui.component.BatteryBadge
 import io.github.octoclonius.libreauto.car.ui.component.BatteryIndicator
 import io.github.octoclonius.libreauto.car.ui.component.GlyphText
 import io.github.octoclonius.libreauto.car.ui.component.SquircleButton
+import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.session.CarStatusBar
 import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
 import io.github.octoclonius.libreauto.session.video.RailSide
@@ -78,7 +79,6 @@ private val BATTERY_HEIGHT = 16.dp
 private val CLOCK_HEIGHT = 16.dp
 private val ICON_PADDING = 2.dp
 private val FEEDBACK_INSET = 4.dp
-private val FEEDBACK_CORNER = 20.dp
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 
@@ -298,7 +298,7 @@ private fun StatusButton(
     SquircleButton(
         onClick,
         FEEDBACK_INSET,
-        FEEDBACK_CORNER,
+        CarShapes.largeIncreased,
         modifier.semantics { contentDescription = description },
     ) {
         content()
@@ -383,7 +383,12 @@ private fun AppSlot(
 
 @Composable
 private fun RailButton(isAppInFront: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    SquircleButton(onClick, FEEDBACK_INSET, FEEDBACK_CORNER, modifier.size(RAIL_THICKNESS)) {
+    SquircleButton(
+        onClick,
+        FEEDBACK_INSET,
+        CarShapes.largeIncreased,
+        modifier.size(RAIL_THICKNESS),
+    ) {
         Icon(
             painterResource(if (isAppInFront) R.drawable.ic_home else R.drawable.ic_apps),
             contentDescription =

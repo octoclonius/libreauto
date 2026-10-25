@@ -19,7 +19,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,12 +52,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.octoclonius.libreauto.car.R
-import io.github.octoclonius.libreauto.car.apps.APP_TILE_CORNER
 import io.github.octoclonius.libreauto.car.apps.AppIcon
 import io.github.octoclonius.libreauto.car.apps.AppSection
 import io.github.octoclonius.libreauto.car.apps.AppTile
 import io.github.octoclonius.libreauto.car.apps.AppTileSize
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
+import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -256,7 +255,7 @@ private fun HomeCell(
     onAppClick: (PhoneApp) -> Unit,
 ) {
     DisposableEffect(drag, cell) { onDispose { drag.cells.remove(cell) } }
-    val shape = RoundedCornerShape(APP_TILE_CORNER)
+    val shape = CarShapes.largeIncreased
     Box(
         Modifier.size(size.tile)
             .onGloballyPositioned { drag.cells[cell] = it.boundsInRoot() }
