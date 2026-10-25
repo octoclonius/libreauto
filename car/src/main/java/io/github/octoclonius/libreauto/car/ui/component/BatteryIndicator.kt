@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.car.ui.component
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -45,13 +46,11 @@ private const val DIGIT_WEIGHT = 0.2f
 private const val FULL_PERCENT = 100
 private const val CRITICAL_PERCENT = 20
 
-private val FILL = Color.White
 private val FILL_CHARGING = Color(0xFF18CC47)
 private val FILL_POWER_SAVE = Color(0xFFFFC917)
 private val FILL_CRITICAL = Color(0xFFFF0E01)
-private val BACKGROUND = Color.White.copy(alpha = 0.55f)
+private const val BACKGROUND_ALPHA = 0.55f
 private val DIGITS = Color.Black.copy(alpha = 0.75f)
-private val BADGE = Color.White
 
 private val BODY =
     Path().apply {
@@ -90,6 +89,7 @@ fun BatteryIndicator(
     height: Dp,
     modifier: Modifier = Modifier,
     isBodyCentered: Boolean = false,
+    color: Color = LocalContentColor.current,
 ) {
     val digits = remember(percent) { glyphsOf(percent.toString()) }
     val end = badge?.let { it.glyph.width * (1 - BADGE_OVERLAP) } ?: (CAP_GAP + CAP_WIDTH)
@@ -108,7 +108,12 @@ fun BatteryIndicator(
             if (isRtl) canvasWidth - left - itemWidth else left
         scale(scale, Offset.Zero) {
             scale(if (isRtl) -1f else 1f, 1f, Offset(canvasWidth / 2, 0f)) {
-                drawBattery(percent, hasCap = badge == null, fillColor(percent, badge))
+                drawBattery(
+                    percent,
+                    hasCap = badge == null,
+                    fillColor(percent, badge, color),
+                    color,
+                )
             }
             val digitsWidth = digits.width(DIGIT_WEIGHT)
             translate(
@@ -128,23 +133,23 @@ fun BatteryIndicator(
                         style = Stroke(width = BADGE_OUTLINE),
                         blendMode = BlendMode.Clear,
                     )
-                    drawPath(glyph.path, BADGE)
+                    drawPath(glyph.path, color)
                 }
             }
         }
     }
 }
 
-private fun fillColor(percent: Int, badge: BatteryBadge?) =
+private fun fillColor(percent: Int, badge: BatteryBadge?, color: Color) =
     when (badge) {
         BatteryBadge.Charging,
         BatteryBadge.ChargingPaused -> FILL_CHARGING
         BatteryBadge.PowerSave -> FILL_POWER_SAVE
-        null -> if (percent <= CRITICAL_PERCENT) FILL_CRITICAL else FILL
+        null -> if (percent <= CRITICAL_PERCENT) FILL_CRITICAL else color
     }
 
-private fun DrawScope.drawBattery(percent: Int, hasCap: Boolean, fill: Color) {
-    val frame = if (percent >= FULL_PERCENT) fill else BACKGROUND
+private fun DrawScope.drawBattery(percent: Int, hasCap: Boolean, fill: Color, color: Color) {
+    val frame = if (percent >= FULL_PERCENT) fill else color.copy(alpha = BACKGROUND_ALPHA)
     drawPath(BODY, frame)
     if (hasCap) drawPath(CAP, frame)
     if (percent in 1 until FULL_PERCENT) {

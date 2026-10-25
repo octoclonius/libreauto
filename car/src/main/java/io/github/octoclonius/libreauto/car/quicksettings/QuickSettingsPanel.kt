@@ -27,9 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -80,12 +78,14 @@ internal fun QuickSettingsPanel() {
             else -> Alignment.TopStart
         }
     BoxWithConstraints(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = SCRIM_ALPHA)).clickable(
-            interactionSource = null,
-            indication = null,
-        ) {
-            QuickSettingsState.close()
-        }
+        Modifier.fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+            .clickable(
+                interactionSource = null,
+                indication = null,
+            ) {
+                QuickSettingsState.close()
+            }
     ) {
         val columns =
             ((maxWidth - PANEL_MARGIN * 2 - PANEL_PADDING * 2 + TILE_SPACING) /
@@ -149,7 +149,7 @@ private fun Panel(tiles: List<SettingTile>, columns: Int, modifier: Modifier = M
     Surface(
         modifier,
         shape = RoundedCornerShape(PANEL_CORNER),
-        color = colorResource(android.R.color.system_surface_container_dark),
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
             Modifier.padding(PANEL_PADDING),
@@ -171,15 +171,11 @@ private fun Tile(tile: SettingTile) {
     Surface(
         shape = RoundedCornerShape(TILE_CORNER),
         color =
-            colorResource(
-                if (isOn) android.R.color.system_primary_fixed
-                else android.R.color.system_surface_container_highest_dark
-            ),
+            if (isOn) MaterialTheme.colorScheme.primaryFixed
+            else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor =
-            colorResource(
-                if (isOn) android.R.color.system_on_primary_fixed
-                else android.R.color.system_on_surface_dark
-            ),
+            if (isOn) MaterialTheme.colorScheme.onPrimaryFixed
+            else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isOn == null) DISABLED_ALPHA else 1f),
     ) {
         Row(

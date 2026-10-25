@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -169,8 +168,9 @@ fun HomeScreen(
                                 Brush.verticalGradient(
                                     listOf(
                                         Color.Transparent,
-                                        colorResource(android.R.color.system_neutral1_900)
-                                            .copy(alpha = REMOVE_SCRIM_ALPHA),
+                                        MaterialTheme.colorScheme.scrim.copy(
+                                            alpha = REMOVE_SCRIM_ALPHA
+                                        ),
                                     )
                                 )
                             )
@@ -331,13 +331,13 @@ private fun RemoveTarget(drag: HomeDrag, modifier: Modifier = Modifier) {
                     drag.removeCenter = it.boundsInRoot().center
                     drag.removeRadius = radius
                 }
-                .background(colorResource(android.R.color.system_primary_fixed), CircleShape),
+                .background(MaterialTheme.colorScheme.primaryFixed, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painterResource(R.drawable.ic_close),
                 contentDescription = null,
-                tint = colorResource(android.R.color.system_on_primary_fixed),
+                tint = MaterialTheme.colorScheme.onPrimaryFixed,
                 modifier = Modifier.size(REMOVE_ICON_SIZE),
             )
         }
