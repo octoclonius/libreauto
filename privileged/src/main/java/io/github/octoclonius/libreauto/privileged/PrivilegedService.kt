@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.hardware.usb.UsbManager
 import android.os.Binder
+import android.os.HandlerThread
 import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import android.os.Process
@@ -30,6 +31,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private var tasks: DisplayTasks? = null
     private var audio: CarAudioPolicy? = null
     private var audioActivity: AudioActivityMonitor? = null
+    private val audioThread = HandlerThread("car-audio").apply { start() }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         val caller = Binder.getCallingUid()
@@ -230,14 +232,14 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             releaseAudio()
             val identity = Binder.clearCallingIdentity()
             try {
-                val monitor = AudioActivityMonitor(shellContext, listener)
+                val monitor = AudioActivityMonitor(shellContext, listener, audioThread.looper)
                 audioActivity = monitor
                 val policy =
                     CarAudioPolicy.register(
                         shellContext,
                         outputs.toList(),
                         input,
-                        monitor.looper,
+                        audioThread.looper,
                         monitor::onFocusChanged,
                     )
                 audio = policy
@@ -305,15 +307,15 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         audioActivity = null
         audio = null
         try {
-            monitor?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "Stopping the audio activity monitor failed", e)
-        }
-        try {
             policy?.close()
         } catch (e: Exception) {
             val cause = if (e is InvocationTargetException) e.targetException else e
             Log.e(TAG, "Unregistering the car audio policy failed", cause)
+        }
+        try {
+            monitor?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Stopping the audio activity monitor failed", e)
         }
     }
 }

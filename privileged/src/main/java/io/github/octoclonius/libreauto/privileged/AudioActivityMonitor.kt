@@ -6,15 +6,16 @@ import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
 import android.media.AudioRecordingConfiguration
 import android.os.Handler
-import android.os.HandlerThread
 import android.os.Looper
 import android.os.RemoteException
 import android.util.Log
 import java.io.Closeable
+import java.util.concurrent.CountDownLatch
 
 internal class AudioActivityMonitor(
     context: Context,
     private val listener: IAudioActivityListener,
+    looper: Looper,
 ) : Closeable {
 
     companion object {
@@ -28,8 +29,8 @@ internal class AudioActivityMonitor(
     }
 
     private val audioManager = context.getSystemService(AudioManager::class.java)
-    private val thread = HandlerThread("audio-activity").apply { start() }
-    private val handler = Handler(thread.looper)
+    private val handler = Handler(looper)
+    @Volatile private var isClosed = false
     private var focusStack: () -> List<AudioFocusInfo> = { emptyList() }
     private var isMicrophoneWatched = false
     private val callback =
@@ -45,9 +46,6 @@ internal class AudioActivityMonitor(
             }
         }
 
-    val looper: Looper
-        get() = thread.looper
-
     fun start(focusStack: () -> List<AudioFocusInfo>, isMicrophoneWatched: Boolean) {
         this.focusStack = focusStack
         audioManager.registerAudioPlaybackCallback(callback, handler)
@@ -60,17 +58,20 @@ internal class AudioActivityMonitor(
     }
 
     fun onFocusChanged() {
-        handler.post(::report)
+        if (!isClosed) handler.post(::report)
     }
 
     override fun close() {
         audioManager.unregisterAudioPlaybackCallback(callback)
         if (isMicrophoneWatched) audioManager.unregisterAudioRecordingCallback(recordingCallback)
-        thread.quitSafely()
-        thread.join()
+        isClosed = true
+        val reported = CountDownLatch(1)
+        handler.post(reported::countDown)
+        reported.await()
     }
 
     private fun report() {
+        if (isClosed) return
         val players =
             audioManager.activePlaybackConfigurations
                 .filter { getPlayerState.invoke(it) == PLAYER_STATE_STARTED }
@@ -93,6 +94,7 @@ internal class AudioActivityMonitor(
     }
 
     private fun reportRecording() {
+        if (isClosed) return
         val isRecording =
             audioManager.activeRecordingConfigurations.any {
                 it.clientAudioSource in CarAudioPolicy.MICROPHONE_SOURCES && !it.isClientSilenced
