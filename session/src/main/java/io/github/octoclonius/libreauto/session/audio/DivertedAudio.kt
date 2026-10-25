@@ -18,6 +18,17 @@ internal fun divertedUsages(audioType: Int): IntArray? =
         else -> null
     }
 
+internal fun isCountedFocus(
+    holder: AudioFocusHolder,
+    ownUid: Int,
+    isDiverted: (usage: Int) -> Boolean,
+): Boolean =
+    holder.uid != ownUid &&
+        isDiverted(
+            if (holder.usage == AudioAttributes.USAGE_UNKNOWN) AudioAttributes.USAGE_MEDIA
+            else holder.usage
+        )
+
 internal fun audioFrameSamples(audioType: Int): Int? =
     when (audioType) {
         AudioType.MEDIA -> 2048

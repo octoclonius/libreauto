@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.session.audio
 
 import android.content.Context
 import android.os.ParcelFileDescriptor
+import android.os.Process
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
 import io.github.octoclonius.libreauto.privileged.AudioInput
@@ -155,7 +156,7 @@ internal class CarAudio(private val context: Context, private val control: Chann
             act(
                 negotiation.onActivity(
                     divertedPlayers,
-                    focusHolders.filter { isDiverted(it.usage) },
+                    focusHolders.filter { isCountedFocus(it, Process.myUid(), ::isDiverted) },
                 )
             )
         }

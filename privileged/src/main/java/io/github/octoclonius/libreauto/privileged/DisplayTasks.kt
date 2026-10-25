@@ -39,7 +39,7 @@ internal class DisplayTasks(
                 refresh()
             }
 
-            override fun onTaskCreated(taskId: Int, componentName: ComponentName) {
+            override fun onTaskCreated(taskId: Int, componentName: ComponentName?) {
                 refresh()
             }
 

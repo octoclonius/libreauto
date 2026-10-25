@@ -111,6 +111,18 @@ class FocusNegotiationTest {
     }
 
     @Test
+    fun aPlayerStartingWhileAReleaseIsUnansweredAsksForFocusAgain() {
+        playing(player(1, media))
+        negotiation.onCarFocus(gain, false)
+        playing()
+        assertEquals(emptyList<Action>(), playing(player(2, media)))
+        assertEquals(
+            listOf(Action.RequestCarFocus(requestGain)),
+            negotiation.onCarFocus(loss, false),
+        )
+    }
+
+    @Test
     fun whenTheCarTakesFocusPhoneAppsLoseIt() {
         playing(player(1, media))
         negotiation.onCarFocus(gain, false)

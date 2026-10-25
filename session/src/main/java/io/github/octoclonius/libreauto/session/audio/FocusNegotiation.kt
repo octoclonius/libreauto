@@ -54,16 +54,12 @@ internal class FocusNegotiation {
     }
 
     fun onCarFocus(state: Int, isUnsolicited: Boolean): List<Action> {
-        val answered = pending
+        val isReleaseAnswer =
+            pending == AudioFocusRequestType.RELEASE && state == AudioFocusState.LOSS
         pending = null
         carState = state
-        if (state in LOSSES) yieldedSources = sources
-        val android =
-            if (answered == AudioFocusRequestType.RELEASE && state == AudioFocusState.LOSS) {
-                null
-            } else {
-                androidFocusFor(state, isUnsolicited)
-            }
+        if (state in LOSSES && !isReleaseAnswer) yieldedSources = sources
+        val android = if (isReleaseAnswer) null else androidFocusFor(state, isUnsolicited)
         return listOfNotNull(android, nextRequest())
     }
 

@@ -38,6 +38,23 @@ class DivertedAudioTest {
     }
 
     @Test
+    fun anotherAppsFocusWithAnUnknownUsageCountsAsMedia() {
+        assertTrue(isCountedFocus(AudioFocusHolder("vlc", otherApp, 0, gain), app) { it == media })
+    }
+
+    @Test
+    fun focusWithAnUndivertedUsageDoesntCount() {
+        assertFalse(
+            isCountedFocus(AudioFocusHolder("phone", otherApp, 6, gain), app) { it == media }
+        )
+    }
+
+    @Test
+    fun libreAutosOwnFocusNeverCounts() {
+        assertFalse(isCountedFocus(AudioFocusHolder("libreauto", app, 0, gain), app) { true })
+    }
+
+    @Test
     fun onlyMediaPlayersCountAsMediaPlaying() {
         assertFalse(isMediaPlaying(emptyList()))
         assertTrue(isMediaPlaying(listOf(player(app, media))))
