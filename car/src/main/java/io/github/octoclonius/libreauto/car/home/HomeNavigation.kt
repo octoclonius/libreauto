@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.car.home
 
 import android.view.KeyEvent
+import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.session.input.PrivilegedKeys
 import io.github.octoclonius.libreauto.session.tasks.CarTask
@@ -10,11 +11,13 @@ import io.github.octoclonius.libreauto.session.video.CarDisplay
 import io.github.octoclonius.libreauto.session.video.PrivilegedHome
 
 fun onAppsButton() {
+    QuickSettingsState.close()
     if (isAppInFront()) showHome() else HomeState.toggleDrawer()
 }
 
 fun onHomeButton() {
     RailState.cancelClosing()
+    QuickSettingsState.close()
     if (isAppInFront()) {
         showHome()
     } else {
@@ -26,13 +29,24 @@ fun onHomeButton() {
 fun onBackButton() {
     when {
         RailState.cancelClosing() -> {}
+        QuickSettingsState.close() -> {}
         HomeState.isDrawerOpen.value -> HomeState.closeDrawer()
         isAppInFront() ->
             CarDisplay.state.value?.let { PrivilegedKeys.send(it.id, KeyEvent.KEYCODE_BACK) }
     }
 }
 
+fun onRailStatusClick() {
+    QuickSettingsState.toggle()
+}
+
+fun onRailAppLongClick(task: CarTask) {
+    QuickSettingsState.close()
+    RailState.startClosing(task.taskId)
+}
+
 fun onRailAppClick(task: CarTask) {
+    QuickSettingsState.close()
     CarDisplay.state.value?.let { PrivilegedTasks.show(it.id, task.taskId) }
 }
 

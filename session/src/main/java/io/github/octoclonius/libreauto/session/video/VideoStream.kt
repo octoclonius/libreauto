@@ -22,6 +22,7 @@ internal class VideoStream(
     companion object {
         private const val TAG = "VideoStream"
         private const val FIRST_SESSION = 0
+        private const val OVERLAY_LAYER = 2
     }
 
     private val executor: ExecutorService =
@@ -31,6 +32,7 @@ internal class VideoStream(
     private val displaysLock = Any()
     private var compositor: VideoCompositor? = null
     private var rail: RailVirtualDisplay? = null
+    private var overlay: OverlayVirtualDisplay? = null
     private var display: PrivilegedDisplay? = null
 
     fun start() {
@@ -77,12 +79,17 @@ internal class VideoStream(
             } catch (e: RuntimeException) {
                 Log.w(TAG, "Resizing the rail display failed", e)
             }
+            try {
+                overlay?.resize(layout)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Resizing the overlay display failed", e)
+            }
             display?.resize(layout)
             val current = compositor
             if (current == null) {
                 onApplied()
             } else {
-                current.setAreas(listOf(layout.apps, layout.rail)) { lastFrameNanos ->
+                current.setAreas(areas(layout)) { lastFrameNanos ->
                     val drawing = encoder
                     if (lastFrameNanos == null || drawing == null) {
                         onApplied()
@@ -111,12 +118,16 @@ internal class VideoStream(
         synchronized(displaysLock) {
             try {
                 val created =
-                    VideoCompositor(layout.format, listOf(layout.apps, layout.rail), decoderDepth) {
+                    VideoCompositor(layout.format, areas(layout), decoderDepth) {
                         encoder?.close()
                     }
                 compositor = created
-                val (appsInput, railInput) = created.inputs
+                val (appsInput, railInput, overlayInput) = created.inputs
                 rail = RailVirtualDisplay(context, railInput, layout)
+                overlay =
+                    OverlayVirtualDisplay(context, overlayInput, layout) {
+                        created.setHidden(OVERLAY_LAYER, !it)
+                    }
                 display = PrivilegedDisplay(appsInput, layout).also { it.start() }
             } catch (e: IllegalStateException) {
                 Log.w(TAG, "The compositor failed", e)
@@ -124,6 +135,8 @@ internal class VideoStream(
             }
         }
     }
+
+    private fun areas(layout: CarLayout): List<Area> = listOf(layout.apps, layout.rail, layout.apps)
 
     private fun bitRate(format: VideoFormat): Int =
         H264Encoder.bitRate(format.pixelsOutsideCutouts, format.framesPerSecond)
@@ -140,9 +153,11 @@ internal class VideoStream(
     private fun release() {
         synchronized(displaysLock) {
             display?.close()
+            overlay?.close()
             rail?.close()
             compositor?.close()
             display = null
+            overlay = null
             rail = null
             compositor = null
         }

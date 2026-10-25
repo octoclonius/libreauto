@@ -120,5 +120,5 @@ fun phoneConnectivity(context: Context): Flow<Connectivity> = callbackFlow {
     }
 }
 
-private fun isAirplaneModeOn(context: Context): Boolean =
+internal fun isAirplaneModeOn(context: Context): Boolean =
     Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0

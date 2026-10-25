@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
-internal fun homeRequestError(
+internal fun activityRequestError(
     displayId: Int,
     carDisplayId: Int?,
     isActivity: Boolean,
@@ -10,7 +10,7 @@ internal fun homeRequestError(
     when {
         carDisplayId == null -> "There is no car display"
         displayId != carDisplayId -> "The display $displayId isn't the car display $carDisplayId"
-        !isActivity -> "The home intent doesn't start an activity"
-        creatorUid != appUid -> "The home intent was created by uid $creatorUid, not LibreAuto"
+        !isActivity -> "The intent doesn't start an activity"
+        creatorUid != appUid -> "The intent was created by uid $creatorUid, not LibreAuto"
         else -> null
     }

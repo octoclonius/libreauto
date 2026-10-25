@@ -28,11 +28,13 @@ interface IPrivilegedService {
 
     void stopAudio() = 8;
 
-    oneway void showHome(int displayId, in PendingIntent home) = 9;
+    oneway void showActivity(int displayId, in PendingIntent activity) = 9;
 
     void resizeDisplay(int displayId, int width, int height, int densityDpi) = 10;
 
     oneway void showTask(int displayId, int taskId) = 11;
 
     oneway void closeTask(int displayId, int taskId) = 12;
+
+    oneway void setPhoneSetting(int setting, boolean isOn) = 13;
 }

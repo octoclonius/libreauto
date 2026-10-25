@@ -67,6 +67,8 @@ internal class VideoCompositor(
         val surface: Surface,
     ) {
         val matrix = FloatArray(16)
+        var hasPicture = false
+        var isHidden = false
     }
 
     private val thread = HandlerThread("video-compositor").apply { start() }
@@ -123,6 +125,16 @@ internal class VideoCompositor(
                 if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
             }
         if (!isPosted) onApplied(null)
+    }
+
+    fun setHidden(layer: Int, isHidden: Boolean) {
+        handler.post {
+            val hidden = layers.getOrNull(layer) ?: return@post
+            if (hidden.isHidden == isHidden) return@post
+            hidden.isHidden = isHidden
+            hasNewPicture = true
+            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+        }
     }
 
     fun attach(output: Surface) {
@@ -301,6 +313,8 @@ internal class VideoCompositor(
         guarded {
             layer.texture.updateTexImage()
             layer.texture.getTransformMatrix(layer.matrix)
+            layer.hasPicture = true
+            if (layer.isHidden) return@guarded
             hasNewPicture = true
             if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
         }
@@ -352,7 +366,10 @@ internal class VideoCompositor(
         GLES20.glEnableVertexAttribArray(textureCoordinate)
         GLES20.glVertexAttribPointer(textureCoordinate, 2, GLES20.GL_FLOAT, false, 0, textureQuad)
         val matrix = GLES20.glGetUniformLocation(program, "uTextureMatrix")
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         for (layer in layers) {
+            if (layer.isHidden || !layer.hasPicture) continue
             setViewport(layer.area)
             GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, layer.textureId)
             GLES20.glUniformMatrix4fv(matrix, 1, false, layer.matrix, 0)

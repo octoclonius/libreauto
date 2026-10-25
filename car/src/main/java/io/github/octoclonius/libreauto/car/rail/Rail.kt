@@ -3,7 +3,6 @@ package io.github.octoclonius.libreauto.car.rail
 import android.telephony.CellSignalStrength
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -15,7 +14,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -24,7 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -57,6 +56,7 @@ import io.github.octoclonius.libreauto.car.apps.AppIcon
 import io.github.octoclonius.libreauto.car.ui.component.BatteryBadge
 import io.github.octoclonius.libreauto.car.ui.component.BatteryIndicator
 import io.github.octoclonius.libreauto.car.ui.component.GlyphText
+import io.github.octoclonius.libreauto.car.ui.component.SquircleButton
 import io.github.octoclonius.libreauto.session.CarStatusBar
 import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
 import io.github.octoclonius.libreauto.session.video.RailSide
@@ -77,6 +77,8 @@ private val BUTTON_ICON_SIZE = 40.dp
 private val BATTERY_HEIGHT = 16.dp
 private val CLOCK_HEIGHT = 16.dp
 private val ICON_PADDING = 2.dp
+private val FEEDBACK_INSET = 4.dp
+private val FEEDBACK_CORNER = 20.dp
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 
@@ -112,6 +114,7 @@ fun Rail(
     onAppLongClick: (RailApp) -> Unit,
     onAppClose: (RailApp) -> Unit,
     onCancelClose: () -> Unit,
+    onStatusClick: () -> Unit,
     onShownCount: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -149,9 +152,17 @@ fun Rail(
     Surface(modifier.cancelClosingOnTouch({ isClosing }, { closeBounds }, onCancelClose)) {
         Box(Modifier.padding(contentPadding)) {
             if (side == RailSide.Bottom) {
-                BottomRail(status, isDriverOnRight, apps.size, onShownCount, slots, button)
+                BottomRail(
+                    status,
+                    isDriverOnRight,
+                    apps.size,
+                    onStatusClick,
+                    onShownCount,
+                    slots,
+                    button,
+                )
             } else {
-                SideRail(status, apps.size, onShownCount, slots, button)
+                SideRail(status, apps.size, onStatusClick, onShownCount, slots, button)
             }
         }
     }
@@ -188,6 +199,7 @@ private fun Modifier.cancelClosingOnTouch(
 private fun SideRail(
     status: RailStatus,
     appCount: Int,
+    onStatusClick: () -> Unit,
     onShownCount: (Int) -> Unit,
     slots: @Composable (Int, DpSize) -> Unit,
     button: @Composable (Modifier) -> Unit,
@@ -205,19 +217,24 @@ private fun SideRail(
         val slotsHeight = slotsLength(count, SIDE_SLOT.height, SIDE_SLOT_GAP)
         val top =
             centered(maxHeight, slotsHeight, statusHeight, maxHeight - RAIL_THICKNESS - slotsHeight)
-        Column(
-            Modifier.align(Alignment.TopCenter)
-                .onSizeChanged { statusHeight = with(density) { it.height.toDp() } }
-                .padding(top = RAIL_PADDING),
-            verticalArrangement = Arrangement.spacedBy(STATUS_ROW_SPACING),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        StatusButton(
+            onStatusClick,
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged {
+                statusHeight = with(density) { it.height.toDp() }
+            },
         ) {
-            status.clock?.let { Clock(it) }
-            Row(horizontalArrangement = Arrangement.spacedBy(STATUS_SPACING)) {
-                status.wifiLevel?.let { Wifi(it) }
-                status.cellular?.let { CellularIcon(it) }
+            Column(
+                Modifier.padding(vertical = RAIL_PADDING),
+                verticalArrangement = Arrangement.spacedBy(STATUS_ROW_SPACING),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                status.clock?.let { Clock(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(STATUS_SPACING)) {
+                    status.wifiLevel?.let { Wifi(it) }
+                    status.cellular?.let { CellularIcon(it) }
+                }
+                status.battery?.let { Battery(it, isBodyCentered = true) }
             }
-            status.battery?.let { Battery(it, isBodyCentered = true) }
         }
         Column(
             Modifier.align(Alignment.TopCenter).offset(y = top),
@@ -234,6 +251,7 @@ private fun BottomRail(
     status: RailStatus,
     isDriverOnRight: Boolean,
     appCount: Int,
+    onStatusClick: () -> Unit,
     onShownCount: (Int) -> Unit,
     slots: @Composable (Int, DpSize) -> Unit,
     button: @Composable (Modifier) -> Unit,
@@ -252,12 +270,14 @@ private fun BottomRail(
         val leftEdge = if (isDriverOnRight) statusWidth else RAIL_THICKNESS
         val rightEdge = maxWidth - if (isDriverOnRight) RAIL_THICKNESS else statusWidth
         val left = centered(maxWidth, slotsWidth, leftEdge, rightEdge - slotsWidth)
-        BottomStatus(
-            status,
+        StatusButton(
+            onStatusClick,
             Modifier.align(if (isDriverOnRight) Alignment.CenterStart else Alignment.CenterEnd)
-                .onSizeChanged { statusWidth = with(density) { it.width.toDp() } }
-                .padding(horizontal = RAIL_PADDING),
-        )
+                .fillMaxHeight()
+                .onSizeChanged { statusWidth = with(density) { it.width.toDp() } },
+        ) {
+            BottomStatus(status, Modifier.padding(horizontal = RAIL_PADDING))
+        }
         Row(
             Modifier.align(Alignment.CenterStart).offset(x = left),
             horizontalArrangement = Arrangement.spacedBy(BOTTOM_SLOT_GAP),
@@ -265,6 +285,23 @@ private fun BottomRail(
             slots(count, BOTTOM_SLOT)
         }
         button(Modifier.align(if (isDriverOnRight) Alignment.CenterEnd else Alignment.CenterStart))
+    }
+}
+
+@Composable
+private fun StatusButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val description = stringResource(R.string.quick_settings)
+    SquircleButton(
+        onClick,
+        FEEDBACK_INSET,
+        FEEDBACK_CORNER,
+        modifier.semantics { contentDescription = description },
+    ) {
+        content()
     }
 }
 
@@ -346,17 +383,7 @@ private fun AppSlot(
 
 @Composable
 private fun RailButton(isAppInFront: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(RAIL_THICKNESS)
-            .clickable(
-                interactionSource = null,
-                indication = ripple(bounded = false, radius = RAIL_THICKNESS / 2),
-                role = Role.Button,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
+    SquircleButton(onClick, FEEDBACK_INSET, FEEDBACK_CORNER, modifier.size(RAIL_THICKNESS)) {
         Icon(
             painterResource(if (isAppInFront) R.drawable.ic_home else R.drawable.ic_apps),
             contentDescription =

@@ -4,13 +4,15 @@ import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
-import io.github.octoclonius.libreauto.session.video.RailDisplay
 import java.util.concurrent.TimeUnit
 
-internal class RailTouches {
+internal class WindowTouches(
+    private val window: String,
+    private val deliver: (MotionEvent) -> Boolean,
+) {
 
     companion object {
-        private const val TAG = "RailTouches"
+        private const val TAG = "WindowTouches"
     }
 
     private var downTimeMillis = 0L
@@ -47,7 +49,7 @@ internal class RailTouches {
                 InputDevice.SOURCE_TOUCHSCREEN,
                 0,
             )
-        if (!RailDisplay.onTouch(event)) Log.w(TAG, "Dropped rail touch $touch")
+        if (!deliver(event)) Log.w(TAG, "Dropped $window touch $touch")
     }
 
     private fun motionAction(touch: Touch): Int {

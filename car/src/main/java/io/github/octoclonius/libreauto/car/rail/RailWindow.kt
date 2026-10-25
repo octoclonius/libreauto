@@ -20,6 +20,8 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.home.onAppsButton
 import io.github.octoclonius.libreauto.car.home.onRailAppClick
 import io.github.octoclonius.libreauto.car.home.onRailAppClose
+import io.github.octoclonius.libreauto.car.home.onRailAppLongClick
+import io.github.octoclonius.libreauto.car.home.onRailStatusClick
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
@@ -102,9 +104,10 @@ private fun RailContent(
         isAppInFront = tasks.frontTaskId != null,
         onButtonClick = ::onAppsButton,
         onAppClick = { onRailAppClick(it.task) },
-        onAppLongClick = { RailState.startClosing(it.task.taskId) },
+        onAppLongClick = { onRailAppLongClick(it.task) },
         onAppClose = { onRailAppClose(it.task) },
         onCancelClose = { RailState.cancelClosing() },
+        onStatusClick = ::onRailStatusClick,
         onShownCount = onShownCount,
         modifier = Modifier.fillMaxSize(),
     )

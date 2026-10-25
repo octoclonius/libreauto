@@ -25,6 +25,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val shellContext = ShellContext(context)
     private val association = CompanionAssociation(shellContext)
     private val keys = DisplayKeys(shellContext)
+    private val settings = PhoneSettings(shellContext)
     private val displayLock = Any()
     private val audioLock = Any()
     private var display: VirtualCarDisplay? = null
@@ -169,20 +170,26 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
-    override fun showHome(displayId: Int, home: PendingIntent) {
+    override fun showActivity(displayId: Int, activity: PendingIntent) {
         synchronized(displayLock) {
             val current = display
             val error =
-                homeRequestError(displayId, current?.id, home.isActivity, home.creatorUid, appUid)
+                activityRequestError(
+                    displayId,
+                    current?.id,
+                    activity.isActivity,
+                    activity.creatorUid,
+                    appUid,
+                )
             if (current == null || error != null) {
-                Log.w(TAG, "Didn't show the home: $error")
+                Log.w(TAG, "Didn't start an activity: $error")
                 return
             }
             try {
-                current.showHome(shellContext, home)
+                current.showActivity(shellContext, activity)
             } catch (e: Exception) {
                 val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Showing the home on the car display $displayId failed", cause)
+                Log.e(TAG, "Starting an activity on the car display $displayId failed", cause)
             }
         }
     }
@@ -218,6 +225,23 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                 val cause = if (e is InvocationTargetException) e.targetException else e
                 Log.e(TAG, "Closing the task $taskId on the car display $displayId failed", cause)
             }
+        }
+    }
+
+    override fun setPhoneSetting(setting: Int, isOn: Boolean) {
+        val error = settingRequestError(setting)
+        if (error != null) {
+            Log.w(TAG, "Didn't change a setting: $error")
+            return
+        }
+        val identity = Binder.clearCallingIdentity()
+        try {
+            settings.set(setting, isOn)
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "Changing the setting $setting failed", cause)
+        } finally {
+            Binder.restoreCallingIdentity(identity)
         }
     }
 

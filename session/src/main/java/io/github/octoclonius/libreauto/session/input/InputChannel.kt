@@ -14,6 +14,7 @@ import io.github.octoclonius.libreauto.protocol.input.parseInputReport
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.video.CarLayout
+import io.github.octoclonius.libreauto.session.video.OverlayDisplay
 import io.github.octoclonius.libreauto.session.video.RailDisplay
 
 internal class InputChannel(
@@ -30,8 +31,9 @@ internal class InputChannel(
     private var state: InputChannelState? = InputChannelState.Opening(keycodes)
     private val router = TouchRouter()
     private val presses = ButtonPresses()
-    private val railTouches = RailTouches()
-    private var isAppsGestureCaptured = false
+    private val railTouches = WindowTouches("rail", RailDisplay::onTouch)
+    private val overlayTouches = WindowTouches("overlay", OverlayDisplay::onTouch)
+    private var appsGesture = AppsGesture.App
 
     val channel: Int
         get() = sender.channel
@@ -103,13 +105,28 @@ internal class InputChannel(
         when (routed.target) {
             TouchTarget.Apps -> {
                 if (routed.touch.action == TouchAction.DOWN) {
-                    isAppsGestureCaptured = RailDisplay.captureOutsideTouch()
+                    appsGesture =
+                        when {
+                            RailDisplay.captureOutsideTouch() -> AppsGesture.Captured
+                            OverlayDisplay.isShown -> AppsGesture.Overlay
+                            else -> AppsGesture.App
+                        }
                 }
-                if (!isAppsGestureCaptured) PrivilegedTouches.send(eventTimeNanos, routed.touch)
+                when (appsGesture) {
+                    AppsGesture.App -> PrivilegedTouches.send(eventTimeNanos, routed.touch)
+                    AppsGesture.Overlay -> overlayTouches.send(eventTimeNanos, routed.touch)
+                    AppsGesture.Captured -> {}
+                }
             }
             TouchTarget.Rail -> railTouches.send(eventTimeNanos, routed.touch)
         }
     }
+}
+
+private enum class AppsGesture {
+    App,
+    Overlay,
+    Captured,
 }
 
 private sealed interface InputChannelState {

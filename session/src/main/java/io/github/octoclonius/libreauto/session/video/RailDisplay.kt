@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+internal const val TOUCH_BUFFER = 64
+
 data class RailDisplayState(val id: Int, val side: RailSide, val contentInsets: Insets)
 
 object RailDisplay {
-    private const val TOUCH_BUFFER = 64
-
     private val _state = MutableStateFlow<RailDisplayState?>(null)
     val state: StateFlow<RailDisplayState?> = _state.asStateFlow()
 

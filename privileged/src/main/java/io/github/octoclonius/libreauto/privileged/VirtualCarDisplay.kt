@@ -128,7 +128,7 @@ private constructor(
 
     val id: Int = display.display.displayId
 
-    fun showHome(context: Context, home: PendingIntent) {
+    fun showActivity(context: Context, activity: PendingIntent) {
         val options =
             ActivityOptions.makeCustomAnimation(context, 0, 0)
                 .setLaunchDisplayId(id)
@@ -139,8 +139,8 @@ private constructor(
             .java
             .getMethod("setOverrideTaskTransition", Boolean::class.javaPrimitiveType)
             .invoke(options, true)
-        home.send(context, 0, null, null, null, null, options.toBundle())
-        Log.i(TAG, "Showed the home on the display $id")
+        activity.send(context, 0, null, null, null, null, options.toBundle())
+        Log.i(TAG, "Started an activity on the display $id")
     }
 
     fun resize(width: Int, height: Int, densityDpi: Int) {

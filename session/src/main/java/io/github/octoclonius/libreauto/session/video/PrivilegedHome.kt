@@ -15,7 +15,7 @@ object PrivilegedHome {
             return
         }
         try {
-            service.showHome(displayId, PrivilegedServiceConnection.carHomeIntent)
+            service.showActivity(displayId, PrivilegedServiceConnection.carHomeIntent)
         } catch (e: RemoteException) {
             Log.w(TAG, "The privileged service didn't show the home", e)
         }
