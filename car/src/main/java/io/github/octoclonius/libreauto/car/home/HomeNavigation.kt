@@ -15,7 +15,12 @@ fun onAppsButton() {
 
 fun onHomeButton() {
     RailState.cancelClosing()
-    if (isAppInFront()) showHome() else HomeState.closeDrawer()
+    if (isAppInFront()) {
+        showHome()
+    } else {
+        HomeState.closeDrawer()
+        HomeState.showFirstPage()
+    }
 }
 
 fun onBackButton() {

@@ -15,6 +15,7 @@ import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
+import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
@@ -80,7 +81,7 @@ private fun launcherApps(context: Context, carDensity: Int): List<AppSection> {
                 PhoneApp(
                     component = ComponentName(it.activityInfo.packageName, it.activityInfo.name),
                     label = it.loadLabel(packageManager).toString(),
-                    icon = it.loadCarIcon(packageManager, carDensity, APP_ICON_SIZE),
+                    icon = it.loadCarIcon(packageManager, carDensity, HOME_ICON_SIZE),
                 )
             index.addRecord(app.label, app)
         }

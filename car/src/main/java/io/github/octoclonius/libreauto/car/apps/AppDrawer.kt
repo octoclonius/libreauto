@@ -1,17 +1,13 @@
 package io.github.octoclonius.libreauto.car.apps
 
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -27,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,17 +38,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,14 +49,8 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-private val TILE_SIZE = 112.dp
-private val TILE_CORNER = 18.dp
-private val TILE_PADDING = 4.dp
 private val GRID_SPACING = 16.dp
 private val GRID_PADDING = 16.dp
-internal val APP_ICON_SIZE = 60.dp
-private val LABEL_SPACING = 8.dp
-private val LABEL_SIZE = 16.sp
 private val LETTER_COLUMN_WIDTH = 32.dp
 private val SCROLLER_WIDTH = 48.dp
 private val SCROLLER_MIN_LETTER_HEIGHT = 14.dp
@@ -81,6 +63,7 @@ private const val DISABLED_ALPHA = 0.38f
 fun AppDrawer(
     sections: List<AppSection>,
     onAppClick: (PhoneApp) -> Unit,
+    onAppLongClick: (PhoneApp) -> Unit,
     modifier: Modifier = Modifier,
     state: LazyGridState = rememberLazyGridState(),
 ) {
@@ -94,7 +77,13 @@ fun AppDrawer(
     Surface(modifier) {
         Box(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxSize()) {
-                AppGrid(grid, onAppClick, state, Modifier.weight(1f).fillMaxHeight())
+                AppGrid(
+                    grid,
+                    onAppClick,
+                    onAppLongClick,
+                    state,
+                    Modifier.weight(1f).fillMaxHeight(),
+                )
                 Box(Modifier.width(SCROLLER_WIDTH).fillMaxHeight()) {
                     if (state.canScrollBackward || state.canScrollForward) {
                         LetterScroller(
@@ -140,17 +129,19 @@ private class SectionedApps(val sections: List<AppSection>) {
 private fun AppGrid(
     grid: SectionedApps,
     onAppClick: (PhoneApp) -> Unit,
+    onAppLongClick: (PhoneApp) -> Unit,
     state: LazyGridState,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier) {
         val tilesWidth = maxWidth - LETTER_COLUMN_WIDTH - GRID_PADDING
         val columns =
-            ((tilesWidth + GRID_SPACING) / (TILE_SIZE + GRID_SPACING)).toInt().coerceAtLeast(1)
+            ((tilesWidth + GRID_SPACING) / (DRAWER_TILE.tile + GRID_SPACING))
+                .toInt()
+                .coerceAtLeast(1)
         val extra =
-            ((tilesWidth - TILE_SIZE * columns - GRID_SPACING * (columns - 1)) / 2).coerceAtLeast(
-                0.dp
-            )
+            ((tilesWidth - DRAWER_TILE.tile * columns - GRID_SPACING * (columns - 1)) / 2)
+                .coerceAtLeast(0.dp)
         LazyVerticalGrid(
             state = state,
             columns = GridCells.Fixed(columns),
@@ -172,7 +163,13 @@ private fun AppGrid(
                         GridItemSpan(if (index == section.apps.lastIndex) maxCurrentLineSpan else 1)
                     },
                 ) { _, app ->
-                    AppTile(app, onClick = { onAppClick(app) })
+                    AppTile(
+                        app,
+                        DRAWER_TILE,
+                        onClick = { onAppClick(app) },
+                        onLongClick = { onAppLongClick(app) },
+                        modifier = Modifier.wrapContentWidth(Alignment.Start),
+                    )
                 }
             }
         }
@@ -235,41 +232,6 @@ private fun letterOffset(
     val last = items.last()
     val lastRowTop = if (last.index == range.last) last.offset.y else Int.MAX_VALUE
     return info.beforeContentPadding + minOf(maxOf(first.offset.y, 0), lastRowTop)
-}
-
-@Composable
-private fun AppTile(app: PhoneApp, onClick: () -> Unit) {
-    Column(
-        Modifier.wrapContentWidth(Alignment.Start)
-            .size(TILE_SIZE)
-            .clip(RoundedCornerShape(TILE_CORNER))
-            .clickable(onClick = onClick)
-            .padding(horizontal = TILE_PADDING),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        AppIcon(app.icon, APP_ICON_SIZE)
-        Spacer(Modifier.height(LABEL_SPACING))
-        Text(
-            app.label,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = LABEL_SIZE),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-internal fun AppIcon(icon: Drawable, iconSize: Dp, modifier: Modifier = Modifier) {
-    Spacer(
-        modifier.size(iconSize).drawBehind {
-            drawIntoCanvas { canvas ->
-                icon.setBounds(0, 0, size.width.toInt(), size.height.toInt())
-                icon.draw(canvas.nativeCanvas)
-            }
-        }
-    )
 }
 
 @Composable

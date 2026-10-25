@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.LaunchedEffect
@@ -14,11 +15,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
 import io.github.octoclonius.libreauto.car.apps.phoneApps
+import io.github.octoclonius.libreauto.car.home.HomeApps
+import io.github.octoclonius.libreauto.car.home.HomeDrag
+import io.github.octoclonius.libreauto.car.home.HomeDragGhost
+import io.github.octoclonius.libreauto.car.home.HomeScreen
 import io.github.octoclonius.libreauto.car.home.HomeState
+import io.github.octoclonius.libreauto.car.home.HomeTile
+import io.github.octoclonius.libreauto.car.home.homeDrag
+import io.github.octoclonius.libreauto.car.home.homeTiles
 import io.github.octoclonius.libreauto.car.touch.TouchIndicator
 import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
 import io.github.octoclonius.libreauto.car.ui.ProvideCarDensity
@@ -40,10 +49,12 @@ class CarHomeActivity : ComponentActivity() {
             if (resources.getBoolean(R.bool.is_touch_indicator_enabled)) TouchIndicatorState()
             else null
         touchIndicator = indicator
+        HomeApps.load(applicationContext)
         setContent {
             val apps by
                 remember { phoneApps(applicationContext) }.collectAsStateWithLifecycle(emptyList())
             val isDrawerOpen by HomeState.isDrawerOpen.collectAsState()
+            val homeComponents by HomeApps.components.collectAsState()
             val carDisplay by CarDisplay.state.collectAsStateWithLifecycle()
             val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
             ProvideCarDensity(shownDisplay?.carDensity) {
@@ -52,13 +63,35 @@ class CarHomeActivity : ComponentActivity() {
                     LaunchedEffect(isDrawerOpen) {
                         if (!isDrawerOpen) drawerGrid.scrollToItem(0)
                     }
-                    RetainedVisibility(isDrawerOpen, Modifier.fillMaxSize()) {
-                        AppDrawer(
-                            apps,
+                    val drag = remember { HomeDrag() }
+                    val tiles = remember(apps, homeComponents) { homeTiles(apps, homeComponents) }
+                    Box(
+                        Modifier.fillMaxSize()
+                            .homeDrag(
+                                drag,
+                                onDrop = { app, from, cell, isRemoved ->
+                                    drop(app, from, cell, isRemoved, tiles)
+                                },
+                            )
+                    ) {
+                        HomeScreen(
+                            tiles,
+                            drag,
+                            HomeState.firstPageRequests,
                             onAppClick = ::launch,
                             modifier = Modifier.fillMaxSize(),
-                            state = drawerGrid,
                         )
+                        RetainedVisibility(isDrawerOpen, Modifier.fillMaxSize()) {
+                            AppDrawer(
+                                apps,
+                                onAppClick = ::launch,
+                                onAppLongClick = { drag.lift(it, null) },
+                                modifier =
+                                    Modifier.fillMaxSize().alpha(if (drag.isDragging) 0f else 1f),
+                                state = drawerGrid,
+                            )
+                        }
+                        HomeDragGhost(drag)
                     }
                     indicator?.let { TouchIndicator(it) }
                 }
@@ -74,6 +107,24 @@ class CarHomeActivity : ComponentActivity() {
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         touchIndicator?.onTouch(event)
         return super.dispatchTouchEvent(event)
+    }
+
+    private fun drop(
+        app: PhoneApp,
+        from: Int?,
+        cell: Int?,
+        isRemoved: Boolean,
+        tiles: List<HomeTile>,
+    ) {
+        HomeState.closeDrawer()
+        when {
+            isRemoved && from != null -> HomeApps.remove(from)
+            cell == null -> {}
+            else -> {
+                val to = tiles.getOrNull(cell)?.index ?: HomeApps.components.value.size
+                if (from != null) HomeApps.move(from, to) else HomeApps.add(app.component, to)
+            }
+        }
     }
 
     private fun launch(app: PhoneApp) {
