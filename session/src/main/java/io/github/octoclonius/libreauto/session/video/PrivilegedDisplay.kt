@@ -3,8 +3,10 @@ package io.github.octoclonius.libreauto.session.video
 import android.os.RemoteException
 import android.util.Log
 import android.view.Surface
+import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +25,7 @@ internal class PrivilegedDisplay(private val surface: Surface, private var layou
     private val scope = CoroutineScope(Dispatchers.IO)
     private val lock = Any()
     private var current: OwnedDisplay<IPrivilegedService>? = null
+    private var tasks: IDisplayTaskListener? = null
 
     fun start() {
         scope.launch { PrivilegedServiceConnection.service.collect(::follow) }
@@ -76,6 +79,8 @@ internal class PrivilegedDisplay(private val surface: Surface, private var layou
     }
 
     private fun create(service: IPrivilegedService): Int? {
+        val home = PrivilegedServiceConnection.carHome
+        val listener = CarTasks.listener(home.packageName)
         val id =
             try {
                 service.createDisplay(
@@ -83,15 +88,19 @@ internal class PrivilegedDisplay(private val surface: Surface, private var layou
                     layout.apps.width,
                     layout.apps.height,
                     layout.appsDensity,
-                    PrivilegedServiceConnection.carHome,
+                    home,
+                    listener,
                 )
             } catch (e: RemoteException) {
                 Log.w(TAG, "The privileged service didn't create the car display", e)
+                CarTasks.onReleased(listener)
                 return null
             } catch (e: RuntimeException) {
                 Log.w(TAG, "The privileged service refused to create the car display", e)
+                CarTasks.onReleased(listener)
                 return null
             }
+        tasks = listener
         Log.i(TAG, "The privileged service created the car display $id")
         CarDisplay.onCreated(id, layout.format.density)
         return id
@@ -99,6 +108,8 @@ internal class PrivilegedDisplay(private val surface: Surface, private var layou
 
     private fun release(display: OwnedDisplay<IPrivilegedService>) {
         CarDisplay.onReleased(display.id)
+        tasks?.let(CarTasks::onReleased)
+        tasks = null
         try {
             display.service.releaseDisplay(display.id)
             Log.i(TAG, "Released the car display ${display.id}")

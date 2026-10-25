@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.app.IActivityTaskManager
 import android.companion.CompanionDeviceManager
 import android.companion.ICompanionDeviceManager
 import android.companion.virtual.IVirtualDeviceManager
@@ -24,6 +25,11 @@ internal object SystemServices {
             IVirtualDeviceManager::class.java,
             IVirtualDeviceManager.Stub.asInterface(service(Context.VIRTUAL_DEVICE_SERVICE)),
             context,
+        )
+
+    fun activityTaskManager(): IActivityTaskManager =
+        IActivityTaskManager.Stub.asInterface(
+            service(Context::class.java.getField("ACTIVITY_TASK_SERVICE").get(null) as String)
         )
 
     private fun <T> construct(

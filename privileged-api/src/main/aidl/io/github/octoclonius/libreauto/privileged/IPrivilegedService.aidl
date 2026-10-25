@@ -7,13 +7,14 @@ import android.view.Surface;
 import io.github.octoclonius.libreauto.privileged.AudioInput;
 import io.github.octoclonius.libreauto.privileged.AudioOutput;
 import io.github.octoclonius.libreauto.privileged.IAudioActivityListener;
+import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener;
 
 interface IPrivilegedService {
     void destroy() = 16777114;
 
     int getUid() = 1;
 
-    int createDisplay(in Surface surface, int width, int height, int densityDpi, in ComponentName home) = 2;
+    int createDisplay(in Surface surface, int width, int height, int densityDpi, in ComponentName home, IDisplayTaskListener tasks) = 2;
 
     void releaseDisplay(int displayId) = 3;
 
@@ -30,4 +31,8 @@ interface IPrivilegedService {
     oneway void showHome(int displayId, in PendingIntent home) = 9;
 
     void resizeDisplay(int displayId, int width, int height, int densityDpi) = 10;
+
+    oneway void showTask(int displayId, int taskId) = 11;
+
+    oneway void closeTask(int displayId, int taskId) = 12;
 }

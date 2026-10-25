@@ -27,6 +27,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val displayLock = Any()
     private val audioLock = Any()
     private var display: VirtualCarDisplay? = null
+    private var tasks: DisplayTasks? = null
     private var audio: CarAudioPolicy? = null
     private var audioActivity: AudioActivityMonitor? = null
 
@@ -53,6 +54,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         height: Int,
         densityDpi: Int,
         home: ComponentName,
+        tasks: IDisplayTaskListener,
     ): Int {
         val error = displayRequestError(width, height, densityDpi, home.packageName, appPackage)
         if (error != null) throw IllegalArgumentException(error)
@@ -78,6 +80,17 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                     )
                 }
             display = created
+            try {
+                this.tasks = DisplayTasks(shellContext, created.id, tasks).apply { start() }
+            } catch (e: Exception) {
+                release()
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Watching the tasks on the car display failed", cause)
+                throw IllegalStateException(
+                    "Watching the tasks on the car display failed: " +
+                        "${cause.javaClass.simpleName}: ${cause.message}"
+                )
+            }
             return created.id
         }
     }
@@ -169,6 +182,40 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
+    override fun showTask(displayId: Int, taskId: Int) {
+        synchronized(displayLock) {
+            val current = tasks
+            val error = taskRequestError(displayId, taskId, display?.id, current?.taskIds.orEmpty())
+            if (current == null || error != null) {
+                Log.w(TAG, "Didn't show a task: $error")
+                return
+            }
+            try {
+                current.show(taskId)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Showing the task $taskId on the car display $displayId failed", cause)
+            }
+        }
+    }
+
+    override fun closeTask(displayId: Int, taskId: Int) {
+        synchronized(displayLock) {
+            val current = tasks
+            val error = taskRequestError(displayId, taskId, display?.id, current?.taskIds.orEmpty())
+            if (current == null || error != null) {
+                Log.w(TAG, "Didn't close a task: $error")
+                return
+            }
+            try {
+                current.close(taskId)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Closing the task $taskId on the car display $displayId failed", cause)
+            }
+        }
+    }
+
     override fun startAudio(
         outputs: Array<AudioOutput>,
         input: AudioInput?,
@@ -226,6 +273,14 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     private fun release() {
+        val watched = tasks
+        tasks = null
+        try {
+            watched?.close()
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "Stopping watching the tasks on the car display failed", cause)
+        }
         val released = display ?: return
         display = null
         try {

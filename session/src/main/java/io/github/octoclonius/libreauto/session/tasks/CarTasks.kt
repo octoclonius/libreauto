@@ -1,0 +1,55 @@
+package io.github.octoclonius.libreauto.session.tasks
+
+import io.github.octoclonius.libreauto.privileged.DisplayTask
+import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+data class CarTask(val taskId: Int, val packageName: String)
+
+data class CarTasksState(val tasks: List<CarTask>, val frontTaskId: Int?) {
+    companion object {
+        val NONE = CarTasksState(emptyList(), null)
+    }
+}
+
+object CarTasks {
+    private val lock = Any()
+    private var listener: IDisplayTaskListener? = null
+
+    private val _state = MutableStateFlow(CarTasksState.NONE)
+    val state: StateFlow<CarTasksState> = _state.asStateFlow()
+
+    internal fun listener(homePackage: String): IDisplayTaskListener {
+        val created =
+            object : IDisplayTaskListener.Stub() {
+                override fun onTasks(tasks: Array<DisplayTask>) {
+                    synchronized(lock) {
+                        if (listener === this) _state.value = carTasks(tasks.toList(), homePackage)
+                    }
+                }
+            }
+        synchronized(lock) {
+            listener = created
+            _state.value = CarTasksState.NONE
+        }
+        return created
+    }
+
+    internal fun onReleased(released: IDisplayTaskListener) {
+        synchronized(lock) {
+            if (listener !== released) return
+            listener = null
+            _state.value = CarTasksState.NONE
+        }
+    }
+}
+
+internal fun carTasks(tasks: List<DisplayTask>, homePackage: String): CarTasksState {
+    val front = tasks.firstOrNull()?.takeIf { it.packageName != homePackage }
+    return CarTasksState(
+        tasks.filter { it.packageName != homePackage }.map { CarTask(it.taskId, it.packageName) },
+        front?.taskId,
+    )
+}

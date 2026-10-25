@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.input.InputMessageType
 import io.github.octoclonius.libreauto.protocol.input.InputReport
+import io.github.octoclonius.libreauto.protocol.input.TouchAction
 import io.github.octoclonius.libreauto.protocol.input.buttonPresses
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
@@ -13,6 +14,7 @@ import io.github.octoclonius.libreauto.protocol.input.parseInputReport
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.video.CarLayout
+import io.github.octoclonius.libreauto.session.video.RailDisplay
 
 internal class InputChannel(
     private val sender: ChannelSender,
@@ -29,6 +31,7 @@ internal class InputChannel(
     private val router = TouchRouter()
     private val presses = ButtonPresses()
     private val railTouches = RailTouches()
+    private var isAppsGestureCaptured = false
 
     val channel: Int
         get() = sender.channel
@@ -98,7 +101,12 @@ internal class InputChannel(
 
     private fun send(eventTimeNanos: Long, routed: RoutedTouch) {
         when (routed.target) {
-            TouchTarget.Apps -> PrivilegedTouches.send(eventTimeNanos, routed.touch)
+            TouchTarget.Apps -> {
+                if (routed.touch.action == TouchAction.DOWN) {
+                    isAppsGestureCaptured = RailDisplay.captureOutsideTouch()
+                }
+                if (!isAppsGestureCaptured) PrivilegedTouches.send(eventTimeNanos, routed.touch)
+            }
             TouchTarget.Rail -> railTouches.send(eventTimeNanos, routed.touch)
         }
     }

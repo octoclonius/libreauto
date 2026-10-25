@@ -14,6 +14,7 @@ import android.icu.text.AlphabeticIndex
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
+import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
@@ -43,7 +44,7 @@ fun phoneApps(context: Context): Flow<List<AppSection>> =
         .map { launcherApps(context, it) }
         .flowOn(Dispatchers.IO)
 
-private fun carDensities(): Flow<Int> =
+internal fun carDensities(): Flow<Int> =
     CarDisplay.state.mapNotNull { it?.carDensity }.distinctUntilChanged()
 
 private fun packageChanges(context: Context): Flow<Unit> = callbackFlow {
@@ -79,7 +80,7 @@ private fun launcherApps(context: Context, carDensity: Int): List<AppSection> {
                 PhoneApp(
                     component = ComponentName(it.activityInfo.packageName, it.activityInfo.name),
                     label = it.loadLabel(packageManager).toString(),
-                    icon = it.loadCarIcon(packageManager, carDensity),
+                    icon = it.loadCarIcon(packageManager, carDensity, APP_ICON_SIZE),
                 )
             index.addRecord(app.label, app)
         }
@@ -99,16 +100,19 @@ private fun appIndex(): AlphabeticIndex<PhoneApp> {
         .setUnderflowLabel(UNDERFLOW_LABEL)
 }
 
-private fun ResolveInfo.loadCarIcon(packageManager: PackageManager, carDensity: Int): Drawable {
+internal fun ResolveInfo.loadCarIcon(
+    packageManager: PackageManager,
+    carDensity: Int,
+    size: Dp,
+): Drawable {
     if (iconResource == 0) return loadIcon(packageManager)
     return try {
         val resources = packageManager.getResourcesForApplication(activityInfo.applicationInfo)
-        val legacyDensity = iconDensity(carDensity, APP_ICON_SIZE.value / LEGACY_ICON_SIZE_DP)
+        val legacyDensity = iconDensity(carDensity, size.value / LEGACY_ICON_SIZE_DP)
         when (val icon = resources.getDrawableForDensity(iconResource, legacyDensity, null)) {
             null -> loadIcon(packageManager)
             is AdaptiveIconDrawable -> {
-                val layerScale =
-                    APP_ICON_SIZE.value * adaptiveIconLayerScale() / ADAPTIVE_ICON_LAYER_SIZE_DP
+                val layerScale = size.value * adaptiveIconLayerScale() / ADAPTIVE_ICON_LAYER_SIZE_DP
                 val layerDensity = iconDensity(carDensity, layerScale)
                 resources.getDrawableForDensity(iconResource, layerDensity, null) ?: icon
             }
@@ -121,7 +125,6 @@ private fun ResolveInfo.loadCarIcon(packageManager: PackageManager, carDensity: 
     }
 }
 
-private fun adaptiveIconLayerScale(): Float =
-    1 + 2 * AdaptiveIconDrawable.getExtraInsetFraction()
+private fun adaptiveIconLayerScale(): Float = 1 + 2 * AdaptiveIconDrawable.getExtraInsetFraction()
 
 private fun iconDensity(carDensity: Int, scale: Float): Int = ceil(carDensity * scale).toInt()

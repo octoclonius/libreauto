@@ -1,25 +1,48 @@
 package io.github.octoclonius.libreauto.car.home
 
 import android.view.KeyEvent
+import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.session.input.PrivilegedKeys
+import io.github.octoclonius.libreauto.session.tasks.CarTask
+import io.github.octoclonius.libreauto.session.tasks.CarTasks
+import io.github.octoclonius.libreauto.session.tasks.PrivilegedTasks
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import io.github.octoclonius.libreauto.session.video.PrivilegedHome
 
 fun onAppsButton() {
-    if (HomeState.isHomeShown.value) HomeState.toggleDrawer() else showHome()
+    if (isAppInFront()) showHome() else HomeState.toggleDrawer()
 }
 
 fun onHomeButton() {
-    if (HomeState.isHomeShown.value) HomeState.closeDrawer() else showHome()
+    RailState.cancelClosing()
+    if (isAppInFront()) showHome() else HomeState.closeDrawer()
 }
 
 fun onBackButton() {
     when {
+        RailState.cancelClosing() -> {}
         HomeState.isDrawerOpen.value -> HomeState.closeDrawer()
-        HomeState.isHomeShown.value -> {}
-        else -> CarDisplay.state.value?.let { PrivilegedKeys.send(it.id, KeyEvent.KEYCODE_BACK) }
+        isAppInFront() ->
+            CarDisplay.state.value?.let { PrivilegedKeys.send(it.id, KeyEvent.KEYCODE_BACK) }
     }
 }
+
+fun onRailAppClick(task: CarTask) {
+    CarDisplay.state.value?.let { PrivilegedTasks.show(it.id, task.taskId) }
+}
+
+fun onRailAppClose(task: CarTask) {
+    val display = CarDisplay.state.value
+    if (display == null) {
+        RailState.cancelClosing()
+        return
+    }
+    RailState.onClosed(task.taskId)
+    if (CarTasks.state.value.frontTaskId == task.taskId) PrivilegedHome.show(display.id)
+    PrivilegedTasks.close(display.id, task.taskId)
+}
+
+private fun isAppInFront(): Boolean = CarTasks.state.value.frontTaskId != null
 
 private fun showHome() {
     CarDisplay.state.value?.let { PrivilegedHome.show(it.id) }

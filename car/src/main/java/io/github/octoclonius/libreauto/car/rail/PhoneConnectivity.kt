@@ -66,8 +66,8 @@ fun phoneConnectivity(context: Context): Flow<Connectivity> = callbackFlow {
                 wifiLevels[network] =
                     if (rssi == null) CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN
                     else
-                        wifi.calculateSignalLevel(rssi) *
-                            CellSignalStrength.SIGNAL_STRENGTH_GREAT / wifi.maxSignalLevel
+                        wifi.calculateSignalLevel(rssi) * CellSignalStrength.SIGNAL_STRENGTH_GREAT /
+                            wifi.maxSignalLevel
                 update()
             }
 

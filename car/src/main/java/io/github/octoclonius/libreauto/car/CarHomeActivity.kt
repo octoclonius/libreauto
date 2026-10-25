@@ -66,13 +66,8 @@ class CarHomeActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        HomeState.onHomeShown(true)
-    }
-
     override fun onPause() {
-        HomeState.onHomeShown(false)
+        HomeState.onHomeHidden()
         super.onPause()
     }
 

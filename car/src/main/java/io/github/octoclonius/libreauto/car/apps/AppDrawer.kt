@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -54,6 +53,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,8 +148,9 @@ private fun AppGrid(
         val columns =
             ((tilesWidth + GRID_SPACING) / (TILE_SIZE + GRID_SPACING)).toInt().coerceAtLeast(1)
         val extra =
-            ((tilesWidth - TILE_SIZE * columns - GRID_SPACING * (columns - 1)) / 2)
-                .coerceAtLeast(0.dp)
+            ((tilesWidth - TILE_SIZE * columns - GRID_SPACING * (columns - 1)) / 2).coerceAtLeast(
+                0.dp
+            )
         LazyVerticalGrid(
             state = state,
             columns = GridCells.Fixed(columns),
@@ -247,7 +248,7 @@ private fun AppTile(app: PhoneApp, onClick: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppIcon(app.icon)
+        AppIcon(app.icon, APP_ICON_SIZE)
         Spacer(Modifier.height(LABEL_SPACING))
         Text(
             app.label,
@@ -260,9 +261,9 @@ private fun AppTile(app: PhoneApp, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AppIcon(icon: Drawable) {
+internal fun AppIcon(icon: Drawable, iconSize: Dp, modifier: Modifier = Modifier) {
     Spacer(
-        Modifier.size(APP_ICON_SIZE).drawBehind {
+        modifier.size(iconSize).drawBehind {
             drawIntoCanvas { canvas ->
                 icon.setBounds(0, 0, size.width.toInt(), size.height.toInt())
                 icon.draw(canvas.nativeCanvas)
@@ -325,8 +326,9 @@ private fun LetterScroller(
         val padding = GRID_PADDING.roundToPx()
         val slot = (constraints.maxHeight - 2 * padding).toFloat() / measurables.size
         val step = ceil(SCROLLER_MIN_LETTER_HEIGHT.toPx() / slot).toInt().coerceAtLeast(1)
-        val placeables =
-            measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val placeables = measurables.map {
+            it.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        }
         layout(constraints.maxWidth, constraints.maxHeight) {
             placeables.forEachIndexed { index, placeable ->
                 if (index % step == 0) {
