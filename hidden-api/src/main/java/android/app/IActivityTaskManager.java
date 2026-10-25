@@ -15,6 +15,9 @@ public interface IActivityTaskManager extends IInterface {
     List<ActivityManager.RunningTaskInfo> getTasks(int maxNum, boolean filterOnlyVisibleRecents,
             boolean keepIntentExtra, int displayId) throws RemoteException;
 
+    void moveRootTaskToDisplayOnTopOrBottom(int taskId, int displayId, boolean onTop)
+            throws RemoteException;
+
     void registerTaskStackListener(ITaskStackListener listener) throws RemoteException;
 
     void unregisterTaskStackListener(ITaskStackListener listener) throws RemoteException;

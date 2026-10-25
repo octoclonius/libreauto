@@ -9,11 +9,13 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.RemoteException
 import android.util.Log
+import android.view.Display
 import java.io.Closeable
 
 internal class DisplayTasks(
     private val context: Context,
     private val displayId: Int,
+    private val homePackage: String,
     private val listener: IDisplayTaskListener,
 ) : Closeable {
 
@@ -25,6 +27,7 @@ internal class DisplayTasks(
     private val thread = HandlerThread("display-tasks").apply { start() }
     private val handler = Handler(thread.looper)
     private var reported: List<DisplayTask>? = null
+    @Volatile private var isClosed = false
 
     @Volatile
     var taskIds: Set<Int> = emptySet()
@@ -33,27 +36,27 @@ internal class DisplayTasks(
     private val stackListener =
         object : TaskStackListener() {
             override fun onTaskStackChanged() {
-                handler.post(::report)
+                refresh()
             }
 
             override fun onTaskCreated(taskId: Int, componentName: ComponentName) {
-                handler.post(::report)
+                refresh()
             }
 
             override fun onTaskRemoved(taskId: Int) {
-                handler.post(::report)
+                refresh()
             }
 
             override fun onTaskMovedToFront(taskInfo: ActivityManager.RunningTaskInfo) {
-                handler.post(::report)
+                refresh()
             }
 
             override fun onTaskMovedToBack(taskInfo: ActivityManager.RunningTaskInfo) {
-                handler.post(::report)
+                refresh()
             }
 
             override fun onTaskDisplayChanged(taskId: Int, newDisplayId: Int) {
-                handler.post(::report)
+                refresh()
             }
         }
 
@@ -81,13 +84,33 @@ internal class DisplayTasks(
         }
     }
 
+    fun moveToPhone() {
+        val tasks =
+            taskManager.getTasks(Int.MAX_VALUE, false, false, displayId).filter {
+                (it.baseActivity ?: it.baseIntent.component)?.packageName != homePackage
+            }
+        for (task in tasks) {
+            taskManager.moveRootTaskToDisplayOnTopOrBottom(
+                task.taskId,
+                Display.DEFAULT_DISPLAY,
+                false,
+            )
+        }
+        Log.i(TAG, "Moved ${tasks.size} tasks from the display $displayId behind the phone's")
+    }
+
     override fun close() {
+        isClosed = true
         try {
             taskManager.unregisterTaskStackListener(stackListener)
         } finally {
             thread.quitSafely()
             thread.join()
         }
+    }
+
+    private fun refresh() {
+        if (!isClosed) handler.post(::report)
     }
 
     private fun report() {

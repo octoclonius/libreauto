@@ -81,7 +81,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                 }
             display = created
             try {
-                this.tasks = DisplayTasks(shellContext, created.id, tasks).apply { start() }
+                this.tasks =
+                    DisplayTasks(shellContext, created.id, home.packageName, tasks).apply {
+                        start()
+                    }
             } catch (e: Exception) {
                 release()
                 val cause = if (e is InvocationTargetException) e.targetException else e
@@ -275,6 +278,12 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private fun release() {
         val watched = tasks
         tasks = null
+        try {
+            watched?.moveToPhone()
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "Moving the car display's tasks to the phone failed", cause)
+        }
         try {
             watched?.close()
         } catch (e: Exception) {
