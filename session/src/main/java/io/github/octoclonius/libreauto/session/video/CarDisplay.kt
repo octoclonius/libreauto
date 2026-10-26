@@ -13,6 +13,13 @@ object CarDisplay {
     private val _state = MutableStateFlow<CarDisplayState?>(null)
     val state: StateFlow<CarDisplayState?> = _state.asStateFlow()
 
+    private val _carDensity = MutableStateFlow<Int?>(null)
+    val carDensity: StateFlow<Int?> = _carDensity.asStateFlow()
+
+    internal fun onCarDensity(carDensity: Int?) {
+        _carDensity.value = carDensity
+    }
+
     internal fun onCreated(id: Int, carDensity: Int) {
         _state.value = CarDisplayState(id, carDensity)
     }

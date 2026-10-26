@@ -19,7 +19,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
-import io.github.octoclonius.libreauto.car.apps.phoneApps
+import io.github.octoclonius.libreauto.car.apps.PhoneApps
 import io.github.octoclonius.libreauto.car.home.HomeApps
 import io.github.octoclonius.libreauto.car.home.HomeDrag
 import io.github.octoclonius.libreauto.car.home.HomeDragGhost
@@ -49,10 +49,9 @@ class CarHomeActivity : ComponentActivity() {
             if (resources.getBoolean(R.bool.is_touch_indicator_enabled)) TouchIndicatorState()
             else null
         touchIndicator = indicator
-        HomeApps.load(applicationContext)
         setContent {
-            val apps by
-                remember { phoneApps(applicationContext) }.collectAsStateWithLifecycle(emptyList())
+            val loadedApps by PhoneApps.sections.collectAsStateWithLifecycle()
+            val apps = loadedApps.orEmpty()
             val isDrawerOpen by HomeState.isDrawerOpen.collectAsState()
             val homeComponents by HomeApps.components.collectAsState()
             val carDisplay by CarDisplay.state.collectAsStateWithLifecycle()

@@ -16,20 +16,26 @@ import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
+import io.github.octoclonius.libreauto.car.home.HomeApps
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.launch
 
 private const val LEGACY_ICON_SIZE_DP = 48f
 private const val ADAPTIVE_ICON_LAYER_SIZE_DP = 108f
@@ -39,14 +45,59 @@ class PhoneApp(val component: ComponentName, val label: String, val icon: Drawab
 
 class AppSection(val label: String, val apps: List<PhoneApp>)
 
-fun phoneApps(context: Context): Flow<List<AppSection>> =
-    combine(packageChanges(context), carDensities()) { _, carDensity -> carDensity }
-        .buffer(Channel.CONFLATED)
-        .map { launcherApps(context, it) }
-        .flowOn(Dispatchers.IO)
+private class LoadedApps(val sections: List<AppSection>, val gone: Set<ComponentName>)
+
+object PhoneApps {
+    private val scope = MainScope()
+    private var isStarted = false
+
+    private val _sections = MutableStateFlow<List<AppSection>?>(null)
+    val sections: StateFlow<List<AppSection>?> = _sections.asStateFlow()
+
+    fun start(context: Context) {
+        if (isStarted) return
+        isStarted = true
+        val appContext = context.applicationContext
+        HomeApps.load(appContext)
+        scope.launch {
+            combine(packageChanges(appContext), carDensities()) { _, carDensity -> carDensity }
+                .buffer(Channel.CONFLATED)
+                .map { carDensity ->
+                    val sections = launcherApps(appContext, carDensity)
+                    LoadedApps(
+                        sections,
+                        goneComponents(appContext, HomeApps.components.value, sections),
+                    )
+                }
+                .flowOn(Dispatchers.IO)
+                .collect {
+                    _sections.value = it.sections
+                    HomeApps.removeAll(it.gone)
+                }
+        }
+    }
+}
 
 internal fun carDensities(): Flow<Int> =
-    CarDisplay.state.mapNotNull { it?.carDensity }.distinctUntilChanged()
+    CarDisplay.carDensity.filterNotNull().distinctUntilChanged()
+
+private fun goneComponents(
+    context: Context,
+    components: List<ComponentName>,
+    sections: List<AppSection>,
+): Set<ComponentName> {
+    val shown = sections.flatMapTo(HashSet()) { section -> section.apps.map { it.component } }
+    return components
+        .filter { it !in shown }
+        .filterTo(HashSet()) {
+            try {
+                context.packageManager.getActivityInfo(it, PackageManager.ComponentInfoFlags.of(0))
+                false
+            } catch (e: PackageManager.NameNotFoundException) {
+                true
+            }
+        }
+}
 
 private fun packageChanges(context: Context): Flow<Unit> = callbackFlow {
     val receiver =

@@ -94,6 +94,7 @@ internal class VideoChannel(
 
     override fun close() {
         (state as? VideoChannelState.Started)?.stream?.close()
+        CarDisplay.onCarDensity(null)
     }
 
     private fun onSetupResponse(
@@ -127,6 +128,7 @@ internal class VideoChannel(
             "Video config $configIndex has density ${config.density}, decoder depth $decoderDepth",
         )
         var format = videoFormat(config)
+        CarDisplay.onCarDensity(format.density)
         logUnused(format, "video config $configIndex")
         var uiConfig = config.ui_config ?: UiConfig()
         for (update in current.pendingUiConfigs) {

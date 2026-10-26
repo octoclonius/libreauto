@@ -3,11 +3,13 @@ package io.github.octoclonius.libreauto.car.home
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object HomeApps {
+    private const val TAG = "HomeApps"
     private const val PREFS = "car_home"
     private const val KEY_APPS = "apps"
 
@@ -33,6 +35,12 @@ object HomeApps {
 
     internal fun remove(at: Int) {
         save(withRemoved(_components.value, at))
+    }
+
+    internal fun removeAll(gone: Set<ComponentName>) {
+        if (_components.value.none { it in gone }) return
+        Log.i(TAG, "Removed the uninstalled or disabled $gone from the home")
+        save(_components.value.filter { it !in gone })
     }
 
     private fun save(components: List<ComponentName>) {
