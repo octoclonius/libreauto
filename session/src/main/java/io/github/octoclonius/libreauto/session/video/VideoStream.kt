@@ -5,6 +5,7 @@ import android.util.Log
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
+import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
 import java.io.IOException
 import java.util.concurrent.ExecutorService
@@ -128,7 +129,8 @@ internal class VideoStream(
                     OverlayVirtualDisplay(context, overlayInput, layout) {
                         created.setHidden(OVERLAY_LAYER, !it)
                     }
-                display = PrivilegedDisplay(appsInput, layout).also { it.start() }
+                display =
+                    PrivilegedDisplay(appsInput, layout, OpenCarTasks(context)).also { it.start() }
             } catch (e: IllegalStateException) {
                 Log.w(TAG, "The compositor failed", e)
                 release()

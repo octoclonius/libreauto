@@ -3,6 +3,8 @@ package io.github.octoclonius.libreauto.privileged
 import android.os.Parcel
 import android.os.Parcelable
 
+const val NO_TASK = -1
+
 data class DisplayTask(val taskId: Int, val packageName: String) : Parcelable {
 
     override fun describeContents(): Int = 0

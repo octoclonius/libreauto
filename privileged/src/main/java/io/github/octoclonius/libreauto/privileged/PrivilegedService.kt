@@ -245,6 +245,23 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
+    override fun restoreTasks(displayId: Int, taskIds: IntArray, frontTaskId: Int) {
+        synchronized(displayLock) {
+            val current = tasks
+            val error = restoreRequestError(displayId, display?.id, taskIds.toList(), frontTaskId)
+            if (current == null || error != null) {
+                Log.w(TAG, "Didn't bring back tasks: $error")
+                return
+            }
+            try {
+                current.restore(taskIds.toList(), frontTaskId)
+            } catch (e: Exception) {
+                val cause = if (e is InvocationTargetException) e.targetException else e
+                Log.e(TAG, "Bringing back tasks to the car display $displayId failed", cause)
+            }
+        }
+    }
+
     override fun startAudio(
         outputs: Array<AudioOutput>,
         input: AudioInput?,

@@ -21,12 +21,18 @@ object CarTasks {
     private val _state = MutableStateFlow(CarTasksState.NONE)
     val state: StateFlow<CarTasksState> = _state.asStateFlow()
 
-    internal fun listener(homePackage: String): IDisplayTaskListener {
+    internal fun listener(
+        homePackage: String,
+        onState: (CarTasksState) -> Unit,
+    ): IDisplayTaskListener {
         val created =
             object : IDisplayTaskListener.Stub() {
                 override fun onTasks(tasks: Array<DisplayTask>) {
                     synchronized(lock) {
-                        if (listener === this) _state.value = carTasks(tasks.toList(), homePackage)
+                        if (listener !== this) return
+                        val state = carTasks(tasks.toList(), homePackage)
+                        _state.value = state
+                        onState(state)
                     }
                 }
             }

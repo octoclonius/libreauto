@@ -37,4 +37,6 @@ interface IPrivilegedService {
     oneway void closeTask(int displayId, int taskId) = 12;
 
     oneway void setPhoneSetting(int setting, boolean isOn) = 13;
+
+    oneway void restoreTasks(int displayId, in int[] taskIds, int frontTaskId) = 14;
 }

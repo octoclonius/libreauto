@@ -84,6 +84,26 @@ internal class DisplayTasks(
         }
     }
 
+    fun restore(taskIds: List<Int>, frontTaskId: Int) {
+        var moved = 0
+        for (taskId in taskIds) {
+            if (taskId == frontTaskId) continue
+            try {
+                taskManager.moveRootTaskToDisplayOnTopOrBottom(taskId, displayId, false)
+                moved++
+            } catch (e: IllegalArgumentException) {
+                Log.i(TAG, "Didn't bring back the task $taskId: ${e.message}")
+            }
+        }
+        Log.i(TAG, "Brought back $moved tasks behind the home on the display $displayId")
+        if (frontTaskId == NO_TASK) return
+        try {
+            show(frontTaskId)
+        } catch (e: IllegalArgumentException) {
+            Log.i(TAG, "Didn't bring back the front task $frontTaskId: ${e.message}")
+        }
+    }
+
     fun moveToPhone() {
         val tasks =
             taskManager.getTasks(Int.MAX_VALUE, false, false, displayId).filter {
