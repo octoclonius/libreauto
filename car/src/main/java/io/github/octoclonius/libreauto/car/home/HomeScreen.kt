@@ -57,6 +57,8 @@ import io.github.octoclonius.libreauto.car.apps.AppSection
 import io.github.octoclonius.libreauto.car.apps.AppTile
 import io.github.octoclonius.libreauto.car.apps.AppTileSize
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
+import io.github.octoclonius.libreauto.car.apps.TILE_GAP
+import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -67,7 +69,6 @@ import kotlinx.coroutines.launch
 
 internal val HOME_ICON_SIZE = 88.dp
 private val HOME_TILE = AppTileSize(160.dp, HOME_ICON_SIZE, 10.dp, 18.sp)
-private val GRID_SPACING = 16.dp
 private const val MIN_ROWS = 2
 private val INDICATOR_HEIGHT = 36.dp
 private val DOT_TARGET = 30.dp
@@ -83,7 +84,6 @@ private val EDGE_WIDTH = 40.dp
 private val TARGET_BORDER = 2.dp
 private const val EDGE_FLIP_MILLIS = 550L
 private const val LIFTED_ALPHA = 0.3f
-private const val TARGET_ALPHA = 0.16f
 private const val INACTIVE_DOT_ALPHA = 0.38f
 private const val GHOST_SCALE = 1.1f
 private const val LABEL_SHADOW_BLUR = 6f
@@ -108,17 +108,14 @@ fun HomeScreen(
 ) {
     BoxWithConstraints(modifier) {
         val gridHeight = maxHeight - INDICATOR_HEIGHT * 2
-        val columns =
-            ((maxWidth - GRID_SPACING) / (HOME_TILE.tile + GRID_SPACING)).toInt().coerceAtLeast(1)
+        val columns = ((maxWidth - TILE_GAP) / (HOME_TILE.tile + TILE_GAP)).toInt().coerceAtLeast(1)
         val rows =
-            ((gridHeight + GRID_SPACING) / (HOME_TILE.tile + GRID_SPACING))
-                .toInt()
-                .coerceAtLeast(MIN_ROWS)
+            ((gridHeight + TILE_GAP) / (HOME_TILE.tile + TILE_GAP)).toInt().coerceAtLeast(MIN_ROWS)
         val fit =
             minOf(
                 1f,
-                (gridHeight - GRID_SPACING * (rows - 1)) / (HOME_TILE.tile * rows),
-                (maxWidth - GRID_SPACING * (columns + 1)) / (HOME_TILE.tile * columns),
+                (gridHeight - TILE_GAP * (rows - 1)) / (HOME_TILE.tile * rows),
+                (maxWidth - TILE_GAP * (columns + 1)) / (HOME_TILE.tile * columns),
             )
         val size = HOME_TILE * fit
         val perPage = columns * rows
@@ -231,11 +228,11 @@ private fun HomePage(
 ) {
     Column(
         Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(GRID_SPACING, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(TILE_GAP, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         repeat(rows) { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(GRID_SPACING)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
                 repeat(columns) { column ->
                     val cell = first + row * columns + column
                     HomeCell(cell, entries.getOrNull(cell), size, drag, cell == hole, onAppClick)
@@ -263,7 +260,7 @@ private fun HomeCell(
             .then(
                 if (isTarget) {
                     Modifier.background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = TARGET_ALPHA)
+                            MaterialTheme.colorScheme.primary.copy(alpha = CarAlpha.DRAGGED)
                         )
                         .border(TARGET_BORDER, MaterialTheme.colorScheme.primary, shape)
                 } else {

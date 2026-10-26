@@ -35,7 +35,9 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
+import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
 import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
@@ -44,15 +46,13 @@ import io.github.octoclonius.libreauto.session.video.CarDisplay
 import io.github.octoclonius.libreauto.session.video.RailDisplay
 import io.github.octoclonius.libreauto.session.video.RailSide
 
-private val PANEL_MARGIN = 12.dp
-private val PANEL_PADDING = 16.dp
+private val PANEL_MARGIN = CarSpacing.medium
+private val PANEL_PADDING = CarSpacing.large
 private val TILE_SIZE = DpSize(176.dp, 72.dp)
-private val TILE_SPACING = 12.dp
-private val TILE_PADDING = 16.dp
+private val TILE_SPACING = CarSpacing.medium
+private val TILE_PADDING = CarSpacing.large
 private val TILE_ICON_SIZE = 28.dp
 private const val MAX_COLUMNS = 3
-private const val SCRIM_ALPHA = 0.6f
-private const val DISABLED_ALPHA = 0.38f
 
 private class SettingTile(
     val setting: QuickSetting,
@@ -77,7 +77,7 @@ internal fun QuickSettingsPanel() {
         }
     BoxWithConstraints(
         Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = CarAlpha.SCRIM))
             .clickable(
                 interactionSource = null,
                 indication = null,
@@ -174,7 +174,7 @@ private fun Tile(tile: SettingTile) {
         contentColor =
             if (isOn) MaterialTheme.colorScheme.onPrimaryFixed
             else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isOn == null) DISABLED_ALPHA else 1f),
+        modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isOn == null) CarAlpha.DISABLED else 1f),
     ) {
         Row(
             Modifier.fillMaxSize()

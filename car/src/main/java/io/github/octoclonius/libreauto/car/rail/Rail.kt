@@ -58,27 +58,28 @@ import io.github.octoclonius.libreauto.car.ui.component.BatteryIndicator
 import io.github.octoclonius.libreauto.car.ui.component.GlyphText
 import io.github.octoclonius.libreauto.car.ui.component.SquircleButton
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
+import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
 import io.github.octoclonius.libreauto.session.CarStatusBar
 import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
 import io.github.octoclonius.libreauto.session.video.RailSide
 
 internal val RAIL_ICON_SIZE = 48.dp
 private val RAIL_THICKNESS = RAIL_THICKNESS_DP.dp
-private val RAIL_PADDING = 12.dp
+private val RAIL_PADDING = CarSpacing.medium
 private val SIDE_SLOT = DpSize(RAIL_THICKNESS, RAIL_ICON_SIZE)
 private val BOTTOM_SLOT = DpSize(RAIL_ICON_SIZE, RAIL_THICKNESS)
-private val SIDE_SLOT_GAP = 16.dp
-private val BOTTOM_SLOT_GAP = 24.dp
+private val SIDE_SLOT_GAP = CarSpacing.large
+private val BOTTOM_SLOT_GAP = CarSpacing.extraLarge
 private val CLOSE_ICON_SIZE = 28.dp
 private const val PRESSED_SCALE = 1.1f
-private val STATUS_SPACING = 4.dp
-private val STATUS_ROW_SPACING = 8.dp
+private val STATUS_SPACING = CarSpacing.extraSmall
+private val STATUS_ROW_SPACING = CarSpacing.small
 private val STATUS_ICON_SIZE = 24.dp
 private val BUTTON_ICON_SIZE = 40.dp
 private val BATTERY_HEIGHT = 16.dp
 private val CLOCK_HEIGHT = 16.dp
 private val ICON_PADDING = 2.dp
-private val FEEDBACK_INSET = 4.dp
+private val FEEDBACK_INSET = CarSpacing.extraSmall
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
 

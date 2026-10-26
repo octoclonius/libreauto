@@ -45,19 +45,19 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
+import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-private val GRID_SPACING = 16.dp
-private val GRID_PADDING = 16.dp
+private val GRID_PADDING = CarSpacing.large
 private val LETTER_COLUMN_WIDTH = 32.dp
 private val SCROLLER_WIDTH = 48.dp
 private val SCROLLER_MIN_LETTER_HEIGHT = 14.dp
 private val SCROLLER_LETTER_SIZE = 12.sp
 private val BUBBLE_SIZE = 80.dp
-private val BUBBLE_SPACING = 8.dp
-private const val DISABLED_ALPHA = 0.38f
+private val BUBBLE_SPACING = CarSpacing.small
 
 @Composable
 fun AppDrawer(
@@ -136,11 +136,9 @@ private fun AppGrid(
     BoxWithConstraints(modifier) {
         val tilesWidth = maxWidth - LETTER_COLUMN_WIDTH - GRID_PADDING
         val columns =
-            ((tilesWidth + GRID_SPACING) / (DRAWER_TILE.tile + GRID_SPACING))
-                .toInt()
-                .coerceAtLeast(1)
+            ((tilesWidth + TILE_GAP) / (DRAWER_TILE.tile + TILE_GAP)).toInt().coerceAtLeast(1)
         val extra =
-            ((tilesWidth - DRAWER_TILE.tile * columns - GRID_SPACING * (columns - 1)) / 2)
+            ((tilesWidth - DRAWER_TILE.tile * columns - TILE_GAP * (columns - 1)) / 2)
                 .coerceAtLeast(0.dp)
         LazyVerticalGrid(
             state = state,
@@ -152,8 +150,8 @@ private fun AppGrid(
                     top = GRID_PADDING,
                     bottom = GRID_PADDING,
                 ),
-            verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
-            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
+            horizontalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             grid.shown.forEach { section ->
                 itemsIndexed(
@@ -253,7 +251,7 @@ private fun LetterScroller(
                     color =
                         when {
                             index == current -> MaterialTheme.colorScheme.primary
-                            section.apps.isEmpty() -> contentColor.copy(alpha = DISABLED_ALPHA)
+                            section.apps.isEmpty() -> contentColor.copy(alpha = CarAlpha.DISABLED)
                             else -> contentColor
                         },
                 )
