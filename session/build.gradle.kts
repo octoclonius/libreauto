@@ -1,5 +1,6 @@
 plugins {
     id("libreauto.android.library")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -10,6 +11,7 @@ dependencies {
     implementation(project(":privileged-api"))
     implementation(project(":protocol"))
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
 

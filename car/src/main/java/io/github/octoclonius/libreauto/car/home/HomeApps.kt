@@ -4,9 +4,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import io.github.octoclonius.libreauto.car.decodeSaved
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 object HomeApps {
     private const val TAG = "HomeApps"
@@ -22,7 +25,10 @@ object HomeApps {
         if (prefs != null) return
         val loaded = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = loaded
-        _components.value = decodeHomeApps(loaded.getString(KEY_APPS, null))
+        _components.value =
+            decodeHomeApps(loaded.getString(KEY_APPS, null)).map {
+                ComponentName(it.packageName, it.className)
+            }
     }
 
     internal fun add(component: ComponentName, at: Int? = null) {
@@ -45,7 +51,8 @@ object HomeApps {
 
     private fun save(components: List<ComponentName>) {
         _components.value = components
-        prefs?.edit()?.putString(KEY_APPS, encodeHomeApps(components))?.apply()
+        val saved = components.map { SavedComponent(it.packageName, it.className) }
+        prefs?.edit()?.putString(KEY_APPS, encodeHomeApps(saved))?.apply()
     }
 }
 
@@ -63,8 +70,9 @@ internal fun <T> withMoved(list: List<T>, from: Int, to: Int): List<T> {
 internal fun <T> withRemoved(list: List<T>, at: Int): List<T> =
     if (at in list.indices) list.toMutableList().apply { removeAt(at) } else list
 
-internal fun encodeHomeApps(components: List<ComponentName>): String =
-    components.joinToString("\n") { it.flattenToString() }
+@Serializable internal data class SavedComponent(val packageName: String, val className: String)
 
-internal fun decodeHomeApps(encoded: String?): List<ComponentName> =
-    encoded.orEmpty().lines().mapNotNull { ComponentName.unflattenFromString(it) }
+internal fun encodeHomeApps(apps: List<SavedComponent>): String = Json.encodeToString(apps)
+
+internal fun decodeHomeApps(encoded: String?): List<SavedComponent> =
+    decodeSaved<List<SavedComponent>>(encoded).orEmpty()

@@ -18,12 +18,16 @@ class RailHost(context: Context) {
 
     companion object {
         private const val TAG = "RailHost"
+        private const val PREFS = "car_rail"
+        private const val KEY_ORDER = "order"
     }
 
     private val context = context.applicationContext
     private val scope = MainScope()
     private val shownCount = MutableStateFlow(MAX_RAIL_APPS)
     private val order = MutableStateFlow<List<CarTask>>(emptyList())
+    private val prefs = this.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private var rememberedTaskIds = decodeRailOrder(prefs.getString(KEY_ORDER, null))
     private var window: RailWindow? = null
 
     fun start() {
@@ -38,10 +42,23 @@ class RailHost(context: Context) {
         }
         scope.launch {
             combine(CarTasks.state, RailState.closedTaskIds, shownCount) { tasks, closed, shown ->
-                    railOrder(order.value, withoutClosed(tasks, closed), shown)
+                    nextRailOrder(
+                        order.value,
+                        rememberedTaskIds,
+                        withoutClosed(tasks, closed),
+                        shown,
+                    )
                 }
-                .collect { order.value = it }
+                .collect(::onOrder)
         }
+    }
+
+    private fun onOrder(next: List<CarTask>) {
+        order.value = next
+        val taskIds = next.map { it.taskId }
+        if (taskIds.isEmpty() || taskIds == rememberedTaskIds) return
+        rememberedTaskIds = taskIds
+        prefs.edit().putString(KEY_ORDER, encodeRailOrder(taskIds)).apply()
     }
 
     private fun show(rail: RailDisplayState?) {

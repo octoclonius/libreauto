@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.apps.loadCarIcon
+import io.github.octoclonius.libreauto.car.decodeSaved
 import io.github.octoclonius.libreauto.session.tasks.CarTask
 import io.github.octoclonius.libreauto.session.tasks.CarTasksState
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.serialization.json.Json
 
 const val MAX_RAIL_APPS = 4
 
@@ -26,6 +28,21 @@ internal fun withoutClosed(state: CarTasksState, closed: Set<Int>): CarTasksStat
             state.tasks.filter { it.taskId !in closed },
             state.frontTaskId?.takeIf { it !in closed },
         )
+
+internal fun nextRailOrder(
+    order: List<CarTask>,
+    rememberedTaskIds: List<Int>,
+    state: CarTasksState,
+    shown: Int,
+): List<CarTask> {
+    val remembered = rememberedTaskIds.mapNotNull { id -> state.tasks.find { it.taskId == id } }
+    return railOrder(order.ifEmpty { remembered }, state, shown)
+}
+
+internal fun encodeRailOrder(taskIds: List<Int>): String = Json.encodeToString(taskIds)
+
+internal fun decodeRailOrder(encoded: String?): List<Int> =
+    decodeSaved<List<Int>>(encoded).orEmpty()
 
 internal fun railOrder(order: List<CarTask>, state: CarTasksState, shown: Int): List<CarTask> {
     val stillOpen = order.filter { it in state.tasks }

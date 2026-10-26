@@ -1,36 +1,38 @@
 package io.github.octoclonius.libreauto.session.tasks
 
 import android.content.Context
-import io.github.octoclonius.libreauto.privileged.NO_TASK
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
-internal data class OpenTasks(val taskIds: List<Int>, val frontTaskId: Int?)
+@Serializable internal data class OpenTasks(val taskIds: List<Int>, val frontTaskId: Int?)
 
 internal class OpenCarTasks(context: Context) {
 
     companion object {
         private const val PREFS = "car_tasks"
         private const val KEY_TASKS = "tasks"
-        private const val KEY_FRONT = "front"
     }
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun load(): OpenTasks {
-        val taskIds = decodeTaskIds(prefs.getString(KEY_TASKS, null))
-        val front = prefs.getInt(KEY_FRONT, NO_TASK).takeIf { it in taskIds }
-        return OpenTasks(taskIds, front)
-    }
+    fun load(): OpenTasks = decodeOpenTasks(prefs.getString(KEY_TASKS, null))
 
     fun save(state: CarTasksState) {
-        prefs
-            .edit()
-            .putString(KEY_TASKS, encodeTaskIds(state.tasks.map { it.taskId }))
-            .putInt(KEY_FRONT, state.frontTaskId ?: NO_TASK)
-            .apply()
+        val tasks = OpenTasks(state.tasks.map { it.taskId }, state.frontTaskId)
+        prefs.edit().clear().putString(KEY_TASKS, encodeOpenTasks(tasks)).apply()
     }
 }
 
-internal fun encodeTaskIds(taskIds: List<Int>): String = taskIds.joinToString(",")
+internal fun encodeOpenTasks(tasks: OpenTasks): String = Json.encodeToString(tasks)
 
-internal fun decodeTaskIds(encoded: String?): List<Int> =
-    encoded.orEmpty().split(",").mapNotNull { it.toIntOrNull() }.distinct()
+internal fun decodeOpenTasks(encoded: String?): OpenTasks {
+    val decoded =
+        try {
+            encoded?.let { Json.decodeFromString<OpenTasks>(it) }
+        } catch (e: SerializationException) {
+            null
+        } ?: return OpenTasks(emptyList(), null)
+    val taskIds = decoded.taskIds.distinct()
+    return OpenTasks(taskIds, decoded.frontTaskId?.takeIf { it in taskIds })
+}

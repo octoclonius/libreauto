@@ -1,6 +1,7 @@
 plugins {
     id("libreauto.android.library")
     id("libreauto.android.compose")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -17,6 +18,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

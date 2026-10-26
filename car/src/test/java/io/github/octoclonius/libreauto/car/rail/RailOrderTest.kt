@@ -56,4 +56,56 @@ class RailOrderTest {
         val state = withoutClosed(CarTasksState(listOf(maps, music), 1), setOf(1))
         assertEquals(CarTasksState(listOf(music), null), state)
     }
+
+    @Test
+    fun theRememberedOrderComesBackAtPlugIn() {
+        val order =
+            nextRailOrder(
+                emptyList(),
+                listOf(music.taskId, maps.taskId),
+                CarTasksState(listOf(maps, music), 1),
+                MAX_RAIL_APPS,
+            )
+        assertEquals(listOf(music, maps), order)
+    }
+
+    @Test
+    fun theCurrentOrderWinsOverTheRememberedOne() {
+        val order =
+            nextRailOrder(
+                listOf(music),
+                listOf(maps.taskId, music.taskId),
+                CarTasksState(listOf(music, maps), 2),
+                MAX_RAIL_APPS,
+            )
+        assertEquals(listOf(maps, music), order)
+    }
+
+    @Test
+    fun rememberedAppsThatAreGoneAreSkipped() {
+        val order =
+            nextRailOrder(
+                emptyList(),
+                listOf(podcasts.taskId, music.taskId, maps.taskId),
+                CarTasksState(listOf(maps, music), 1),
+                MAX_RAIL_APPS,
+            )
+        assertEquals(listOf(music, maps), order)
+    }
+
+    @Test
+    fun theRailOrderSurvivesSaving() {
+        val taskIds = listOf(2, 1, 3)
+        assertEquals(taskIds, decodeRailOrder(encodeRailOrder(taskIds)))
+    }
+
+    @Test
+    fun somethingUnreadableMeansNoOrder() {
+        assertEquals(emptyList<Int>(), decodeRailOrder("2/music\n1/maps"))
+    }
+
+    @Test
+    fun nothingSavedMeansNoOrder() {
+        assertEquals(emptyList<Int>(), decodeRailOrder(null))
+    }
 }
