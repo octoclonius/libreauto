@@ -9,10 +9,10 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.TlsServer
-import io.github.octoclonius.libreauto.protocol.bluetooth.carBluetooth
 import io.github.octoclonius.libreauto.protocol.control.Handshake
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
+import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.control.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.control.carName
 import io.github.octoclonius.libreauto.protocol.control.isBatteryOnCar
@@ -25,20 +25,8 @@ import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryRes
 import io.github.octoclonius.libreauto.protocol.control.pingResponse
 import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
-import io.github.octoclonius.libreauto.protocol.input.inputSource
-import io.github.octoclonius.libreauto.protocol.media.AudioType
-import io.github.octoclonius.libreauto.protocol.media.audioSink
-import io.github.octoclonius.libreauto.protocol.media.audioSource
-import io.github.octoclonius.libreauto.protocol.media.videoSink
-import io.github.octoclonius.libreauto.session.audio.AudioChannel
-import io.github.octoclonius.libreauto.session.audio.CarAudio
-import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
-import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
-import io.github.octoclonius.libreauto.session.input.CarButtons
-import io.github.octoclonius.libreauto.session.input.InputChannel
-import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -110,8 +98,7 @@ class CarConnection(context: Context) {
         control: ChannelSender,
         version: ProtocolVersion,
     ) {
-        val channels = LinkedHashMap<Int, CarChannel>()
-        var audio: CarAudio? = null
+        var session: CarSession? = null
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -123,110 +110,22 @@ class CarConnection(context: Context) {
                     )
                 }
                 if (message.channel != CONTROL_CHANNEL) {
-                    val target = channels[message.channel]
-                    if (target == null || !target.onMessage(message)) logUnhandled(message)
+                    if (session?.onChannelMessage(message) != true) logUnhandled(message)
                     continue
                 }
                 when (message.type) {
-                    MessageType.SERVICE_DISCOVERY_RESPONSE -> {
-                        val response = parseServiceDiscoveryResponse(message.body)
-                        response.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
-                        val connected =
-                            CarConnectionState.Connected(
-                                carName(response),
-                                isDriverOnRight(response),
-                                CarStatusBar(
-                                    isClockOnCar(response),
-                                    isPhoneSignalOnCar(response),
-                                    isBatteryOnCar(response),
-                                ),
-                            )
-                        Log.i(TAG, "The car is $connected")
-                        _state.value = connected
-                        val sink = videoSink(response)
-                        if (sink == null) {
-                            Log.w(TAG, "The car has no video channel for its main display")
+                    MessageType.SERVICE_DISCOVERY_RESPONSE ->
+                        if (session == null) {
+                            val started = CarSession(context, link, control, version)
+                            session = started
+                            start(started, parseServiceDiscoveryResponse(message.body))
                         } else {
-                            val videoChannel =
-                                VideoChannel(
-                                    context,
-                                    ChannelSender(link, sink.channel),
-                                    sink.configs,
-                                    version,
-                                    connected.isDriverOnRight,
-                                )
-                            channels[videoChannel.channel] = videoChannel
-                            videoChannel.open()
-                            val source = inputSource(response, sink.displayId)
-                            if (source == null) {
-                                Log.w(
-                                    TAG,
-                                    "The car has no input channel for display ${sink.displayId}",
-                                )
-                            } else {
-                                val input =
-                                    InputChannel(
-                                        ChannelSender(link, source.channel),
-                                        source.keycodes,
-                                        videoChannel::layout,
-                                        CarButtons(context),
-                                    )
-                                channels[input.channel] = input
-                                input.open()
-                            }
+                            Log.w(TAG, "Ignored another service discovery response")
                         }
-                        val audioSinks =
-                            listOf(AudioType.MEDIA, AudioType.GUIDANCE).mapNotNull { type ->
-                                audioSink(response, type)?.let { type to it }
-                            }
-                        if (audioSinks.isEmpty()) {
-                            Log.w(TAG, "The car has no media or guidance audio channel")
-                        }
-                        val audioSource = audioSource(response)
-                        if (audioSource == null) Log.w(TAG, "The car has no microphone")
-                        if (audioSinks.isNotEmpty() || audioSource != null) {
-                            val carAudio = CarAudio(context, control)
-                            audio = carAudio
-                            val audioChannels =
-                                audioSinks.map { (type, audioSink) ->
-                                    AudioChannel(
-                                        type,
-                                        ChannelSender(link, audioSink.channel),
-                                        audioSink.configs,
-                                        carAudio::onChannelSettled,
-                                        carAudio::onStreamStartedOrStopped,
-                                    )
-                                }
-                            val microphone =
-                                audioSource?.let {
-                                    MicrophoneChannel(
-                                        ChannelSender(link, it.channel),
-                                        it.config,
-                                        carAudio::onChannelSettled,
-                                    )
-                                }
-                            val opened = audioChannels + listOfNotNull(microphone)
-                            opened.forEach { channels[it.channel] = it }
-                            carAudio.start(audioChannels, microphone)
-                            opened.forEach(CarChannel::open)
-                        }
-                        val carBluetooth = carBluetooth(response)
-                        if (carBluetooth == null) {
-                            Log.w(TAG, "The car has no Bluetooth service LibreAuto can pair with")
-                        } else {
-                            val bluetooth =
-                                BluetoothChannel(
-                                    context,
-                                    ChannelSender(link, carBluetooth.channel),
-                                    carBluetooth,
-                                    version,
-                                )
-                            channels[bluetooth.channel] = bluetooth
-                            bluetooth.open()
-                        }
-                    }
                     MessageType.AUDIO_FOCUS_NOTIFICATION ->
-                        audio?.onFocusNotification(message) ?: logUnhandled(message)
+                        if (session?.onAudioFocusNotification(message) != true) {
+                            logUnhandled(message)
+                        }
                     MessageType.PING_REQUEST ->
                         control.send(
                             MessageType.PING_RESPONSE,
@@ -242,13 +141,25 @@ class CarConnection(context: Context) {
                 }
             }
         } finally {
-            closeAll(TAG) {
-                step("Closing the car audio") { audio?.close() }
-                for (channel in channels.values) {
-                    step("Closing the channel ${channel.channel}") { channel.close() }
-                }
-            }
+            session?.close()
         }
+    }
+
+    private fun start(session: CarSession, services: ServiceDiscoveryResponse) {
+        services.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
+        val connected =
+            CarConnectionState.Connected(
+                carName(services),
+                isDriverOnRight(services),
+                CarStatusBar(
+                    isClockOnCar(services),
+                    isPhoneSignalOnCar(services),
+                    isBatteryOnCar(services),
+                ),
+            )
+        Log.i(TAG, "The car is $connected")
+        _state.value = connected
+        session.start(services, connected.isDriverOnRight)
     }
 
     private fun logUnhandled(message: ChannelMessage) {
