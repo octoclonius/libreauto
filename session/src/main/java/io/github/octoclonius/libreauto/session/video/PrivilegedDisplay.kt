@@ -1,12 +1,12 @@
 package io.github.octoclonius.libreauto.session.video
 
-import android.os.RemoteException
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.privileged.NO_TASK
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.session.privileged.call
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenTasks
@@ -50,23 +50,14 @@ internal class PrivilegedDisplay(
             this.layout = layout
             val display = current ?: return
             val apps = layout.apps
-            try {
-                display.service.resizeDisplay(
-                    display.id,
-                    apps.width,
-                    apps.height,
-                    layout.appsDensity,
-                )
-                Log.i(
-                    TAG,
-                    "Resized the car display ${display.id} to ${apps.width}x${apps.height} at " +
-                        "${layout.appsDensity} dpi",
-                )
-            } catch (e: RemoteException) {
-                Log.w(TAG, "The privileged service didn't resize the car display", e)
-            } catch (e: RuntimeException) {
-                Log.w(TAG, "The privileged service refused to resize the car display", e)
-            }
+            display.service.call("resize the car display") {
+                it.resizeDisplay(display.id, apps.width, apps.height, layout.appsDensity)
+            } ?: return
+            Log.i(
+                TAG,
+                "Resized the car display ${display.id} to ${apps.width}x${apps.height} at " +
+                    "${layout.appsDensity} dpi",
+            )
         }
     }
 
@@ -89,8 +80,8 @@ internal class PrivilegedDisplay(
         val remembered = openTasks.load()
         val listener = CarTasks.listener(home.packageName, openTasks::save)
         val id =
-            try {
-                service.createDisplay(
+            service.call("create the car display") {
+                it.createDisplay(
                     surface,
                     layout.apps.width,
                     layout.apps.height,
@@ -98,15 +89,11 @@ internal class PrivilegedDisplay(
                     home,
                     listener,
                 )
-            } catch (e: RemoteException) {
-                Log.w(TAG, "The privileged service didn't create the car display", e)
-                CarTasks.onReleased(listener)
-                return null
-            } catch (e: RuntimeException) {
-                Log.w(TAG, "The privileged service refused to create the car display", e)
-                CarTasks.onReleased(listener)
-                return null
             }
+        if (id == null) {
+            CarTasks.onReleased(listener)
+            return null
+        }
         tasks = listener
         Log.i(TAG, "The privileged service created the car display $id")
         CarDisplay.onCreated(id, layout.format.density)
@@ -116,29 +103,19 @@ internal class PrivilegedDisplay(
 
     private fun restore(service: IPrivilegedService, id: Int, remembered: OpenTasks) {
         if (remembered.taskIds.isEmpty()) return
-        try {
-            service.restoreTasks(
-                id,
-                remembered.taskIds.toIntArray(),
-                remembered.frontTaskId ?: NO_TASK,
-            )
-            Log.i(TAG, "Asked to bring back the tasks ${remembered.taskIds} to the car display $id")
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The privileged service didn't bring back the car's tasks", e)
-        }
+        service.call("bring back the car's tasks") {
+            it.restoreTasks(id, remembered.taskIds.toIntArray(), remembered.frontTaskId ?: NO_TASK)
+        } ?: return
+        Log.i(TAG, "Asked to bring back the tasks ${remembered.taskIds} to the car display $id")
     }
 
     private fun release(display: OwnedDisplay<IPrivilegedService>) {
         CarDisplay.onReleased(display.id)
         tasks?.let(CarTasks::onReleased)
         tasks = null
-        try {
-            display.service.releaseDisplay(display.id)
-            Log.i(TAG, "Released the car display ${display.id}")
-        } catch (e: RemoteException) {
-            Log.i(TAG, "The privileged service is gone with the car display ${display.id}", e)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Releasing the car display ${display.id} failed", e)
-        }
+        display.service.call("release the car display ${display.id}") {
+            it.releaseDisplay(display.id)
+        } ?: return
+        Log.i(TAG, "Released the car display ${display.id}")
     }
 }

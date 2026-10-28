@@ -1,7 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.util.Log
-import java.lang.reflect.InvocationTargetException
 
 internal class Teardown(private val onFailure: (action: String, cause: Throwable) -> Unit) {
 
@@ -9,7 +8,7 @@ internal class Teardown(private val onFailure: (action: String, cause: Throwable
         try {
             close()
         } catch (e: Exception) {
-            onFailure(action, if (e is InvocationTargetException) e.targetException else e)
+            onFailure(action, e.unwrapped())
         }
     }
 }

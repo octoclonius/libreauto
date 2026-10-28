@@ -12,7 +12,6 @@ import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
 import android.view.Surface
-import java.lang.reflect.InvocationTargetException
 import kotlin.system.exitProcess
 
 class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
@@ -71,7 +70,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         synchronized(displayLock) {
             release()
             val created =
-                try {
+                reportingCall("Creating the car display") {
                     VirtualCarDisplay.create(
                         shellContext,
                         association,
@@ -81,29 +80,14 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                         densityDpi,
                         home,
                     )
-                } catch (e: Exception) {
-                    val cause = if (e is InvocationTargetException) e.targetException else e
-                    Log.e(TAG, "Creating the car display failed", cause)
-                    throw IllegalStateException(
-                        "Creating the car display failed: ${cause.javaClass.simpleName}: " +
-                            cause.message
-                    )
                 }
             display = created
-            try {
-                this.tasks =
+            this.tasks =
+                reportingCall("Watching the tasks on the car display", onFailure = ::release) {
                     DisplayTasks(shellContext, created.id, home.packageName, tasks).apply {
                         start()
                     }
-            } catch (e: Exception) {
-                release()
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Watching the tasks on the car display failed", cause)
-                throw IllegalStateException(
-                    "Watching the tasks on the car display failed: " +
-                        "${cause.javaClass.simpleName}: ${cause.message}"
-                )
-            }
+                }
             return created.id
         }
     }
@@ -113,15 +97,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             val current = display
             val error = resizeRequestError(displayId, width, height, densityDpi, current?.id)
             if (current == null || error != null) throw IllegalArgumentException(error)
-            try {
+            reportingCall("Resizing the car display $displayId") {
                 current.resize(width, height, densityDpi)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Resizing the car display $displayId failed", cause)
-                throw IllegalStateException(
-                    "Resizing the car display failed: ${cause.javaClass.simpleName}: " +
-                        cause.message
-                )
             }
         }
     }
@@ -140,132 +117,71 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         xs: IntArray,
         ys: IntArray,
     ) {
-        val error = touchRequestError(eventTimeNanos, action, actionIndex, pointerIds, xs, ys)
-        if (error != null) {
-            Log.w(TAG, "Dropped a touch: $error")
-            return
-        }
-        val pointers = pointerIds.indices.map { TouchPointer(pointerIds[it], xs[it], ys[it]) }
-        synchronized(displayLock) {
-            val current = display
-            if (current == null) {
-                Log.w(TAG, "Dropped a touch without a car display")
-                return
-            }
-            try {
-                current.onTouch(eventTimeNanos, action, actionIndex, pointers)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Sending a touch to the car display ${current.id} failed", cause)
-            }
+        displayCall(
+            "Sending a touch to the car display",
+            { touchRequestError(eventTimeNanos, action, actionIndex, pointerIds, xs, ys) },
+        ) { car ->
+            val pointers = pointerIds.indices.map { TouchPointer(pointerIds[it], xs[it], ys[it]) }
+            car.onTouch(eventTimeNanos, action, actionIndex, pointers)
         }
     }
 
     override fun sendKey(displayId: Int, keyCode: Int) {
-        synchronized(displayLock) {
-            val error = keyRequestError(displayId, keyCode, display?.id)
-            if (error != null) {
-                Log.w(TAG, "Dropped a key: $error")
-                return
-            }
-            try {
-                keys.press(displayId, keyCode)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Sending the key $keyCode to the car display $displayId failed", cause)
-            }
+        displayCall(
+            "Sending the key $keyCode to the car display $displayId",
+            { car -> keyRequestError(displayId, keyCode, car.id) },
+        ) {
+            keys.press(displayId, keyCode)
         }
     }
 
     override fun showActivity(displayId: Int, activity: PendingIntent) {
-        synchronized(displayLock) {
-            val current = display
-            val error =
+        displayCall(
+            "Starting an activity on the car display $displayId",
+            { car ->
                 activityRequestError(
                     displayId,
-                    current?.id,
+                    car.id,
                     activity.isActivity,
                     activity.creatorUid,
                     appUid,
                 )
-            if (current == null || error != null) {
-                Log.w(TAG, "Didn't start an activity: $error")
-                return
-            }
-            try {
-                current.showActivity(shellContext, activity)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Starting an activity on the car display $displayId failed", cause)
-            }
+            },
+        ) { car ->
+            car.showActivity(shellContext, activity)
         }
     }
 
     override fun showTask(displayId: Int, taskId: Int) {
-        synchronized(displayLock) {
-            val current = tasks
-            val error = taskRequestError(displayId, taskId, display?.id, current?.taskIds.orEmpty())
-            if (current == null || error != null) {
-                Log.w(TAG, "Didn't show a task: $error")
-                return
-            }
-            try {
-                current.show(taskId)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Showing the task $taskId on the car display $displayId failed", cause)
-            }
+        displayCall(
+            "Showing the task $taskId on the car display $displayId",
+            { car -> taskRequestError(displayId, taskId, car.id, tasks?.taskIds.orEmpty()) },
+        ) {
+            tasks?.show(taskId)
         }
     }
 
     override fun closeTask(displayId: Int, taskId: Int) {
-        synchronized(displayLock) {
-            val current = tasks
-            val error = taskRequestError(displayId, taskId, display?.id, current?.taskIds.orEmpty())
-            if (current == null || error != null) {
-                Log.w(TAG, "Didn't close a task: $error")
-                return
-            }
-            try {
-                current.close(taskId)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Closing the task $taskId on the car display $displayId failed", cause)
-            }
+        displayCall(
+            "Closing the task $taskId on the car display $displayId",
+            { car -> taskRequestError(displayId, taskId, car.id, tasks?.taskIds.orEmpty()) },
+        ) {
+            tasks?.close(taskId)
         }
     }
 
     override fun setPhoneSetting(setting: Int, isOn: Boolean) {
-        val error = settingRequestError(setting)
-        if (error != null) {
-            Log.w(TAG, "Didn't change a setting: $error")
-            return
-        }
-        val identity = Binder.clearCallingIdentity()
-        try {
+        checkedCall("Changing the setting $setting", settingRequestError(setting)) {
             settings.set(setting, isOn)
-        } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "Changing the setting $setting failed", cause)
-        } finally {
-            Binder.restoreCallingIdentity(identity)
         }
     }
 
     override fun restoreTasks(displayId: Int, taskIds: IntArray, frontTaskId: Int) {
-        synchronized(displayLock) {
-            val current = tasks
-            val error = restoreRequestError(displayId, display?.id, taskIds.toList(), frontTaskId)
-            if (current == null || error != null) {
-                Log.w(TAG, "Didn't bring back tasks: $error")
-                return
-            }
-            try {
-                current.restore(taskIds.toList(), frontTaskId)
-            } catch (e: Exception) {
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Bringing back tasks to the car display $displayId failed", cause)
-            }
+        displayCall(
+            "Bringing back tasks to the car display $displayId",
+            { car -> restoreRequestError(displayId, car.id, taskIds.toList(), frontTaskId) },
+        ) {
+            tasks?.restore(taskIds.toList(), frontTaskId)
         }
     }
 
@@ -278,8 +194,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         if (error != null) throw IllegalArgumentException(error)
         synchronized(audioLock) {
             releaseAudio()
-            val identity = Binder.clearCallingIdentity()
-            try {
+            return reportingCall("Diverting audio to the car", onFailure = ::releaseAudio) {
                 val monitor = AudioActivityMonitor(shellContext, listener, audioThread.looper)
                 audioActivity = monitor
                 val policy =
@@ -292,17 +207,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                     )
                 audio = policy
                 monitor.start(policy::focusStack, input != null)
-                return policy.pipes.toTypedArray()
-            } catch (e: Exception) {
-                releaseAudio()
-                val cause = if (e is InvocationTargetException) e.targetException else e
-                Log.e(TAG, "Diverting audio to the car failed", cause)
-                throw IllegalStateException(
-                    "Diverting audio to the car failed: ${cause.javaClass.simpleName}: " +
-                        cause.message
-                )
-            } finally {
-                Binder.restoreCallingIdentity(identity)
+                policy.pipes.toTypedArray()
             }
         }
     }
@@ -336,15 +241,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     override fun removeBluetoothPairing(address: String): Boolean =
         deviceCall("Removing the pairing with", address) { bluetooth.removePairing(address) }
 
-    override fun setBluetoothPin(address: String, pin: String): Boolean {
-        val error = pinRequestError(address, pin)
-        if (error != null) {
-            Log.w(TAG, "Didn't set a Bluetooth PIN: $error")
-            return false
-        }
-        return identityCall("Setting the PIN for $address") { bluetooth.setPin(address, pin) } ==
-            true
-    }
+    override fun setBluetoothPin(address: String, pin: String): Boolean =
+        checkedCall("Setting the PIN for $address", pinRequestError(address, pin)) {
+            bluetooth.setPin(address, pin)
+        } == true
 
     override fun confirmBluetoothPairing(address: String, isConfirmed: Boolean): Boolean =
         deviceCall("Answering the pairing with", address) {
@@ -358,16 +258,13 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         deviceCall("Connecting hands-free to", address) { bluetooth.connectHandsFree(address) }
 
     override fun exitAccessoryMode() {
-        try {
+        identityCall("Leaving USB accessory mode") {
             val none = UsbManager::class.java.getField("FUNCTION_NONE").getLong(null)
             UsbManager::class
                 .java
                 .getMethod("setCurrentFunctions", Long::class.javaPrimitiveType)
                 .invoke(shellContext.getSystemService(UsbManager::class.java), none)
             Log.i(TAG, "Left USB accessory mode")
-        } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "Leaving USB accessory mode failed", cause)
         }
     }
 
@@ -394,13 +291,30 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
-    private fun deviceCall(action: String, address: String, call: () -> Boolean): Boolean {
-        val error = bluetoothRequestError(address)
-        if (error != null) {
-            Log.w(TAG, "$action a Bluetooth device refused: $error")
-            return false
+    private fun deviceCall(action: String, address: String, call: () -> Boolean): Boolean =
+        checkedCall("$action $address", bluetoothRequestError(address), call) == true
+
+    private fun displayCall(
+        action: String,
+        refusal: (VirtualCarDisplay) -> String?,
+        call: (VirtualCarDisplay) -> Unit,
+    ) {
+        synchronized(displayLock) {
+            val current = display
+            if (current == null) {
+                Log.w(TAG, "$action refused: there is no car display")
+                return
+            }
+            checkedCall(action, refusal(current)) { call(current) }
         }
-        return identityCall("$action $address", call) == true
+    }
+
+    private fun <T> checkedCall(action: String, refusal: String?, call: () -> T): T? {
+        if (refusal != null) {
+            Log.w(TAG, "$action refused: $refusal")
+            return null
+        }
+        return identityCall(action, call)
     }
 
     private fun <T> identityCall(action: String, call: () -> T): T? {
@@ -408,9 +322,24 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         return try {
             call()
         } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "$action failed", cause)
+            Log.e(TAG, "$action failed", e.unwrapped())
             null
+        } finally {
+            Binder.restoreCallingIdentity(identity)
+        }
+    }
+
+    private fun <T> reportingCall(action: String, onFailure: () -> Unit = {}, call: () -> T): T {
+        val identity = Binder.clearCallingIdentity()
+        try {
+            return call()
+        } catch (e: Exception) {
+            onFailure()
+            val cause = e.unwrapped()
+            Log.e(TAG, "$action failed", cause)
+            throw IllegalStateException(
+                "$action failed: ${cause.javaClass.simpleName}: ${cause.message}"
+            )
         } finally {
             Binder.restoreCallingIdentity(identity)
         }

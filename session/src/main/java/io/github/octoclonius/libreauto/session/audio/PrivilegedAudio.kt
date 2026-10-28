@@ -1,7 +1,6 @@
 package io.github.octoclonius.libreauto.session.audio
 
 import android.os.ParcelFileDescriptor
-import android.os.RemoteException
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
 import io.github.octoclonius.libreauto.privileged.AudioInput
@@ -10,6 +9,7 @@ import io.github.octoclonius.libreauto.privileged.AudioPlayer
 import io.github.octoclonius.libreauto.privileged.IAudioActivityListener
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.session.privileged.call
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,15 +67,9 @@ internal class PrivilegedAudio(
             return
         }
         val pipes =
-            try {
-                service.startAudio(outputs.toTypedArray(), input, listener)
-            } catch (e: RemoteException) {
-                Log.w(TAG, "The privileged service didn't divert audio to the car", e)
-                return
-            } catch (e: RuntimeException) {
-                Log.w(TAG, "The privileged service refused to divert audio to the car", e)
-                return
-            }
+            service.call("divert audio to the car") {
+                it.startAudio(outputs.toTypedArray(), input, listener)
+            } ?: return
         current = service
         Log.i(
             TAG,
@@ -86,12 +80,6 @@ internal class PrivilegedAudio(
     }
 
     private fun stop(service: IPrivilegedService) {
-        try {
-            service.stopAudio()
-        } catch (e: RemoteException) {
-            Log.i(TAG, "The privileged service is gone with the car audio", e)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Stopping the car audio failed", e)
-        }
+        service.call("stop the car audio") { it.stopAudio() }
     }
 }

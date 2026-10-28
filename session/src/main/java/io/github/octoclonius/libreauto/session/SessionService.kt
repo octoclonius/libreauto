@@ -15,7 +15,6 @@ import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
-import android.os.RemoteException
 import android.util.Log
 import io.github.octoclonius.libreauto.session.usb.AccessoryLink
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
@@ -104,17 +103,9 @@ class SessionService : Service() {
     }
 
     private fun leaveAccessoryMode() {
-        val service = PrivilegedServiceConnection.service.value
-        if (service == null) {
-            Log.w(TAG, "Can't leave accessory mode while the privileged service isn't running")
-            return
-        }
-        try {
-            service.exitAccessoryMode()
-            Log.i(TAG, "Leaving accessory mode so the car can connect again")
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The privileged service didn't leave accessory mode", e)
-        }
+        PrivilegedServiceConnection.call("leave accessory mode") { it.exitAccessoryMode() }
+            ?: return
+        Log.i(TAG, "Leaving accessory mode so the car can connect again")
     }
 
     private fun open(accessory: UsbAccessory): AccessoryLink? {

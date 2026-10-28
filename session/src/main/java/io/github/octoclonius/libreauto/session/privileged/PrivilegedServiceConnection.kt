@@ -18,9 +18,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import rikka.shizuku.Shizuku
 
+private const val TAG = "PrivilegedServiceConnection"
+
+internal fun <T> IPrivilegedService.call(action: String, block: (IPrivilegedService) -> T): T? =
+    try {
+        block(this)
+    } catch (e: RemoteException) {
+        Log.w(TAG, "The privileged service didn't $action", e)
+        null
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "The privileged service refused to $action", e)
+        null
+    }
+
 object PrivilegedServiceConnection {
 
-    private const val TAG = "PrivilegedServiceConnection"
     private const val PROCESS_NAME_SUFFIX = "privileged"
     private const val PERMISSION_REQUEST_CODE = 1
 
@@ -67,6 +79,15 @@ object PrivilegedServiceConnection {
             if (requestCode == PERMISSION_REQUEST_CODE) refresh()
         }
         refresh()
+    }
+
+    internal fun <T> call(action: String, block: (IPrivilegedService) -> T): T? {
+        val current = service.value
+        if (current == null) {
+            Log.w(TAG, "Couldn't $action while the privileged service isn't running")
+            return null
+        }
+        return current.call(action, block)
     }
 
     fun refresh() {

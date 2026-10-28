@@ -1,13 +1,9 @@
 package io.github.octoclonius.libreauto.session.bluetooth
 
-import android.os.RemoteException
-import android.util.Log
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
 internal object PrivilegedBluetooth {
-
-    private const val TAG = "PrivilegedBluetooth"
 
     fun grantPermission() {
         call("grant the app Bluetooth access") { it.grantBluetoothPermission() }
@@ -38,17 +34,6 @@ internal object PrivilegedBluetooth {
     fun connectHandsFree(address: String): Boolean =
         call("connect hands-free to the car") { it.connectHandsFree(address) } == true
 
-    private fun <T> call(action: String, call: (IPrivilegedService) -> T): T? {
-        val service = PrivilegedServiceConnection.service.value
-        if (service == null) {
-            Log.w(TAG, "Couldn't $action while the privileged service isn't running")
-            return null
-        }
-        return try {
-            call(service)
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The privileged service didn't $action", e)
-            null
-        }
-    }
+    private fun <T> call(action: String, block: (IPrivilegedService) -> T): T? =
+        PrivilegedServiceConnection.call(action, block)
 }
