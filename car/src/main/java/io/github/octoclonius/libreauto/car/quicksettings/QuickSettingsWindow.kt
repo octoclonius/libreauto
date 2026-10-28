@@ -17,7 +17,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
-import io.github.octoclonius.libreauto.session.CarConnectionState
 
 internal class QuickSettingsWindow(context: Context, display: Display, private val carUi: CarUi) :
     ComponentDialog(
@@ -37,16 +36,13 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
             ComposeView(context).apply {
                 setContent {
                     val rail by carUi.session.displays.rail.state.collectAsStateWithLifecycle()
-                    val connection by carUi.connection.collectAsStateWithLifecycle()
                     val settings by
                         remember { carUi.phoneSettings.settings }.collectAsStateWithLifecycle(null)
                     CarTheme {
                         QuickSettingsPanel(
                             settings = settings,
                             railSide = rail?.side,
-                            isDriverOnRight =
-                                (connection as? CarConnectionState.Connected)?.isDriverOnRight ==
-                                    true,
+                            isDriverOnRight = carUi.session.car.isDriverOnRight,
                             onToggle = carUi.phoneSettings::set,
                             onClose = { carUi.quickSettings.close() },
                             onShowPage = ::showPage,

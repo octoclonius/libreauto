@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.phone.certificate
 
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import java.time.Instant
 
 data class CertificateProviderUiState(
@@ -13,7 +13,7 @@ data class CertificateProviderUiState(
         data object None : Selection
 
         data class Selected(
-            val choice: CertificateProvider.Choice,
+            val choice: CertificateRepository.Choice,
             val certificate: CertificateState,
         ) : Selection
     }
@@ -29,6 +29,6 @@ data class CertificateProviderUiState(
     sealed interface Picker {
         data object Loading : Picker
 
-        data class Success(val options: List<CertificateProvider.Option>) : Picker
+        data class Success(val options: List<CertificateRepository.Option>) : Picker
     }
 }

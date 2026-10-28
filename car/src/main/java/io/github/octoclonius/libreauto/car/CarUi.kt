@@ -6,23 +6,22 @@ import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailHost
+import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.car.rail.RailState
-import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.CarSession
 import io.github.octoclonius.libreauto.session.input.NavigationButton
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class CarUi
 internal constructor(
     context: Context,
     val session: CarSession,
-    internal val connection: StateFlow<CarConnectionState>,
     internal val phoneSettings: PhoneSettingsRepository,
+    internal val railOrder: RailOrderRepository,
 ) : Closeable {
 
     internal val home = HomeState()

@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.car
 
 import android.content.Context
+import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
 import kotlinx.coroutines.MainScope
@@ -13,6 +14,7 @@ class CarUiHolder(
     context: Context,
     private val carSessionHolder: CarSessionHolder,
     private val phoneSettings: PhoneSettingsRepository,
+    private val railOrder: RailOrderRepository,
 ) {
 
     private val context = context.applicationContext
@@ -27,7 +29,7 @@ class CarUiHolder(
                 _carUi.value?.close()
                 _carUi.value =
                     session?.let {
-                        CarUi(context, it, carSessionHolder.state, phoneSettings).also(CarUi::start)
+                        CarUi(context, it, phoneSettings, railOrder).also(CarUi::start)
                     }
             }
         }

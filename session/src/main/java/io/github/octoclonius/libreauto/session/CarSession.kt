@@ -30,6 +30,7 @@ class CarSession internal constructor(
     private val link: CarLink,
     private val control: ChannelSender,
     private val version: ProtocolVersion,
+    val car: CarInfo,
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
     carHome: CarHome,
@@ -46,8 +47,8 @@ class CarSession internal constructor(
     private val channels = LinkedHashMap<Int, CarChannel>()
     private var audio: CarAudio? = null
 
-    internal fun start(services: ServiceDiscoveryResponse, isDriverOnRight: Boolean) {
-        startVideo(services, isDriverOnRight)
+    internal fun start(services: ServiceDiscoveryResponse) {
+        startVideo(services)
         startAudio(services)
         startBluetooth(services)
     }
@@ -70,7 +71,7 @@ class CarSession internal constructor(
         }
     }
 
-    private fun startVideo(services: ServiceDiscoveryResponse, isDriverOnRight: Boolean) {
+    private fun startVideo(services: ServiceDiscoveryResponse) {
         val sink = videoSink(services)
         if (sink == null) {
             Log.w(TAG, "The car has no video channel for its main display")
@@ -82,7 +83,7 @@ class CarSession internal constructor(
                 ChannelSender(link, sink.channel),
                 sink.configs,
                 version,
-                isDriverOnRight,
+                car.isDriverOnRight,
                 displays,
                 tasks,
                 privileged,

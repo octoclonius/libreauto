@@ -35,7 +35,7 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
 import io.github.octoclonius.libreauto.phone.ui.StatusRow
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -46,7 +46,7 @@ import java.util.Locale
 fun CertificateProviderRow(
     state: CertificateProviderUiState,
     onClick: () -> Unit,
-    onChoose: (CertificateProvider.Choice?) -> Unit,
+    onChoose: (CertificateRepository.Choice?) -> Unit,
     onDismissPicker: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -120,11 +120,11 @@ private fun validity(
 private fun CertificateProviderPickerDialog(
     picker: Picker,
     selection: Selection,
-    onChoose: (CertificateProvider.Choice?) -> Unit,
+    onChoose: (CertificateRepository.Choice?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var picked by remember { mutableStateOf(false) }
-    fun pick(choice: CertificateProvider.Choice?) {
+    fun pick(choice: CertificateRepository.Choice?) {
         if (picked) return
         picked = true
         onChoose(choice)

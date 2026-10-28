@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.session.certificate
 
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository.FetchResult
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf

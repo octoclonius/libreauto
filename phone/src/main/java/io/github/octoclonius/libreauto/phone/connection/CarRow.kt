@@ -16,7 +16,7 @@ fun CarRow(state: CarConnectionState, modifier: Modifier = Modifier) {
                 CarConnectionState.Disconnected -> stringResource(R.string.car_disconnected)
                 CarConnectionState.Connecting -> stringResource(R.string.car_connecting)
                 is CarConnectionState.Connected ->
-                    state.carName ?: stringResource(R.string.car_connected)
+                    state.car.name ?: stringResource(R.string.car_connected)
                 CarConnectionState.Failed -> stringResource(R.string.car_failed)
             },
         modifier = modifier,

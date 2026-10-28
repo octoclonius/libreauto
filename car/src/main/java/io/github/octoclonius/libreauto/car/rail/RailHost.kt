@@ -18,15 +18,11 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
 
     companion object {
         private const val TAG = "RailHost"
-        private const val PREFS = "car_rail"
-        private const val KEY_ORDER = "order"
     }
 
     private val context = context.applicationContext
     private val shownCount = MutableStateFlow(MAX_RAIL_APPS)
     private val order = MutableStateFlow<List<CarTask>>(emptyList())
-    private val prefs = this.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private var rememberedTaskIds = decodeRailOrder(prefs.getString(KEY_ORDER, null))
     private var window: RailWindow? = null
 
     fun start(scope: CoroutineScope) {
@@ -42,7 +38,7 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
             combine(carTasks.state, rail.closedTaskIds, shownCount) { tasks, closed, shown ->
                     nextRailOrder(
                         order.value,
-                        rememberedTaskIds,
+                        carUi.railOrder.taskIds.value,
                         withoutClosed(tasks, closed),
                         shown,
                     )
@@ -58,10 +54,7 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
 
     private fun onOrder(next: List<CarTask>) {
         order.value = next
-        val taskIds = next.map { it.taskId }
-        if (taskIds.isEmpty() || taskIds == rememberedTaskIds) return
-        rememberedTaskIds = taskIds
-        prefs.edit().putString(KEY_ORDER, encodeRailOrder(taskIds)).apply()
+        carUi.railOrder.save(next.map { it.taskId })
     }
 
     private fun show(rail: RailDisplayState?) {

@@ -1,6 +1,5 @@
 package io.github.octoclonius.libreauto.session
 
-import android.content.Context
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
@@ -12,7 +11,6 @@ import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.control.Handshake
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
-import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.control.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.control.carName
 import io.github.octoclonius.libreauto.protocol.control.isBatteryOnCar
@@ -25,8 +23,8 @@ import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryRes
 import io.github.octoclonius.libreauto.protocol.control.pingResponse
 import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository.FetchResult
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -35,17 +33,14 @@ import java.net.ProtocolException
 import javax.net.ssl.SSLException
 
 internal class CarConnection(
-    context: Context,
     private val holder: CarSessionHolder,
-    private val newSession: (CarLink, ChannelSender, ProtocolVersion) -> CarSession,
+    private val certificates: CertificateRepository,
+    private val newSession: (CarLink, ChannelSender, ProtocolVersion, CarInfo) -> CarSession,
 ) {
 
     companion object {
         private const val TAG = "CarConnection"
     }
-
-    private val context = context.applicationContext
-    private val certificateProvider = CertificateProvider(this.context)
 
     fun run(input: InputStream, output: OutputStream): Boolean {
         holder.onState(CarConnectionState.Connecting)
@@ -115,10 +110,7 @@ internal class CarConnection(
                 when (message.type) {
                     MessageType.SERVICE_DISCOVERY_RESPONSE ->
                         if (session == null) {
-                            val started = newSession(link, control, version)
-                            session = started
-                            holder.onSession(started)
-                            start(started, parseServiceDiscoveryResponse(message.body))
+                            session = start(link, control, version, message)
                         } else {
                             Log.w(TAG, "Ignored another service discovery response")
                         }
@@ -146,10 +138,16 @@ internal class CarConnection(
         }
     }
 
-    private fun start(session: CarSession, services: ServiceDiscoveryResponse) {
+    private fun start(
+        link: CarLink,
+        control: ChannelSender,
+        version: ProtocolVersion,
+        message: ChannelMessage,
+    ): CarSession {
+        val services = parseServiceDiscoveryResponse(message.body)
         services.services.forEach { Log.i(TAG, "Service on channel ${it.id}: $it") }
-        val connected =
-            CarConnectionState.Connected(
+        val car =
+            CarInfo(
                 carName(services),
                 isDriverOnRight(services),
                 CarStatusBar(
@@ -158,9 +156,12 @@ internal class CarConnection(
                     isBatteryOnCar(services),
                 ),
             )
-        Log.i(TAG, "The car is $connected")
-        holder.onState(connected)
-        session.start(services, connected.isDriverOnRight)
+        Log.i(TAG, "The car is $car")
+        val session = newSession(link, control, version, car)
+        holder.onSession(session)
+        holder.onState(CarConnectionState.Connected(car))
+        session.start(services)
+        return session
     }
 
     private fun logUnhandled(message: ChannelMessage) {
@@ -168,12 +169,12 @@ internal class CarConnection(
     }
 
     private fun credentials(): FetchResult.Success? {
-        val choice = certificateProvider.selection()
+        val choice = certificates.selection.value
         if (choice == null) {
             Log.w(TAG, "No certificate provider selected")
             return null
         }
-        return when (val result = certificateProvider.fetch(choice)) {
+        return when (val result = certificates.fetch(choice)) {
             is FetchResult.Success -> result
             is FetchResult.Error -> {
                 Log.w(TAG, "No certificate from ${choice.packageName}: ${result.message}")

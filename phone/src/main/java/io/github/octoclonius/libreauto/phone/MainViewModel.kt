@@ -14,7 +14,7 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
 import io.github.octoclonius.libreauto.session.CarConnectionState
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
 import io.github.octoclonius.libreauto.session.sessionContainer
@@ -35,7 +35,7 @@ data class MainUiState(
 )
 
 class MainViewModel(
-    private val certificateProvider: CertificateProvider,
+    private val certificates: CertificateRepository,
     carConnectionState: StateFlow<CarConnectionState>,
     private val privilegedService: PrivilegedServiceConnection,
 ) : ViewModel() {
@@ -45,7 +45,7 @@ class MainViewModel(
             initializer {
                 val application = checkNotNull(this[APPLICATION_KEY])
                 MainViewModel(
-                    CertificateProvider(application),
+                    application.sessionContainer.certificateRepository,
                     application.sessionContainer.carSessionHolder.state,
                     application.sessionContainer.privilegedServiceConnection,
                 )
@@ -98,7 +98,7 @@ class MainViewModel(
         updateCertificateProvider { it.copy(picker = Picker.Loading) }
         pickerLoadJob =
             viewModelScope.launch {
-                val options = withContext(Dispatchers.IO) { certificateProvider.options() }
+                val options = withContext(Dispatchers.IO) { certificates.options() }
                 updateCertificateProvider { it.copy(picker = Picker.Success(options)) }
             }
     }
@@ -108,9 +108,9 @@ class MainViewModel(
         updateCertificateProvider { it.copy(picker = null) }
     }
 
-    fun chooseCertificateProvider(choice: CertificateProvider.Choice?) {
+    fun chooseCertificateProvider(choice: CertificateRepository.Choice?) {
         closeCertificatePicker()
-        certificateProvider.select(choice)
+        certificates.select(choice)
         checkCertificate()
     }
 
@@ -118,7 +118,7 @@ class MainViewModel(
         certificateCheckJob?.cancel()
         certificateCheckJob =
             viewModelScope.launch {
-                val choice = withContext(Dispatchers.IO) { certificateProvider.selection() }
+                val choice = certificates.selection.value
                 if (choice == null) {
                     updateSelection(Selection.None)
                 } else {
@@ -128,15 +128,15 @@ class MainViewModel(
                     updateSelection(
                         Selection.Selected(choice, certificate ?: CertificateState.Loading)
                     )
-                    val result = withContext(Dispatchers.IO) { certificateProvider.fetch(choice) }
+                    val result = withContext(Dispatchers.IO) { certificates.fetch(choice) }
                     val fetched =
                         when (result) {
-                            is CertificateProvider.FetchResult.Success ->
+                            is CertificateRepository.FetchResult.Success ->
                                 CertificateState.Success(
                                     result.certificate.notBefore.toInstant(),
                                     result.certificate.notAfter.toInstant(),
                                 )
-                            is CertificateProvider.FetchResult.Error ->
+                            is CertificateRepository.FetchResult.Error ->
                                 CertificateState.Error(result.message)
                         }
                     updateSelection(Selection.Selected(choice, fetched))

@@ -17,7 +17,7 @@ import io.github.octoclonius.libreauto.phone.connection.CarRow
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderRow
 import io.github.octoclonius.libreauto.phone.privileged.PrivilegedServiceRow
 import io.github.octoclonius.libreauto.phone.ui.PageScaffold
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +25,7 @@ fun MainScreen(
     uiState: MainUiState,
     onRefresh: () -> Unit,
     onOpenCertificatePicker: () -> Unit,
-    onChooseCertificateProvider: (CertificateProvider.Choice?) -> Unit,
+    onChooseCertificateProvider: (CertificateRepository.Choice?) -> Unit,
     onCloseCertificatePicker: () -> Unit,
     onRequestShizukuPermission: () -> Unit,
     onSettingsClick: () -> Unit,

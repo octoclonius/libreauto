@@ -13,10 +13,13 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-class CertificateProvider(private val context: Context) {
+class CertificateRepository(private val context: Context) {
 
     companion object {
         const val ACTION = "io.github.octoclonius.libreauto.action.CERTIFICATE_PROVIDER"
@@ -53,10 +56,12 @@ class CertificateProvider(private val context: Context) {
     private val packageManager = context.packageManager
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun selection(): Choice? = decodeSaved<Choice>(prefs.getString(PREF_CHOICE, null))
+    private val _selection =
+        MutableStateFlow(decodeSaved<Choice>(prefs.getString(PREF_CHOICE, null)))
+    val selection: StateFlow<Choice?> = _selection.asStateFlow()
 
     fun options(): List<Option> {
-        val chosen = selection()
+        val chosen = selection.value
         return packageManager
             .queryIntentContentProviders(Intent(ACTION), 0)
             .map { it.providerInfo.applicationInfo }
@@ -76,6 +81,7 @@ class CertificateProvider(private val context: Context) {
     }
 
     fun select(choice: Choice?) {
+        _selection.value = choice
         val edit = prefs.edit().clear()
         if (choice != null) edit.putString(PREF_CHOICE, Json.encodeToString(choice))
         edit.apply()

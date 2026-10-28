@@ -20,8 +20,6 @@ import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
-import io.github.octoclonius.libreauto.session.CarConnectionState
-import io.github.octoclonius.libreauto.session.CarStatusBar
 import io.github.octoclonius.libreauto.session.tasks.CarTask
 import io.github.octoclonius.libreauto.session.video.RailDisplayState
 import kotlinx.coroutines.flow.StateFlow
@@ -75,9 +73,7 @@ private fun RailContent(
     val closingTaskId by carUi.rail.closingTaskId.collectAsStateWithLifecycle()
     val closedTaskIds by carUi.rail.closedTaskIds.collectAsStateWithLifecycle()
     val tasks by carUi.session.tasks.state.collectAsStateWithLifecycle()
-    val connection by carUi.connection.collectAsStateWithLifecycle()
     val navigation = carUi.navigation
-    val connected = connection as? CarConnectionState.Connected
     val insets = rail.contentInsets
     val padding =
         with(LocalDensity.current) {
@@ -90,14 +86,8 @@ private fun RailContent(
         }
     Rail(
         side = rail.side,
-        isDriverOnRight = connected?.isDriverOnRight == true,
-        carStatusBar =
-            connected?.carStatusBar
-                ?: CarStatusBar(
-                    isClockShown = false,
-                    isPhoneSignalShown = false,
-                    isBatteryShown = false,
-                ),
+        isDriverOnRight = carUi.session.car.isDriverOnRight,
+        carStatusBar = carUi.session.car.statusBar,
         contentPadding = padding,
         apps = apps.filter { it.task.taskId !in closedTaskIds },
         closingTaskId = closingTaskId,

@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.session.certificate
 
-import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
+import io.github.octoclonius.libreauto.session.certificate.CertificateRepository.FetchResult
 import io.github.octoclonius.libreauto.session.describe
 import java.io.ByteArrayInputStream
 import java.security.KeyFactory
