@@ -71,12 +71,13 @@ class CarConnection(context: Context) {
             val writer = FrameWriter(output)
             val version = Handshake(reader, writer, tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")
-            val control = ChannelSender(writer, tls, CONTROL_CHANNEL)
+            val link = CarLink(writer, tls)
+            val control = ChannelSender(link, CONTROL_CHANNEL)
             control.send(
                 MessageType.SERVICE_DISCOVERY_REQUEST,
                 serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
             )
-            serve(reader, writer, tls, control, version)
+            serve(reader, link, control, version)
             return false
         } catch (_: EOFException) {
             Log.i(TAG, "The car closed the connection")
@@ -104,8 +105,7 @@ class CarConnection(context: Context) {
 
     private fun serve(
         reader: FrameReader,
-        writer: FrameWriter,
-        tls: TlsServer,
+        link: CarLink,
         control: ChannelSender,
         version: ProtocolVersion,
     ) {
@@ -118,6 +118,7 @@ class CarConnection(context: Context) {
         try {
             while (true) {
                 val message = reader.readMessage()
+                if (link.isLost) throw IOException("Sending to the car failed")
                 if (!message.isEncrypted) {
                     throw ProtocolException(
                         "Plaintext message 0x%04x on channel %d after the handshake"
@@ -172,7 +173,7 @@ class CarConnection(context: Context) {
                             val videoChannel =
                                 VideoChannel(
                                         context,
-                                        ChannelSender(writer, tls, sink.channel),
+                                        ChannelSender(link, sink.channel),
                                         sink.configs,
                                         version,
                                         connected.isDriverOnRight,
@@ -188,7 +189,7 @@ class CarConnection(context: Context) {
                             } else {
                                 input =
                                     InputChannel(
-                                            ChannelSender(writer, tls, source.channel),
+                                            ChannelSender(link, source.channel),
                                             source.keycodes,
                                             videoChannel::layout,
                                             CarButtons(context),
@@ -212,7 +213,7 @@ class CarConnection(context: Context) {
                                 audioSinks.map { (type, audioSink) ->
                                     AudioChannel(
                                         type,
-                                        ChannelSender(writer, tls, audioSink.channel),
+                                        ChannelSender(link, audioSink.channel),
                                         audioSink.configs,
                                         carAudio::onChannelSettled,
                                         carAudio::onStreamStartedOrStopped,
@@ -221,7 +222,7 @@ class CarConnection(context: Context) {
                             microphone =
                                 audioSource?.let {
                                     MicrophoneChannel(
-                                        ChannelSender(writer, tls, it.channel),
+                                        ChannelSender(link, it.channel),
                                         it.config,
                                         carAudio::onChannelSettled,
                                     )
@@ -237,7 +238,7 @@ class CarConnection(context: Context) {
                             bluetooth =
                                 BluetoothChannel(
                                         context,
-                                        ChannelSender(writer, tls, carBluetooth.channel),
+                                        ChannelSender(link, carBluetooth.channel),
                                         carBluetooth,
                                         version,
                                     )

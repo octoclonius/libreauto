@@ -7,7 +7,6 @@ import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
-import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -17,7 +16,7 @@ internal class VideoStream(
     private val configIndex: Int,
     private val decoderDepth: Int,
     private val maxUnacked: Int,
-    private val send: (type: Int, body: ByteArray) -> Unit,
+    private val send: (type: Int, body: ByteArray) -> Boolean,
 ) : Closeable {
 
     companion object {
@@ -50,7 +49,7 @@ internal class VideoStream(
                 Log.w(TAG, "No video session ${started.session} without a compositor")
                 return@execute
             }
-            if (!sendOrLog(MediaMessageType.START, mediaStart(started.session, configIndex))) {
+            if (!send(MediaMessageType.START, mediaStart(started.session, configIndex))) {
                 return@execute
             }
             Log.i(TAG, "Started video session ${started.session} with config $configIndex")
@@ -64,7 +63,7 @@ internal class VideoStream(
         stopped.close()
         session++
         executor.execute {
-            if (sendOrLog(MediaMessageType.STOP, ByteArray(0))) {
+            if (send(MediaMessageType.STOP, ByteArray(0))) {
                 Log.i(TAG, "Stopped video session ${stopped.session}")
             }
         }
@@ -142,15 +141,6 @@ internal class VideoStream(
 
     private fun bitRate(format: VideoFormat): Int =
         H264Encoder.bitRate(format.pixelsOutsideCutouts, format.framesPerSecond)
-
-    private fun sendOrLog(type: Int, body: ByteArray): Boolean =
-        try {
-            send(type, body)
-            true
-        } catch (e: IOException) {
-            Log.w(TAG, "Sending video message $type to the car failed", e)
-            false
-        }
 
     private fun release() {
         synchronized(displaysLock) {

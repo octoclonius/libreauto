@@ -16,7 +16,6 @@ import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import java.io.Closeable
-import java.io.IOException
 
 internal class BluetoothChannel(
     private val context: Context,
@@ -69,7 +68,7 @@ internal class BluetoothChannel(
                     address,
                     car.pairingMethod,
                     { phoneAddress, method ->
-                        send(
+                        sender.send(
                             BluetoothMessageType.PAIRING_REQUEST,
                             pairingRequest(phoneAddress, method),
                         )
@@ -84,14 +83,6 @@ internal class BluetoothChannel(
             Log.i(TAG, "Not sending the authentication result to a car on protocol $version")
             return
         }
-        send(BluetoothMessageType.AUTHENTICATION_RESULT, authenticationResult(status))
-    }
-
-    private fun send(type: Int, body: ByteArray) {
-        try {
-            sender.send(type, body)
-        } catch (e: IOException) {
-            Log.w(TAG, "Sending 0x%04x to the car failed".format(type), e)
-        }
+        sender.send(BluetoothMessageType.AUTHENTICATION_RESULT, authenticationResult(status))
     }
 }

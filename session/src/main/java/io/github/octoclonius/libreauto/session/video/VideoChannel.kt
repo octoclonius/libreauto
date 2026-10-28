@@ -173,7 +173,7 @@ internal class VideoChannel(
                 if (layout == previous) {
                     reply(format, uiConfig)
                 } else {
-                    current.stream.updateLayout(layout) { replyOrLog(format, uiConfig) }
+                    current.stream.updateLayout(layout) { reply(format, uiConfig) }
                 }
                 current.copy(layout = layout, uiConfig = uiConfig)
             }
@@ -201,15 +201,8 @@ internal class VideoChannel(
 
     private fun reply(format: VideoFormat, uiConfig: UiConfig) {
         val inUse = uiConfigInUse(format, uiConfig)
-        sender.send(MediaMessageType.UPDATE_UI_CONFIG_REPLY, uiConfigUpdateReply(inUse))
-        Log.i(TAG, "Replied to the UI config update on channel $channel with $inUse")
-    }
-
-    private fun replyOrLog(format: VideoFormat, uiConfig: UiConfig) {
-        try {
-            reply(format, uiConfig)
-        } catch (e: IOException) {
-            Log.w(TAG, "Replying to the UI config update on channel $channel failed", e)
+        if (sender.send(MediaMessageType.UPDATE_UI_CONFIG_REPLY, uiConfigUpdateReply(inUse))) {
+            Log.i(TAG, "Replied to the UI config update on channel $channel with $inUse")
         }
     }
 

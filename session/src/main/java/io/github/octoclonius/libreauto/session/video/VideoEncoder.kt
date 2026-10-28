@@ -16,7 +16,7 @@ internal class VideoEncoder(
     private val layout: CarLayout,
     private val maxUnacked: Int,
     val session: Int,
-    private val send: (type: Int, body: ByteArray) -> Unit,
+    private val send: (type: Int, body: ByteArray) -> Boolean,
 ) : Closeable {
 
     companion object {
@@ -104,8 +104,6 @@ internal class VideoEncoder(
             Log.w(TAG, "The H.264 encoder or the compositor failed", e)
         } catch (e: IllegalArgumentException) {
             Log.w(TAG, "The H.264 encoder refused the format", e)
-        } catch (e: IOException) {
-            Log.w(TAG, "Sending video to the car failed", e)
         } finally {
             close()
             codec = null
@@ -130,9 +128,11 @@ internal class VideoEncoder(
             encoder.releaseOutputBuffer(index, false)
             when {
                 info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 ->
-                    send(MediaMessageType.CODEC_CONFIG, data)
+                    if (!send(MediaMessageType.CODEC_CONFIG, data)) return
                 data.isNotEmpty() && takePermit() -> {
-                    send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))
+                    if (!send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))) {
+                        return
+                    }
                     sentActions.onFrameSent(info.presentationTimeUs)
                 }
             }
