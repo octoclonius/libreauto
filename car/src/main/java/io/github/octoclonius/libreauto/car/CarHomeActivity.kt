@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,7 +34,6 @@ import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
 import io.github.octoclonius.libreauto.car.ui.ProvideCarDensity
 import io.github.octoclonius.libreauto.car.ui.RetainedVisibility
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
-import io.github.octoclonius.libreauto.session.video.CarDisplay
 
 class CarHomeActivity : ComponentActivity() {
 
@@ -50,56 +50,13 @@ class CarHomeActivity : ComponentActivity() {
             else null
         touchIndicator = indicator
         setContent {
-            val loadedApps by PhoneApps.sections.collectAsStateWithLifecycle()
-            val apps = loadedApps.orEmpty()
-            val isDrawerOpen by HomeState.isDrawerOpen.collectAsState()
-            val homeComponents by HomeApps.components.collectAsState()
-            val carDisplay by CarDisplay.state.collectAsStateWithLifecycle()
-            val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
-            ProvideCarDensity(shownDisplay?.carDensity) {
-                CarTheme {
-                    val drawerGrid = rememberLazyGridState()
-                    LaunchedEffect(isDrawerOpen) {
-                        if (!isDrawerOpen) drawerGrid.scrollToItem(0)
-                    }
-                    val drag = remember { HomeDrag() }
-                    val tiles = remember(apps, homeComponents) { homeTiles(apps, homeComponents) }
-                    Box(
-                        Modifier.fillMaxSize()
-                            .homeDrag(
-                                drag,
-                                onDrop = { app, from, cell, isRemoved ->
-                                    drop(app, from, cell, isRemoved, tiles)
-                                },
-                            )
-                    ) {
-                        HomeScreen(
-                            tiles,
-                            drag,
-                            HomeState.firstPageRequests,
-                            onAppClick = ::launch,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        RetainedVisibility(isDrawerOpen, Modifier.fillMaxSize()) {
-                            AppDrawer(
-                                apps,
-                                onAppClick = ::launch,
-                                onAppLongClick = { drag.lift(it, null) },
-                                modifier =
-                                    Modifier.fillMaxSize().alpha(if (drag.isDragging) 0f else 1f),
-                                state = drawerGrid,
-                            )
-                        }
-                        HomeDragGhost(drag)
-                    }
-                    indicator?.let { TouchIndicator(it) }
-                }
-            }
+            val carUi by carContainer.carUiHolder.carUi.collectAsStateWithLifecycle()
+            carUi?.let { CarHome(it, indicator) }
         }
     }
 
     override fun onPause() {
-        HomeState.onHomeHidden()
+        carContainer.carUiHolder.carUi.value?.home?.onHomeHidden()
         super.onPause()
     }
 
@@ -108,14 +65,65 @@ class CarHomeActivity : ComponentActivity() {
         return super.dispatchTouchEvent(event)
     }
 
+    @Composable
+    private fun CarHome(carUi: CarUi, indicator: TouchIndicatorState?) {
+        val home = carUi.home
+        val loadedApps by PhoneApps.sections.collectAsStateWithLifecycle()
+        val apps = loadedApps.orEmpty()
+        val isDrawerOpen by home.isDrawerOpen.collectAsState()
+        val homeComponents by HomeApps.components.collectAsState()
+        val carDisplay by carUi.session.displays.car.state.collectAsStateWithLifecycle()
+        val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
+        ProvideCarDensity(shownDisplay?.carDensity) {
+            CarTheme {
+                val drawerGrid = rememberLazyGridState()
+                LaunchedEffect(isDrawerOpen) {
+                    if (!isDrawerOpen) drawerGrid.scrollToItem(0)
+                }
+                val drag = remember { HomeDrag() }
+                val tiles = remember(apps, homeComponents) { homeTiles(apps, homeComponents) }
+                Box(
+                    Modifier.fillMaxSize()
+                        .homeDrag(
+                            drag,
+                            onDrop = { app, from, cell, isRemoved ->
+                                drop(home, app, from, cell, isRemoved, tiles)
+                            },
+                        )
+                ) {
+                    HomeScreen(
+                        tiles,
+                        drag,
+                        home.firstPageRequests,
+                        onAppClick = ::launch,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    RetainedVisibility(isDrawerOpen, Modifier.fillMaxSize()) {
+                        AppDrawer(
+                            apps,
+                            onAppClick = ::launch,
+                            onAppLongClick = { drag.lift(it, null) },
+                            modifier =
+                                Modifier.fillMaxSize().alpha(if (drag.isDragging) 0f else 1f),
+                            state = drawerGrid,
+                        )
+                    }
+                    HomeDragGhost(drag)
+                }
+                indicator?.let { TouchIndicator(it) }
+            }
+        }
+    }
+
     private fun drop(
+        home: HomeState,
         app: PhoneApp,
         from: Int?,
         cell: Int?,
         isRemoved: Boolean,
         tiles: List<HomeTile>,
     ) {
-        HomeState.closeDrawer()
+        home.closeDrawer()
         when {
             isRemoved && from != null -> HomeApps.remove(from)
             cell == null -> {}

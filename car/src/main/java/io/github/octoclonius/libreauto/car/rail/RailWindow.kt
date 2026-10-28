@@ -16,18 +16,13 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
-import io.github.octoclonius.libreauto.car.home.onAppsButton
-import io.github.octoclonius.libreauto.car.home.onRailAppClick
-import io.github.octoclonius.libreauto.car.home.onRailAppClose
-import io.github.octoclonius.libreauto.car.home.onRailAppLongClick
-import io.github.octoclonius.libreauto.car.home.onRailStatusClick
+import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.CarStatusBar
-import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.video.RailDisplayState
 import kotlinx.coroutines.flow.StateFlow
 
@@ -35,6 +30,7 @@ internal class RailWindow(
     context: Context,
     display: Display,
     private val rail: RailDisplayState,
+    private val carUi: CarUi,
     private val order: StateFlow<List<CarTask>>,
     private val onShownCount: (Int) -> Unit,
 ) :
@@ -53,7 +49,7 @@ internal class RailWindow(
         super.onCreate(savedInstanceState)
         setContentView(
             ComposeView(context).apply {
-                setContent { CarTheme { RailContent(rail, order, onShownCount) } }
+                setContent { CarTheme { RailContent(rail, carUi, order, onShownCount) } }
             }
         )
         window?.run {
@@ -66,18 +62,21 @@ internal class RailWindow(
 @Composable
 private fun RailContent(
     rail: RailDisplayState,
+    carUi: CarUi,
     order: StateFlow<List<CarTask>>,
     onShownCount: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val apps by
-        remember(context, order) { railApps(context, order, RAIL_ICON_SIZE) }
+        remember(context, order) {
+                railApps(context, order, carDensities(carUi.session.displays.car), RAIL_ICON_SIZE)
+            }
             .collectAsStateWithLifecycle(emptyList())
-    val closingTaskId by RailState.closingTaskId.collectAsStateWithLifecycle()
-    val closedTaskIds by RailState.closedTaskIds.collectAsStateWithLifecycle()
-    val tasks by CarTasks.state.collectAsStateWithLifecycle()
-    val connection by
-        context.sessionContainer.carSessionHolder.state.collectAsStateWithLifecycle()
+    val closingTaskId by carUi.rail.closingTaskId.collectAsStateWithLifecycle()
+    val closedTaskIds by carUi.rail.closedTaskIds.collectAsStateWithLifecycle()
+    val tasks by carUi.session.tasks.state.collectAsStateWithLifecycle()
+    val connection by carUi.connection.collectAsStateWithLifecycle()
+    val navigation = carUi.navigation
     val connected = connection as? CarConnectionState.Connected
     val insets = rail.contentInsets
     val padding =
@@ -103,12 +102,12 @@ private fun RailContent(
         apps = apps.filter { it.task.taskId !in closedTaskIds },
         closingTaskId = closingTaskId,
         isAppInFront = tasks.frontTaskId != null,
-        onButtonClick = ::onAppsButton,
-        onAppClick = { onRailAppClick(it.task) },
-        onAppLongClick = { onRailAppLongClick(it.task) },
-        onAppClose = { onRailAppClose(it.task) },
-        onCancelClose = { RailState.cancelClosing() },
-        onStatusClick = ::onRailStatusClick,
+        onButtonClick = navigation::onAppsButton,
+        onAppClick = { navigation.onRailAppClick(it.task) },
+        onAppLongClick = { navigation.onRailAppLongClick(it.task) },
+        onAppClose = { navigation.onRailAppClose(it.task) },
+        onCancelClose = { carUi.rail.cancelClosing() },
+        onStatusClick = navigation::onRailStatusClick,
         onShownCount = onShownCount,
         modifier = Modifier.fillMaxSize(),
     )

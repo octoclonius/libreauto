@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.update
 
 data class OverlayDisplayState(val id: Int)
 
-object OverlayDisplay {
+class OverlayDisplay internal constructor() {
     private val lock = Any()
 
     private val _state = MutableStateFlow<OverlayDisplayState?>(null)

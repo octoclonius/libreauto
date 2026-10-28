@@ -14,7 +14,7 @@ data class CarTasksState(val tasks: List<CarTask>, val frontTaskId: Int?) {
     }
 }
 
-object CarTasks {
+class CarTasks internal constructor() {
     private val lock = Any()
     private var listener: IDisplayTaskListener? = null
 

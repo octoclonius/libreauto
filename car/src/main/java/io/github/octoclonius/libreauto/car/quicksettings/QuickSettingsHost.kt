@@ -4,32 +4,38 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
-import io.github.octoclonius.libreauto.session.video.OverlayDisplay
+import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.session.video.OverlayDisplayState
-import kotlinx.coroutines.MainScope
+import java.io.Closeable
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-class QuickSettingsHost(context: Context) {
+internal class QuickSettingsHost(context: Context, private val carUi: CarUi) : Closeable {
 
     companion object {
         private const val TAG = "QuickSettingsHost"
     }
 
     private val context = context.applicationContext
-    private val scope = MainScope()
     private var window: QuickSettingsWindow? = null
 
-    fun start() {
-        scope.launch { OverlayDisplay.state.collect(::show) }
-        scope.launch { OverlayDisplay.touches.collect { window?.dispatchTouchEvent(it) } }
-        scope.launch { QuickSettingsState.isOpen.collect(OverlayDisplay::show) }
+    fun start(scope: CoroutineScope) {
+        val overlay = carUi.session.displays.overlay
+        scope.launch { overlay.state.collect(::show) }
+        scope.launch { overlay.touches.collect { window?.dispatchTouchEvent(it) } }
+        scope.launch { carUi.quickSettings.isOpen.collect(overlay::show) }
+    }
+
+    override fun close() {
+        window?.dismiss()
+        window = null
     }
 
     private fun show(overlay: OverlayDisplayState?) {
         window?.dismiss()
         window = null
         if (overlay == null) {
-            QuickSettingsState.close()
+            carUi.quickSettings.close()
             return
         }
         val display = context.getSystemService(DisplayManager::class.java).getDisplay(overlay.id)
@@ -37,7 +43,7 @@ class QuickSettingsHost(context: Context) {
             Log.w(TAG, "The overlay display ${overlay.id} is already gone")
             return
         }
-        val created = QuickSettingsWindow(context, display)
+        val created = QuickSettingsWindow(context, display, carUi)
         try {
             created.show()
         } catch (e: WindowManager.InvalidDisplayException) {

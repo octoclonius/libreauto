@@ -1,8 +1,11 @@
 package io.github.octoclonius.libreauto
 
+import android.content.Context
+import io.github.octoclonius.libreauto.car.CarContainer
 import io.github.octoclonius.libreauto.session.SessionContainer
 
-class AppContainer {
+class AppContainer(context: Context) {
 
     val sessionContainer = SessionContainer()
+    val carContainer = CarContainer(context, sessionContainer.carSessionHolder)
 }

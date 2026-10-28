@@ -15,14 +15,14 @@ import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.video.CarLayout
-import io.github.octoclonius.libreauto.session.video.OverlayDisplay
-import io.github.octoclonius.libreauto.session.video.RailDisplay
+import io.github.octoclonius.libreauto.session.video.CarDisplays
 
 internal class InputChannel(
     private val sender: ChannelSender,
     keycodes: List<Int>,
     private val layout: () -> CarLayout?,
     private val buttons: CarButtons,
+    private val displays: CarDisplays,
 ) : CarChannel {
 
     companion object {
@@ -32,8 +32,8 @@ internal class InputChannel(
     private var state: InputChannelState? = InputChannelState.Opening(keycodes)
     private val router = TouchRouter()
     private val presses = ButtonPresses()
-    private val railTouches = WindowTouches("rail", RailDisplay::onTouch)
-    private val overlayTouches = WindowTouches("overlay", OverlayDisplay::onTouch)
+    private val railTouches = WindowTouches("rail", displays.rail::onTouch)
+    private val overlayTouches = WindowTouches("overlay", displays.overlay::onTouch)
     private var appsGesture = AppsGesture.App
 
     override val channel: Int
@@ -108,8 +108,8 @@ internal class InputChannel(
                 if (routed.touch.action == TouchAction.DOWN) {
                     appsGesture =
                         when {
-                            RailDisplay.captureOutsideTouch() -> AppsGesture.Captured
-                            OverlayDisplay.isShown -> AppsGesture.Overlay
+                            displays.rail.captureOutsideTouch() -> AppsGesture.Captured
+                            displays.overlay.isShown -> AppsGesture.Overlay
                             else -> AppsGesture.App
                         }
                 }

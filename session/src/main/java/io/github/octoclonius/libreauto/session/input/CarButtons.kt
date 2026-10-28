@@ -16,16 +16,13 @@ enum class NavigationButton {
     Back,
 }
 
-class CarButtons(context: Context) {
+class CarButtons internal constructor(context: Context) {
 
-    companion object {
-        private const val TAG = "CarButtons"
-        private const val BUFFER = 8
+    private companion object {
+        const val TAG = "CarButtons"
+        const val BUFFER = 8
 
-        private val _presses = MutableSharedFlow<NavigationButton>(extraBufferCapacity = BUFFER)
-        val presses: SharedFlow<NavigationButton> = _presses.asSharedFlow()
-
-        private val MEDIA_KEYS =
+        val MEDIA_KEYS =
             mapOf(
                 CarButton.PLAY_PAUSE to KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
                 CarButton.NEXT to KeyEvent.KEYCODE_MEDIA_NEXT,
@@ -36,6 +33,9 @@ class CarButtons(context: Context) {
     }
 
     private val audioManager = context.getSystemService(AudioManager::class.java)
+
+    private val _presses = MutableSharedFlow<NavigationButton>(extraBufferCapacity = BUFFER)
+    val presses: SharedFlow<NavigationButton> = _presses.asSharedFlow()
 
     fun onPress(code: Int) {
         val mediaKey = MEDIA_KEYS[code]

@@ -15,7 +15,7 @@ internal const val TOUCH_BUFFER = 64
 
 data class RailDisplayState(val id: Int, val side: RailSide, val contentInsets: Insets)
 
-object RailDisplay {
+class RailDisplay internal constructor() {
     private val _state = MutableStateFlow<RailDisplayState?>(null)
     val state: StateFlow<RailDisplayState?> = _state.asStateFlow()
 

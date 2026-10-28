@@ -28,6 +28,7 @@ import io.github.octoclonius.libreauto.protocol.media.withUiConfig
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import java.io.IOException
 import java.net.ProtocolException
 
@@ -37,6 +38,8 @@ internal class VideoChannel(
     configs: List<VideoConfig>,
     private val car: ProtocolVersion,
     private val isDriverOnRight: Boolean,
+    private val displays: CarDisplays,
+    private val tasks: CarTasks,
 ) : CarChannel {
 
     companion object {
@@ -94,7 +97,7 @@ internal class VideoChannel(
 
     override fun close() {
         (state as? VideoChannelState.Started)?.stream?.close()
-        CarDisplay.onCarDensity(null)
+        displays.car.onCarDensity(null)
     }
 
     private fun onSetupResponse(
@@ -128,7 +131,7 @@ internal class VideoChannel(
             "Video config $configIndex has density ${config.density}, decoder depth $decoderDepth",
         )
         var format = videoFormat(config)
-        CarDisplay.onCarDensity(format.density)
+        displays.car.onCarDensity(format.density)
         logUnused(format, "video config $configIndex")
         var uiConfig = config.ui_config ?: UiConfig()
         for (update in current.pendingUiConfigs) {
@@ -276,6 +279,8 @@ internal class VideoChannel(
                 ready.decoderDepth,
                 ready.maxUnacked,
                 sender::send,
+                displays,
+                tasks,
             )
         stream.start()
         return VideoChannelState.Started(layout, ready.uiConfig, stream, isProjected = true)

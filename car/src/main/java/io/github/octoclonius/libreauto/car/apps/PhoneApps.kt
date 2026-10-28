@@ -17,10 +17,13 @@ import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
 import io.github.octoclonius.libreauto.car.home.HomeApps
+import io.github.octoclonius.libreauto.session.CarSessionHolder
+import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
@@ -33,6 +36,8 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -60,7 +65,8 @@ object PhoneApps {
         val appContext = context.applicationContext
         HomeApps.load(appContext)
         scope.launch {
-            combine(packageChanges(appContext), carDensities()) { _, carDensity -> carDensity }
+            val carDensities = currentCarDensities(appContext.sessionContainer.carSessionHolder)
+            combine(packageChanges(appContext), carDensities) { _, carDensity -> carDensity }
                 .buffer(Channel.CONFLATED)
                 .map { carDensity ->
                     val sections = launcherApps(appContext, carDensity)
@@ -78,8 +84,15 @@ object PhoneApps {
     }
 }
 
-internal fun carDensities(): Flow<Int> =
-    CarDisplay.carDensity.filterNotNull().distinctUntilChanged()
+internal fun carDensities(display: CarDisplay): Flow<Int> =
+    display.carDensity.filterNotNull().distinctUntilChanged()
+
+@OptIn(ExperimentalCoroutinesApi::class)
+private fun currentCarDensities(carSessionHolder: CarSessionHolder): Flow<Int> =
+    carSessionHolder.session
+        .flatMapLatest { it?.displays?.car?.carDensity ?: flowOf(null) }
+        .filterNotNull()
+        .distinctUntilChanged()
 
 private fun goneComponents(
     context: Context,

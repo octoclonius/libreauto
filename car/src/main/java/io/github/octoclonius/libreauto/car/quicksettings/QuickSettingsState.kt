@@ -6,13 +6,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 
-object QuickSettingsState {
+internal class QuickSettingsState {
     private val _isOpen = MutableStateFlow(false)
     val isOpen: StateFlow<Boolean> = _isOpen.asStateFlow()
 
-    internal fun toggle() {
+    fun toggle() {
         _isOpen.update { !it }
     }
 
-    internal fun close(): Boolean = _isOpen.getAndUpdate { false }
+    fun close(): Boolean = _isOpen.getAndUpdate { false }
 }

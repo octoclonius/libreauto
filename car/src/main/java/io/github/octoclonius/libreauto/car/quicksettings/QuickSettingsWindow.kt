@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.car.quicksettings
 
+import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -9,11 +10,16 @@ import android.view.Display
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.ComponentDialog
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
+import io.github.octoclonius.libreauto.session.CarConnectionState
+import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
 
-internal class QuickSettingsWindow(context: Context, display: Display) :
+internal class QuickSettingsWindow(context: Context, display: Display, private val carUi: CarUi) :
     ComponentDialog(
         context
             .createDisplayContext(display)
@@ -28,7 +34,22 @@ internal class QuickSettingsWindow(context: Context, display: Display) :
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(
-            ComposeView(context).apply { setContent { CarTheme { QuickSettingsPanel() } } }
+            ComposeView(context).apply {
+                setContent {
+                    val rail by carUi.session.displays.rail.state.collectAsStateWithLifecycle()
+                    val connection by carUi.connection.collectAsStateWithLifecycle()
+                    CarTheme {
+                        QuickSettingsPanel(
+                            railSide = rail?.side,
+                            isDriverOnRight =
+                                (connection as? CarConnectionState.Connected)?.isDriverOnRight ==
+                                    true,
+                            onClose = { carUi.quickSettings.close() },
+                            onShowPage = ::showPage,
+                        )
+                    }
+                }
+            }
         )
         window?.run {
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -36,5 +57,11 @@ internal class QuickSettingsWindow(context: Context, display: Display) :
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         }
+    }
+
+    private fun showPage(page: PendingIntent) {
+        carUi.quickSettings.close()
+        val display = carUi.session.displays.car.state.value ?: return
+        PrivilegedSettings.showPage(display.id, page)
     }
 }

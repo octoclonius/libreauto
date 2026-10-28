@@ -7,26 +7,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-object HomeState {
+internal class HomeState {
     private val _isDrawerOpen = MutableStateFlow(false)
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
     private val _firstPageRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val firstPageRequests: SharedFlow<Unit> = _firstPageRequests.asSharedFlow()
 
-    internal fun showFirstPage() {
+    fun showFirstPage() {
         _firstPageRequests.tryEmit(Unit)
     }
 
-    internal fun onHomeHidden() {
+    fun onHomeHidden() {
         _isDrawerOpen.value = false
     }
 
-    internal fun closeDrawer() {
+    fun closeDrawer() {
         _isDrawerOpen.value = false
     }
 
-    internal fun toggleDrawer() {
+    fun toggleDrawer() {
         _isDrawerOpen.value = !_isDrawerOpen.value
     }
 }

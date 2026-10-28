@@ -7,8 +7,12 @@ import android.util.Log
 import android.view.Surface
 import java.io.Closeable
 
-internal class RailVirtualDisplay(context: Context, surface: Surface, layout: CarLayout) :
-    Closeable {
+internal class RailVirtualDisplay(
+    context: Context,
+    surface: Surface,
+    layout: CarLayout,
+    private val rail: RailDisplay,
+) : Closeable {
 
     companion object {
         private const val TAG = "RailVirtualDisplay"
@@ -35,7 +39,7 @@ internal class RailVirtualDisplay(context: Context, surface: Surface, layout: Ca
             "Created the rail display $id: ${layout.rail.width}x${layout.rail.height} at " +
                 "${layout.format.density} dpi on the ${layout.railSide} side",
         )
-        RailDisplay.onCreated(id, layout.railSide, layout.railContentInsets)
+        rail.onCreated(id, layout.railSide, layout.railContentInsets)
     }
 
     fun resize(layout: CarLayout) {
@@ -45,11 +49,11 @@ internal class RailVirtualDisplay(context: Context, surface: Surface, layout: Ca
             "Resized the rail display $id to ${layout.rail.width}x${layout.rail.height} on the " +
                 "${layout.railSide} side",
         )
-        RailDisplay.onCreated(id, layout.railSide, layout.railContentInsets)
+        rail.onCreated(id, layout.railSide, layout.railContentInsets)
     }
 
     override fun close() {
-        RailDisplay.onReleased(id)
+        rail.onReleased(id)
         display.release()
         Log.i(TAG, "Released the rail display $id")
     }

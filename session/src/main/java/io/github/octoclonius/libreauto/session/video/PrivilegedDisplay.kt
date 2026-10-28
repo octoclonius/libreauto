@@ -22,6 +22,8 @@ internal class PrivilegedDisplay(
     private val surface: Surface,
     private var layout: CarLayout,
     private val openTasks: OpenCarTasks,
+    private val carDisplay: CarDisplay,
+    private val carTasks: CarTasks,
 ) : Closeable {
 
     companion object {
@@ -78,7 +80,7 @@ internal class PrivilegedDisplay(
     private fun create(service: IPrivilegedService): Int? {
         val home = PrivilegedServiceConnection.carHome
         val remembered = openTasks.load()
-        val listener = CarTasks.listener(home.packageName, openTasks::save)
+        val listener = carTasks.listener(home.packageName, openTasks::save)
         val id =
             service.call("create the car display") {
                 it.createDisplay(
@@ -91,12 +93,12 @@ internal class PrivilegedDisplay(
                 )
             }
         if (id == null) {
-            CarTasks.onReleased(listener)
+            carTasks.onReleased(listener)
             return null
         }
         tasks = listener
         Log.i(TAG, "The privileged service created the car display $id")
-        CarDisplay.onCreated(id, layout.format.density)
+        carDisplay.onCreated(id, layout.format.density)
         restore(service, id, remembered)
         return id
     }
@@ -110,8 +112,8 @@ internal class PrivilegedDisplay(
     }
 
     private fun release(display: OwnedDisplay<IPrivilegedService>) {
-        CarDisplay.onReleased(display.id)
-        tasks?.let(CarTasks::onReleased)
+        carDisplay.onReleased(display.id)
+        tasks?.let(carTasks::onReleased)
         tasks = null
         display.service.call("release the car display ${display.id}") {
             it.releaseDisplay(display.id)

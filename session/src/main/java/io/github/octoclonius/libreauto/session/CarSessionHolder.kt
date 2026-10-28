@@ -10,7 +10,7 @@ class CarSessionHolder {
     val state: StateFlow<CarConnectionState> = _state.asStateFlow()
 
     private val _session = MutableStateFlow<CarSession?>(null)
-    internal val session: StateFlow<CarSession?> = _session.asStateFlow()
+    val session: StateFlow<CarSession?> = _session.asStateFlow()
 
     internal fun onState(state: CarConnectionState) {
         _state.value = state

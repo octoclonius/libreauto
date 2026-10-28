@@ -17,10 +17,12 @@ import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
 import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
+import io.github.octoclonius.libreauto.session.tasks.CarTasks
+import io.github.octoclonius.libreauto.session.video.CarDisplays
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
 
-internal class CarSession(
+class CarSession internal constructor(
     private val context: Context,
     private val link: CarLink,
     private val control: ChannelSender,
@@ -31,19 +33,23 @@ internal class CarSession(
         const val TAG = "CarSession"
     }
 
+    val displays = CarDisplays()
+    val tasks = CarTasks()
+    val buttons = CarButtons(context)
+
     private val channels = LinkedHashMap<Int, CarChannel>()
     private var audio: CarAudio? = null
 
-    fun start(services: ServiceDiscoveryResponse, isDriverOnRight: Boolean) {
+    internal fun start(services: ServiceDiscoveryResponse, isDriverOnRight: Boolean) {
         startVideo(services, isDriverOnRight)
         startAudio(services)
         startBluetooth(services)
     }
 
-    fun onChannelMessage(message: ChannelMessage): Boolean =
+    internal fun onChannelMessage(message: ChannelMessage): Boolean =
         channels[message.channel]?.onMessage(message) == true
 
-    fun onAudioFocusNotification(message: ChannelMessage): Boolean {
+    internal fun onAudioFocusNotification(message: ChannelMessage): Boolean {
         val current = audio ?: return false
         current.onFocusNotification(message)
         return true
@@ -71,6 +77,8 @@ internal class CarSession(
                 sink.configs,
                 version,
                 isDriverOnRight,
+                displays,
+                tasks,
             )
         open(video)
         val source = inputSource(services, sink.displayId)
@@ -83,7 +91,8 @@ internal class CarSession(
                 ChannelSender(link, source.channel),
                 source.keycodes,
                 video::layout,
-                CarButtons(context),
+                buttons,
+                displays,
             )
         )
     }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.update
 
 data class CarDisplayState(val id: Int, val carDensity: Int)
 
-object CarDisplay {
+class CarDisplay internal constructor() {
     private val _state = MutableStateFlow<CarDisplayState?>(null)
     val state: StateFlow<CarDisplayState?> = _state.asStateFlow()
 

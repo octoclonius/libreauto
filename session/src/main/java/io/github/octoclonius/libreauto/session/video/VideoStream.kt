@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import io.github.octoclonius.libreauto.session.closeAll
+import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
 import java.util.concurrent.ExecutorService
@@ -18,6 +19,8 @@ internal class VideoStream(
     private val decoderDepth: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Boolean,
+    private val displays: CarDisplays,
+    private val tasks: CarTasks,
 ) : Closeable {
 
     companion object {
@@ -124,13 +127,20 @@ internal class VideoStream(
                     }
                 compositor = created
                 val (appsInput, railInput, overlayInput) = created.inputs
-                rail = RailVirtualDisplay(context, railInput, layout)
+                rail = RailVirtualDisplay(context, railInput, layout, displays.rail)
                 overlay =
-                    OverlayVirtualDisplay(context, overlayInput, layout) {
+                    OverlayVirtualDisplay(context, overlayInput, layout, displays.overlay) {
                         created.setHidden(OVERLAY_LAYER, !it)
                     }
                 display =
-                    PrivilegedDisplay(appsInput, layout, OpenCarTasks(context)).also { it.start() }
+                    PrivilegedDisplay(
+                            appsInput,
+                            layout,
+                            OpenCarTasks(context),
+                            displays.car,
+                            tasks,
+                        )
+                        .also { it.start() }
             } catch (e: IllegalStateException) {
                 Log.w(TAG, "The compositor failed", e)
                 release()

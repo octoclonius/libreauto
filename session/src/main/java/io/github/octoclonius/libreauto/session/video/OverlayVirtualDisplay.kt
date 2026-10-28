@@ -11,6 +11,7 @@ internal class OverlayVirtualDisplay(
     context: Context,
     surface: Surface,
     layout: CarLayout,
+    private val overlay: OverlayDisplay,
     onShown: (Boolean) -> Unit,
 ) : Closeable {
 
@@ -39,7 +40,7 @@ internal class OverlayVirtualDisplay(
             "Created the overlay display $id: ${layout.apps.width}x${layout.apps.height} at " +
                 "${layout.format.density} dpi",
         )
-        OverlayDisplay.onCreated(id, onShown)
+        overlay.onCreated(id, onShown)
     }
 
     fun resize(layout: CarLayout) {
@@ -48,7 +49,7 @@ internal class OverlayVirtualDisplay(
     }
 
     override fun close() {
-        OverlayDisplay.onReleased(id)
+        overlay.onReleased(id)
         display.release()
         Log.i(TAG, "Released the overlay display $id")
     }

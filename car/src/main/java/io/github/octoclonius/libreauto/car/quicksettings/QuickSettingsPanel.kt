@@ -38,12 +38,8 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
-import io.github.octoclonius.libreauto.session.CarConnectionState
-import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
 import io.github.octoclonius.libreauto.session.settings.QuickSetting
-import io.github.octoclonius.libreauto.session.video.CarDisplay
-import io.github.octoclonius.libreauto.session.video.RailDisplay
 import io.github.octoclonius.libreauto.session.video.RailSide
 
 private val PANEL_MARGIN = CarSpacing.medium
@@ -63,15 +59,16 @@ private class SettingTile(
 )
 
 @Composable
-internal fun QuickSettingsPanel() {
+internal fun QuickSettingsPanel(
+    railSide: RailSide?,
+    isDriverOnRight: Boolean,
+    onClose: () -> Unit,
+    onShowPage: (PendingIntent) -> Unit,
+) {
     val context = LocalContext.current
     val settings by remember(context) { phoneSettings(context) }.collectAsStateWithLifecycle(null)
-    val rail by RailDisplay.state.collectAsStateWithLifecycle()
-    val connection by
-        context.sessionContainer.carSessionHolder.state.collectAsStateWithLifecycle()
-    val isDriverOnRight = (connection as? CarConnectionState.Connected)?.isDriverOnRight == true
     val alignment =
-        when (rail?.side) {
+        when (railSide) {
             RailSide.Right -> Alignment.TopEnd
             RailSide.Bottom -> if (isDriverOnRight) Alignment.BottomStart else Alignment.BottomEnd
             else -> Alignment.TopStart
@@ -82,9 +79,8 @@ internal fun QuickSettingsPanel() {
             .clickable(
                 interactionSource = null,
                 indication = null,
-            ) {
-                QuickSettingsState.close()
-            }
+                onClick = onClose,
+            )
     ) {
         val columns =
             ((maxWidth - PANEL_MARGIN * 2 - PANEL_PADDING * 2 + TILE_SPACING) /
@@ -92,7 +88,7 @@ internal fun QuickSettingsPanel() {
                 .toInt()
                 .coerceIn(1, MAX_COLUMNS)
         settings?.let {
-            Panel(tiles(it), columns, Modifier.align(alignment).padding(PANEL_MARGIN))
+            Panel(tiles(it), columns, onShowPage, Modifier.align(alignment).padding(PANEL_MARGIN))
         }
     }
 }
@@ -144,7 +140,12 @@ private fun tiles(settings: PhoneSettingsState): List<SettingTile> =
     )
 
 @Composable
-private fun Panel(tiles: List<SettingTile>, columns: Int, modifier: Modifier = Modifier) {
+private fun Panel(
+    tiles: List<SettingTile>,
+    columns: Int,
+    onShowPage: (PendingIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier,
         shape = CarShapes.extraLarge,
@@ -156,7 +157,7 @@ private fun Panel(tiles: List<SettingTile>, columns: Int, modifier: Modifier = M
         ) {
             tiles.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
-                    row.forEach { Tile(it) }
+                    row.forEach { Tile(it, onShowPage) }
                 }
             }
         }
@@ -164,7 +165,7 @@ private fun Panel(tiles: List<SettingTile>, columns: Int, modifier: Modifier = M
 }
 
 @Composable
-private fun Tile(tile: SettingTile) {
+private fun Tile(tile: SettingTile, onShowPage: (PendingIntent) -> Unit) {
     val context = LocalContext.current
     val isOn = tile.isOn == true
     Surface(
@@ -182,7 +183,7 @@ private fun Tile(tile: SettingTile) {
                 .combinedClickable(
                     enabled = tile.isOn != null,
                     role = Role.Switch,
-                    onLongClick = { showPage(context, tile) },
+                    onLongClick = { onShowPage(settingsPage(context, tile)) },
                     onClick = { PrivilegedSettings.set(tile.setting, !isOn) },
                 )
                 .padding(horizontal = TILE_PADDING),
@@ -204,16 +205,11 @@ private fun Tile(tile: SettingTile) {
     }
 }
 
-private fun showPage(context: Context, tile: SettingTile) {
-    QuickSettingsState.close()
-    val display = CarDisplay.state.value ?: return
-    val page =
-        PendingIntent.getActivity(
-            context,
-            tile.setting.ordinal,
-            Intent(tile.page)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-    PrivilegedSettings.showPage(display.id, page)
-}
+private fun settingsPage(context: Context, tile: SettingTile): PendingIntent =
+    PendingIntent.getActivity(
+        context,
+        tile.setting.ordinal,
+        Intent(tile.page)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+        PendingIntent.FLAG_IMMUTABLE,
+    )
