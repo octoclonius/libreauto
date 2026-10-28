@@ -18,35 +18,30 @@ import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.closeAll
 import io.github.octoclonius.libreauto.session.media.MediaResumption
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
-import java.io.Closeable
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal class CarAudio(
     private val context: Context,
     private val control: ChannelSender,
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
-) : Closeable {
+    private val scope: CoroutineScope,
+) {
 
     companion object {
         private const val TAG = "CarAudio"
         private const val PAUSE_TIMEOUT_MILLIS = 1_000L
     }
 
-    private val executor = Executors.newSingleThreadExecutor { Thread(it, "car-audio") }
     private val negotiation = FocusNegotiation()
     private val androidFocus = AndroidAudioFocus(context)
-    private val callScope = CoroutineScope(Dispatchers.Default)
+    private var callState: Job? = null
     private var channels: List<AudioChannel> = emptyList()
     private var streaming: List<AudioChannel> = emptyList()
     private var microphone: MicrophoneChannel? = null
@@ -54,70 +49,67 @@ internal class CarAudio(
     private var mediaResumption: MediaResumption? = null
     private var isMediaResumed = false
     private var isMediaPlaying = false
-    private var mediaPaused: CountDownLatch? = null
+    private var mediaPaused: CompletableDeferred<Unit>? = null
     private var isClosing = false
+    private var isClosed = false
 
     fun start(channels: List<AudioChannel>, microphone: MicrophoneChannel?) {
-        executor.execute {
-            this.channels = channels
-            this.microphone = microphone
-        }
-        callScope.launch {
-            calls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
-        }
+        this.channels = channels
+        this.microphone = microphone
+        callState =
+            scope.launch {
+                calls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
+            }
     }
 
     fun onChannelSettled() {
-        executor.execute(::divertWhenSettled)
+        divertWhenSettled()
     }
 
     fun onStreamStartedOrStopped() {
-        executor.execute { act(negotiation.onIdle(isIdle())) }
+        post { act(negotiation.onIdle(isIdle())) }
     }
 
     private fun onCall(isInCall: Boolean) {
-        executor.execute {
-            Log.i(TAG, if (isInCall) "In a call" else "Not in a call")
-            act(negotiation.onCall(isInCall))
-        }
+        Log.i(TAG, if (isInCall) "In a call" else "Not in a call")
+        act(negotiation.onCall(isInCall))
     }
 
     fun onFocusNotification(message: ChannelMessage) {
         val notification = parseAudioFocusNotification(message.body)
         val state = notification.state ?: return
         val isUnsolicited = notification.unsolicited == true
-        executor.execute {
-            Log.i(TAG, "Car audio focus $state, unsolicited $isUnsolicited")
-            act(negotiation.onCarFocus(state, isUnsolicited))
-            for (channel in streaming) {
-                channel.ready?.stream?.setAllowed(
-                    isStreamAllowed(channel.audioType, negotiation.carState)
-                )
+        Log.i(TAG, "Car audio focus $state, unsolicited $isUnsolicited")
+        act(negotiation.onCarFocus(state, isUnsolicited))
+        for (channel in streaming) {
+            channel.ready?.stream?.setAllowed(
+                isStreamAllowed(channel.audioType, negotiation.carState)
+            )
+        }
+        act(negotiation.onIdle(isIdle()))
+    }
+
+    suspend fun close() {
+        if (isClosing) return
+        callState?.cancel()
+        val paused = pauseMedia()
+        if (paused != null && withTimeoutOrNull(PAUSE_TIMEOUT_MILLIS) { paused.await() } == null) {
+            Log.w(TAG, "Media still plays $PAUSE_TIMEOUT_MILLIS ms after pausing it")
+        }
+        isClosed = true
+        closeAll(TAG) {
+            step("Stopping the diverted audio") { privilegedAudio?.close() }
+            privilegedAudio = null
+            for (channel in channels) {
+                step("Closing the audio channel ${channel.channel}") { channel.close() }
             }
-            act(negotiation.onIdle(isIdle()))
+            step("Closing the microphone") { microphone?.close() }
+            step("Abandoning Android audio focus") { androidFocus.abandon() }
         }
     }
 
-    override fun close() {
-        runBlocking { callScope.coroutineContext.job.cancelAndJoin() }
-        val paused = executor.submit(::pauseMedia).get()
-        if (paused?.await(PAUSE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS) == false) {
-            Log.w(TAG, "Media still plays $PAUSE_TIMEOUT_MILLIS ms after pausing it")
-        }
-        executor
-            .submit {
-                closeAll(TAG) {
-                    step("Stopping the diverted audio") { privilegedAudio?.close() }
-                    privilegedAudio = null
-                    for (channel in channels) {
-                        step("Closing the audio channel ${channel.channel}") { channel.close() }
-                    }
-                    step("Closing the microphone") { microphone?.close() }
-                    step("Abandoning Android audio focus") { androidFocus.abandon() }
-                }
-            }
-            .get()
-        executor.shutdown()
+    private fun post(block: () -> Unit) {
+        scope.launch { if (!isClosed) block() }
     }
 
     private fun divertWhenSettled() {
@@ -144,6 +136,7 @@ internal class CarAudio(
         privilegedAudio =
             PrivilegedAudio(
                     privileged,
+                    scope,
                     outputs,
                     input,
                     ::onPipes,
@@ -153,7 +146,7 @@ internal class CarAudio(
                 .also(PrivilegedAudio::start)
     }
 
-    private fun pauseMedia(): CountDownLatch? {
+    private fun pauseMedia(): CompletableDeferred<Unit>? {
         isClosing = true
         val resumption = mediaResumption ?: return null
         if (!isMediaPlaying) {
@@ -161,11 +154,11 @@ internal class CarAudio(
             return null
         }
         resumption.pause()
-        return CountDownLatch(1).also { mediaPaused = it }
+        return CompletableDeferred<Unit>().also { mediaPaused = it }
     }
 
     private fun onPipes(pipes: List<ParcelFileDescriptor>) {
-        executor.execute {
+        post {
             for ((channel, pipe) in streaming.zip(pipes)) channel.ready?.stream?.read(pipe)
             pipes.getOrNull(streaming.size)?.let { microphone?.inject(it) }
             val resumption = mediaResumption
@@ -177,14 +170,14 @@ internal class CarAudio(
     }
 
     private fun onMicrophoneActivity(isRecording: Boolean) {
-        executor.execute { microphone?.setRecording(isRecording) }
+        post { microphone?.setRecording(isRecording) }
     }
 
     private fun onActivity(players: List<AudioPlayer>, focusHolders: List<AudioFocusHolder>) {
-        executor.execute {
+        post {
             val divertedPlayers = players.filter { isDiverted(it.usage) }
             isMediaPlaying = isMediaPlaying(divertedPlayers)
-            if (!isMediaPlaying) mediaPaused?.countDown()
+            if (!isMediaPlaying) mediaPaused?.complete(Unit)
             for (channel in streaming) {
                 channel.ready?.stream?.setActive(
                     divertedPlayers.any { it.usage in channel.usages }

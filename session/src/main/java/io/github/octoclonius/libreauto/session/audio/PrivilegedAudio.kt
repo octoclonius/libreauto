@@ -10,28 +10,27 @@ import io.github.octoclonius.libreauto.privileged.IAudioActivityListener
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
-import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 internal class PrivilegedAudio(
     private val privileged: PrivilegedServiceConnection,
+    private val scope: CoroutineScope,
     private val outputs: List<AudioOutput>,
     private val input: AudioInput?,
     private val onPipes: (List<ParcelFileDescriptor>) -> Unit,
     private val onActivity: (List<AudioPlayer>, List<AudioFocusHolder>) -> Unit,
     private val onMicrophoneActivity: (Boolean) -> Unit,
-) : Closeable {
+) {
 
     companion object {
         private const val TAG = "PrivilegedAudio"
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private var following: Job? = null
     private var current: IPrivilegedService? = null
     private val listener =
         object : IAudioActivityListener.Stub() {
@@ -48,11 +47,11 @@ internal class PrivilegedAudio(
         }
 
     fun start() {
-        scope.launch { privileged.service.collect(::follow) }
+        following = scope.launch(Dispatchers.IO) { privileged.service.collect(::follow) }
     }
 
-    override fun close() {
-        runBlocking { scope.coroutineContext.job.cancelAndJoin() }
+    suspend fun close() {
+        following?.cancelAndJoin()
         current?.let(::stop)
         current = null
     }

@@ -31,6 +31,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 
 class CarSession internal constructor(
     private val context: Context,
@@ -41,7 +42,7 @@ class CarSession internal constructor(
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
     carHome: CarHome,
-    dispatcher: CoroutineDispatcher,
+    private val dispatcher: CoroutineDispatcher,
 ) : Closeable {
 
     private companion object {
@@ -75,11 +76,17 @@ class CarSession internal constructor(
     override fun close() {
         closeAll(TAG) {
             step("Stopping the messages from the car") { inbox.close() }
+            step("Closing the channels") { runBlocking(dispatcher) { closeChannels() } }
+            step("Canceling the session's work") { scope.cancel() }
+        }
+    }
+
+    private suspend fun closeChannels() {
+        closeAll(TAG) {
             step("Closing the car audio") { audio?.close() }
             for (channel in channels.values) {
                 step("Closing the channel ${channel.channel}") { channel.close() }
             }
-            step("Canceling the session's work") { scope.cancel() }
         }
     }
 
@@ -143,7 +150,7 @@ class CarSession internal constructor(
         val source = audioSource(services)
         if (source == null) Log.w(TAG, "The car has no microphone")
         if (sinks.isEmpty() && source == null) return
-        val carAudio = CarAudio(context, control, calls, privileged)
+        val carAudio = CarAudio(context, control, calls, privileged, scope)
         audio = carAudio
         val audioChannels =
             sinks.map { (type, sink) ->

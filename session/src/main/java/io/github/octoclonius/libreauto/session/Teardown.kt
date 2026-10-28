@@ -2,9 +2,9 @@ package io.github.octoclonius.libreauto.session
 
 import android.util.Log
 
-internal class Teardown(private val onFailure: (action: String, cause: Exception) -> Unit) {
+internal class Teardown(val onFailure: (action: String, cause: Exception) -> Unit) {
 
-    fun step(action: String, close: () -> Unit) {
+    inline fun step(action: String, close: () -> Unit) {
         try {
             close()
         } catch (e: Exception) {
@@ -13,12 +13,12 @@ internal class Teardown(private val onFailure: (action: String, cause: Exception
     }
 }
 
-internal fun closeAll(tag: String, steps: Teardown.() -> Unit) {
+internal inline fun closeAll(tag: String, steps: Teardown.() -> Unit) {
     closeAll({ action, cause -> Log.e(tag, "$action failed", cause) }, steps)
 }
 
-internal fun closeAll(
-    onFailure: (action: String, cause: Exception) -> Unit,
+internal inline fun closeAll(
+    noinline onFailure: (action: String, cause: Exception) -> Unit,
     steps: Teardown.() -> Unit,
 ) {
     Teardown(onFailure).steps()

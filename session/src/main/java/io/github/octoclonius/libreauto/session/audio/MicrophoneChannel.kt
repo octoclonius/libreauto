@@ -30,7 +30,6 @@ internal class MicrophoneChannel(
         private const val PIPE_ATOMIC_BYTES = 4096
     }
 
-    private val lock = Any()
     private var isOpening = true
     private var isUsable = false
     private var isOpen = false
@@ -42,10 +41,10 @@ internal class MicrophoneChannel(
         get() = sender.channel
 
     val isSettled: Boolean
-        get() = synchronized(lock) { !isOpening }
+        get() = !isOpening
 
     val isReady: Boolean
-        get() = synchronized(lock) { isUsable }
+        get() = isUsable
 
     override fun open() {
         Log.i(TAG, "Opening the microphone channel $channel")
@@ -64,22 +63,16 @@ internal class MicrophoneChannel(
 
     fun inject(pipe: ParcelFileDescriptor) {
         Os.fcntlInt(pipe.fileDescriptor, OsConstants.F_SETFL, OsConstants.O_NONBLOCK)
-        val previous =
-            synchronized(lock) {
-                val previous = output
-                output = pipe
-                previous
-            }
+        val previous = output
+        output = pipe
         previous?.close()
     }
 
     fun setRecording(isRecording: Boolean) {
-        val dropped =
-            synchronized(lock) {
-                if (!isUsable || isOpen == isRecording) return
-                isOpen = isRecording
-                droppedBytes.also { droppedBytes = 0 }
-            }
+        if (!isUsable || isOpen == isRecording) return
+        isOpen = isRecording
+        val dropped = droppedBytes
+        droppedBytes = 0
         sender.send(
             MediaMessageType.MICROPHONE_REQUEST,
             microphoneRequest(isRecording, MAX_UNACKED),
@@ -92,32 +85,24 @@ internal class MicrophoneChannel(
     }
 
     override fun close() {
-        val closed =
-            synchronized(lock) {
-                isUsable = false
-                isOpen = false
-                output.also { output = null }
-            }
+        isUsable = false
+        isOpen = false
+        val closed = output
+        output = null
         closed?.close()
     }
 
     private fun onOpenResponse(message: ChannelMessage) {
         val isOpened = isChannelOpened(TAG, message, "microphone")
-        synchronized(lock) {
-            if (!isOpening) return
-            isOpening = false
-            isUsable = isOpened
-        }
+        if (!isOpening) return
+        isOpening = false
+        isUsable = isOpened
         onSettled()
     }
 
     private fun onMicrophoneResponse(message: ChannelMessage) {
         val response = parseMicrophoneResponse(message.body)
-        val isOpen =
-            synchronized(lock) {
-                session = response.session ?: 0
-                isOpen
-            }
+        session = response.session ?: 0
         if (response.status == MessageStatus.SUCCESS) {
             Log.i(TAG, "The car answered the microphone request, session ${response.session}")
         } else if (isOpen) {
@@ -133,8 +118,8 @@ internal class MicrophoneChannel(
 
     private fun onData(message: ChannelMessage) {
         val pcm = mediaDataPayload(message.body)
-        val (ackSession, out) = synchronized(lock) { session to output.takeIf { isOpen } }
-        sender.send(MediaMessageType.ACK, mediaAck(ackSession, 1))
+        val out = output.takeIf { isOpen }
+        sender.send(MediaMessageType.ACK, mediaAck(session, 1))
         if (out != null) write(out, pcm)
     }
 
@@ -147,15 +132,14 @@ internal class MicrophoneChannel(
             }
         } catch (e: ErrnoException) {
             if (e.errno == OsConstants.EAGAIN) {
-                synchronized(lock) { droppedBytes += pcm.size - offset }
+                droppedBytes += pcm.size - offset
                 return
             }
             Log.w(TAG, "Nothing injects the car's microphone anymore", e)
-            val isCurrent =
-                synchronized(lock) {
-                    (output === out).also { if (it) output = null }
-                }
-            if (isCurrent) out.close()
+            if (output === out) {
+                output = null
+                out.close()
+            }
         }
     }
 }
