@@ -4,9 +4,11 @@ import io.github.octoclonius.libreauto.privileged.DisplayTask
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.video.CarDisplay
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class CarTask(val taskId: Int, val packageName: String)
 
@@ -20,8 +22,8 @@ class CarTasks
 internal constructor(
     private val display: CarDisplay,
     private val privileged: PrivilegedServiceConnection,
+    private val scope: CoroutineScope,
 ) {
-    private val lock = Any()
     private var listener: IDisplayTaskListener? = null
 
     private val _state = MutableStateFlow(CarTasksState.NONE)
@@ -44,15 +46,16 @@ internal constructor(
         val created =
             object : IDisplayTaskListener.Stub() {
                 override fun onTasks(tasks: Array<DisplayTask>) {
-                    synchronized(lock) {
-                        if (listener !== this) return
+                    val reporting = this
+                    scope.launch {
+                        if (listener !== reporting) return@launch
                         val state = carTasks(tasks.toList(), homePackage)
                         _state.value = state
                         onState(state)
                     }
                 }
             }
-        synchronized(lock) {
+        scope.launch {
             listener = created
             _state.value = CarTasksState.NONE
         }
@@ -60,8 +63,8 @@ internal constructor(
     }
 
     internal fun onReleased(released: IDisplayTaskListener) {
-        synchronized(lock) {
-            if (listener !== released) return
+        scope.launch {
+            if (listener !== released) return@launch
             listener = null
             _state.value = CarTasksState.NONE
         }

@@ -49,11 +49,12 @@ class CarSession internal constructor(
         const val TAG = "CarSession"
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+
     val displays = CarDisplays(privileged, carHome)
-    val tasks = CarTasks(displays.car, privileged)
+    val tasks = CarTasks(displays.car, privileged, scope)
     val buttons = CarButtons(context, calls)
 
-    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val inbox = SessionInbox(scope, ::handle)
     private val channels = LinkedHashMap<Int, CarChannel>()
     private var audio: CarAudio? = null
