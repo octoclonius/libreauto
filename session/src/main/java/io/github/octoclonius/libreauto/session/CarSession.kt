@@ -2,8 +2,10 @@ package io.github.octoclonius.libreauto.session
 
 import android.content.Context
 import android.util.Log
+import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.bluetooth.carBluetooth
+import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.input.inputSource
@@ -24,6 +26,11 @@ import io.github.octoclonius.libreauto.session.video.CarDisplays
 import io.github.octoclonius.libreauto.session.video.CarHome
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
+import java.io.IOException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 class CarSession internal constructor(
     private val context: Context,
@@ -34,6 +41,7 @@ class CarSession internal constructor(
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
     carHome: CarHome,
+    dispatcher: CoroutineDispatcher,
 ) : Closeable {
 
     private companion object {
@@ -44,31 +52,51 @@ class CarSession internal constructor(
     val tasks = CarTasks(displays.car, privileged)
     val buttons = CarButtons(context, calls)
 
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val inbox = SessionInbox(scope, ::handle)
     private val channels = LinkedHashMap<Int, CarChannel>()
     private var audio: CarAudio? = null
 
+    internal val failure: IOException?
+        get() = inbox.failure
+
     internal fun start(services: ServiceDiscoveryResponse) {
-        startVideo(services)
-        startAudio(services)
-        startBluetooth(services)
+        inbox.start {
+            startVideo(services)
+            startAudio(services)
+            startBluetooth(services)
+        }
     }
 
-    internal fun onChannelMessage(message: ChannelMessage): Boolean =
-        channels[message.channel]?.onMessage(message) == true
-
-    internal fun onAudioFocusNotification(message: ChannelMessage): Boolean {
-        val current = audio ?: return false
-        current.onFocusNotification(message)
-        return true
+    internal fun onMessage(message: ChannelMessage) {
+        inbox.send(message)
     }
 
     override fun close() {
         closeAll(TAG) {
+            step("Stopping the messages from the car") { inbox.close() }
             step("Closing the car audio") { audio?.close() }
             for (channel in channels.values) {
                 step("Closing the channel ${channel.channel}") { channel.close() }
             }
+            step("Canceling the session's work") { scope.cancel() }
         }
+    }
+
+    private fun handle(message: ChannelMessage) {
+        val isHandled =
+            if (message.channel == CONTROL_CHANNEL) {
+                message.type == MessageType.AUDIO_FOCUS_NOTIFICATION && onAudioFocus(message)
+            } else {
+                channels[message.channel]?.onMessage(message) == true
+            }
+        if (!isHandled) logUnhandled(TAG, message)
+    }
+
+    private fun onAudioFocus(message: ChannelMessage): Boolean {
+        val current = audio ?: return false
+        current.onFocusNotification(message)
+        return true
     }
 
     private fun startVideo(services: ServiceDiscoveryResponse) {

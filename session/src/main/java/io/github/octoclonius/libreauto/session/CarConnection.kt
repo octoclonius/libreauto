@@ -97,6 +97,7 @@ internal class CarConnection(
             while (true) {
                 val message = reader.readMessage()
                 if (link.isLost) throw IOException("Sending to the car failed")
+                session?.failure?.let { throw it }
                 if (!message.isEncrypted) {
                     throw ProtocolException(
                         "Plaintext message 0x%04x on channel %d after the handshake"
@@ -104,7 +105,7 @@ internal class CarConnection(
                     )
                 }
                 if (message.channel != CONTROL_CHANNEL) {
-                    if (session?.onChannelMessage(message) != true) logUnhandled(message)
+                    route(session, message)
                     continue
                 }
                 when (message.type) {
@@ -114,10 +115,7 @@ internal class CarConnection(
                         } else {
                             Log.w(TAG, "Ignored another service discovery response")
                         }
-                    MessageType.AUDIO_FOCUS_NOTIFICATION ->
-                        if (session?.onAudioFocusNotification(message) != true) {
-                            logUnhandled(message)
-                        }
+                    MessageType.AUDIO_FOCUS_NOTIFICATION -> route(session, message)
                     MessageType.PING_REQUEST ->
                         control.send(
                             MessageType.PING_RESPONSE,
@@ -129,13 +127,17 @@ internal class CarConnection(
                         control.send(MessageType.BYE_BYE_RESPONSE, byeByeResponse())
                         return
                     }
-                    else -> logUnhandled(message)
+                    else -> logUnhandled(TAG, message)
                 }
             }
         } finally {
             if (session != null) holder.onSession(null)
             session?.close()
         }
+    }
+
+    private fun route(session: CarSession?, message: ChannelMessage) {
+        if (session == null) logUnhandled(TAG, message) else session.onMessage(message)
     }
 
     private fun start(
@@ -162,10 +164,6 @@ internal class CarConnection(
         holder.onState(CarConnectionState.Connected(car))
         session.start(services)
         return session
-    }
-
-    private fun logUnhandled(message: ChannelMessage) {
-        Log.i(TAG, "Message 0x%04x on channel %d".format(message.type, message.channel))
     }
 
     private fun credentials(): FetchResult.Success? {

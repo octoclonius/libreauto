@@ -7,6 +7,7 @@ import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
 import io.github.octoclonius.libreauto.session.video.CarHome
+import kotlinx.coroutines.Dispatchers
 
 class SessionContainer(
     private val context: Context,
@@ -32,6 +33,7 @@ class SessionContainer(
                 callRepository,
                 privilegedServiceConnection,
                 carHome,
+                Dispatchers.IO.limitedParallelism(1),
             )
         }
 
