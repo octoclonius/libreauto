@@ -1,9 +1,9 @@
-package io.github.octoclonius.libreauto.car
+package io.github.octoclonius.libreauto.session
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-internal inline fun <reified T> decodeSaved(encoded: String?): T? {
+inline fun <reified T> decodeSaved(encoded: String?): T? {
     if (encoded == null) return null
     return try {
         Json.decodeFromString<T>(encoded)

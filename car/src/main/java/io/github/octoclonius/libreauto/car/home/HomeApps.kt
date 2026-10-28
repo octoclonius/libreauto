@@ -4,7 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import io.github.octoclonius.libreauto.car.decodeSaved
+import io.github.octoclonius.libreauto.session.decodeSaved
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

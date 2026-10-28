@@ -4,15 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import io.github.octoclonius.libreauto.session.decodeSaved
 import io.github.octoclonius.libreauto.session.describe
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
-import java.util.Base64
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class CertificateProvider(private val context: Context) {
 
@@ -27,10 +29,10 @@ class CertificateProvider(private val context: Context) {
         private const val CALL_TIMEOUT_MS = 5_000L
 
         private const val PREFS = "certificate_provider"
-        private const val PREF_PACKAGE = "package"
-        private const val PREF_SIGNER = "signer_sha256"
+        private const val PREF_CHOICE = "choice"
     }
 
+    @Serializable
     class Choice(val packageName: String, val signer: ByteArray) {
         override fun equals(other: Any?): Boolean =
             other is Choice && packageName == other.packageName && signer.contentEquals(other.signer)
@@ -51,15 +53,7 @@ class CertificateProvider(private val context: Context) {
     private val packageManager = context.packageManager
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun selection(): Choice? {
-        val packageName = prefs.getString(PREF_PACKAGE, null) ?: return null
-        val signer = prefs.getString(PREF_SIGNER, null) ?: return null
-        return try {
-            Choice(packageName, Base64.getDecoder().decode(signer))
-        } catch (_: IllegalArgumentException) {
-            null
-        }
-    }
+    fun selection(): Choice? = decodeSaved<Choice>(prefs.getString(PREF_CHOICE, null))
 
     fun options(): List<Option> {
         val chosen = selection()
@@ -82,14 +76,8 @@ class CertificateProvider(private val context: Context) {
     }
 
     fun select(choice: Choice?) {
-        val edit = prefs.edit()
-        if (choice == null) {
-            edit.remove(PREF_PACKAGE).remove(PREF_SIGNER)
-        } else {
-            edit
-                .putString(PREF_PACKAGE, choice.packageName)
-                .putString(PREF_SIGNER, Base64.getEncoder().encodeToString(choice.signer))
-        }
+        val edit = prefs.edit().clear()
+        if (choice != null) edit.putString(PREF_CHOICE, Json.encodeToString(choice))
         edit.apply()
     }
 

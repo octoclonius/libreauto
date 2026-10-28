@@ -1,8 +1,8 @@
 package io.github.octoclonius.libreauto.session.tasks
 
 import android.content.Context
+import io.github.octoclonius.libreauto.session.decodeSaved
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 @Serializable internal data class OpenTasks(val taskIds: List<Int>, val frontTaskId: Int?)
@@ -27,12 +27,7 @@ internal class OpenCarTasks(context: Context) {
 internal fun encodeOpenTasks(tasks: OpenTasks): String = Json.encodeToString(tasks)
 
 internal fun decodeOpenTasks(encoded: String?): OpenTasks {
-    val decoded =
-        try {
-            encoded?.let { Json.decodeFromString<OpenTasks>(it) }
-        } catch (e: SerializationException) {
-            null
-        } ?: return OpenTasks(emptyList(), null)
+    val decoded = decodeSaved<OpenTasks>(encoded) ?: return OpenTasks(emptyList(), null)
     val taskIds = decoded.taskIds.distinct()
     return OpenTasks(taskIds, decoded.frontTaskId?.takeIf { it in taskIds })
 }

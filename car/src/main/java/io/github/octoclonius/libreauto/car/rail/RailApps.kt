@@ -7,7 +7,7 @@ import android.graphics.drawable.Drawable
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.apps.loadCarIcon
-import io.github.octoclonius.libreauto.car.decodeSaved
+import io.github.octoclonius.libreauto.session.decodeSaved
 import io.github.octoclonius.libreauto.session.tasks.CarTask
 import io.github.octoclonius.libreauto.session.tasks.CarTasksState
 import kotlinx.coroutines.Dispatchers
