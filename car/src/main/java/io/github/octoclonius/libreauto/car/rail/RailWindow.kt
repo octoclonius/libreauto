@@ -23,9 +23,9 @@ import io.github.octoclonius.libreauto.car.home.onRailAppClose
 import io.github.octoclonius.libreauto.car.home.onRailAppLongClick
 import io.github.octoclonius.libreauto.car.home.onRailStatusClick
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
-import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.CarStatusBar
+import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.tasks.CarTask
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.video.RailDisplayState
@@ -76,7 +76,8 @@ private fun RailContent(
     val closingTaskId by RailState.closingTaskId.collectAsStateWithLifecycle()
     val closedTaskIds by RailState.closedTaskIds.collectAsStateWithLifecycle()
     val tasks by CarTasks.state.collectAsStateWithLifecycle()
-    val connection by CarConnection.state.collectAsStateWithLifecycle()
+    val connection by
+        context.sessionContainer.carSessionHolder.state.collectAsStateWithLifecycle()
     val connected = connection as? CarConnectionState.Connected
     val insets = rail.contentInsets
     val padding =

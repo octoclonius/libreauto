@@ -13,11 +13,11 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
-import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
+import io.github.octoclonius.libreauto.session.sessionContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,9 +43,10 @@ class MainViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
+                val application = checkNotNull(this[APPLICATION_KEY])
                 MainViewModel(
-                    CertificateProvider(checkNotNull(this[APPLICATION_KEY])),
-                    CarConnection.state,
+                    CertificateProvider(application),
+                    application.sessionContainer.carSessionHolder.state,
                     PrivilegedServiceConnection.state,
                 )
             }

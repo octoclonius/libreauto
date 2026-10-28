@@ -8,12 +8,21 @@ import io.github.octoclonius.libreauto.car.home.CarButtonHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.privileged.PrivilegedService
+import io.github.octoclonius.libreauto.session.SessionContainer
 import io.github.octoclonius.libreauto.session.calls.PhoneCalls
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
-open class LibreAutoApplication : Application() {
+open class LibreAutoApplication : Application(), SessionContainer.Provider {
+
+    lateinit var container: AppContainer
+        private set
+
+    override val sessionContainer: SessionContainer
+        get() = container.sessionContainer
+
     override fun onCreate() {
         super.onCreate()
+        container = AppContainer()
         PrivilegedServiceConnection.start(
             this,
             service = ComponentName(this, PrivilegedService::class.java),

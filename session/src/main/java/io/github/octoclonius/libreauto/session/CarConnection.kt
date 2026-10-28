@@ -33,24 +33,18 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.ProtocolException
 import javax.net.ssl.SSLException
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
-class CarConnection(context: Context) {
+class CarConnection(context: Context, private val holder: CarSessionHolder) {
 
     companion object {
         private const val TAG = "CarConnection"
-
-        private val _state = MutableStateFlow<CarConnectionState>(CarConnectionState.Disconnected)
-        val state: StateFlow<CarConnectionState> = _state.asStateFlow()
     }
 
     private val context = context.applicationContext
     private val certificateProvider = CertificateProvider(this.context)
 
     fun run(input: InputStream, output: OutputStream): Boolean {
-        _state.value = CarConnectionState.Connecting
+        holder.onState(CarConnectionState.Connecting)
         try {
             val credentials = credentials() ?: return false
             val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
@@ -79,12 +73,13 @@ class CarConnection(context: Context) {
             Log.w(TAG, "Connection to the car failed", e)
             return true
         } finally {
-            _state.value =
-                if (_state.value is CarConnectionState.Connected) {
+            holder.onState(
+                if (holder.state.value is CarConnectionState.Connected) {
                     CarConnectionState.Disconnected
                 } else {
                     CarConnectionState.Failed
                 }
+            )
             closeAll(TAG) {
                 step("Closing the input from the car") { input.close() }
                 step("Closing the output to the car") { output.close() }
@@ -118,6 +113,7 @@ class CarConnection(context: Context) {
                         if (session == null) {
                             val started = CarSession(context, link, control, version)
                             session = started
+                            holder.onSession(started)
                             start(started, parseServiceDiscoveryResponse(message.body))
                         } else {
                             Log.w(TAG, "Ignored another service discovery response")
@@ -141,6 +137,7 @@ class CarConnection(context: Context) {
                 }
             }
         } finally {
+            if (session != null) holder.onSession(null)
             session?.close()
         }
     }
@@ -158,7 +155,7 @@ class CarConnection(context: Context) {
                 ),
             )
         Log.i(TAG, "The car is $connected")
-        _state.value = connected
+        holder.onState(connected)
         session.start(services, connected.isDriverOnRight)
     }
 

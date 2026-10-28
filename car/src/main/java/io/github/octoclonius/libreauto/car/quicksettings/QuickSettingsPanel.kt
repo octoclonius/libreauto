@@ -38,8 +38,8 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
-import io.github.octoclonius.libreauto.session.CarConnection
 import io.github.octoclonius.libreauto.session.CarConnectionState
+import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
 import io.github.octoclonius.libreauto.session.settings.QuickSetting
 import io.github.octoclonius.libreauto.session.video.CarDisplay
@@ -67,7 +67,8 @@ internal fun QuickSettingsPanel() {
     val context = LocalContext.current
     val settings by remember(context) { phoneSettings(context) }.collectAsStateWithLifecycle(null)
     val rail by RailDisplay.state.collectAsStateWithLifecycle()
-    val connection by CarConnection.state.collectAsStateWithLifecycle()
+    val connection by
+        context.sessionContainer.carSessionHolder.state.collectAsStateWithLifecycle()
     val isDriverOnRight = (connection as? CarConnectionState.Connected)?.isDriverOnRight == true
     val alignment =
         when (rail?.side) {
