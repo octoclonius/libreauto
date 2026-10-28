@@ -63,7 +63,12 @@ class DebugCarService : Service() {
                 return
             }
         server = socket
-        val connection = CarConnection(this, sessionContainer.carSessionHolder)
+        val connection =
+            CarConnection(
+                this,
+                sessionContainer.carSessionHolder,
+                sessionContainer.callRepository,
+            )
         thread(isDaemon = true, name = "debug-car") { acceptAll(socket, connection) }
         Log.i(TAG, "Listening on @$SOCKET_NAME")
     }

@@ -2,7 +2,6 @@ package io.github.octoclonius.libreauto.car.home
 
 import android.content.ComponentName
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import io.github.octoclonius.libreauto.session.decodeSaved
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,25 +10,23 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-object HomeApps {
-    private const val TAG = "HomeApps"
-    private const val PREFS = "car_home"
-    private const val KEY_APPS = "apps"
+class HomeAppsRepository(context: Context) {
 
-    private var prefs: SharedPreferences? = null
+    private companion object {
+        const val TAG = "HomeAppsRepository"
+        const val PREFS = "car_home"
+        const val KEY_APPS = "apps"
+    }
 
-    private val _components = MutableStateFlow<List<ComponentName>>(emptyList())
-    val components: StateFlow<List<ComponentName>> = _components.asStateFlow()
+    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun load(context: Context) {
-        if (prefs != null) return
-        val loaded = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = loaded
-        _components.value =
-            decodeHomeApps(loaded.getString(KEY_APPS, null)).map {
+    private val _components =
+        MutableStateFlow(
+            decodeHomeApps(prefs.getString(KEY_APPS, null)).map {
                 ComponentName(it.packageName, it.className)
             }
-    }
+        )
+    val components: StateFlow<List<ComponentName>> = _components.asStateFlow()
 
     internal fun add(component: ComponentName, at: Int? = null) {
         save(withAdded(_components.value, component, at ?: _components.value.size))
@@ -52,7 +49,7 @@ object HomeApps {
     private fun save(components: List<ComponentName>) {
         _components.value = components
         val saved = components.map { SavedComponent(it.packageName, it.className) }
-        prefs?.edit()?.putString(KEY_APPS, encodeHomeApps(saved))?.apply()
+        prefs.edit().putString(KEY_APPS, encodeHomeApps(saved)).apply()
     }
 }
 

@@ -16,9 +16,8 @@ import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
-import io.github.octoclonius.libreauto.car.home.HomeApps
+import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
-import io.github.octoclonius.libreauto.session.sessionContainer
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
@@ -52,33 +51,34 @@ class AppSection(val label: String, val apps: List<PhoneApp>)
 
 private class LoadedApps(val sections: List<AppSection>, val gone: Set<ComponentName>)
 
-object PhoneApps {
+class PhoneAppsRepository(
+    context: Context,
+    private val homeApps: HomeAppsRepository,
+    private val carSessionHolder: CarSessionHolder,
+) {
+    private val context = context.applicationContext
     private val scope = MainScope()
-    private var isStarted = false
 
     private val _sections = MutableStateFlow<List<AppSection>?>(null)
     val sections: StateFlow<List<AppSection>?> = _sections.asStateFlow()
 
-    fun start(context: Context) {
-        if (isStarted) return
-        isStarted = true
-        val appContext = context.applicationContext
-        HomeApps.load(appContext)
+    fun start() {
         scope.launch {
-            val carDensities = currentCarDensities(appContext.sessionContainer.carSessionHolder)
-            combine(packageChanges(appContext), carDensities) { _, carDensity -> carDensity }
+            combine(packageChanges(context), currentCarDensities(carSessionHolder)) { _, density ->
+                    density
+                }
                 .buffer(Channel.CONFLATED)
                 .map { carDensity ->
-                    val sections = launcherApps(appContext, carDensity)
+                    val sections = launcherApps(context, carDensity)
                     LoadedApps(
                         sections,
-                        goneComponents(appContext, HomeApps.components.value, sections),
+                        goneComponents(context, homeApps.components.value, sections),
                     )
                 }
                 .flowOn(Dispatchers.IO)
                 .collect {
                     _sections.value = it.sections
-                    HomeApps.removeAll(it.gone)
+                    homeApps.removeAll(it.gone)
                 }
         }
     }

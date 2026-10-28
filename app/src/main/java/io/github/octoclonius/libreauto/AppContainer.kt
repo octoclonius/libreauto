@@ -6,6 +6,6 @@ import io.github.octoclonius.libreauto.session.SessionContainer
 
 class AppContainer(context: Context) {
 
-    val sessionContainer = SessionContainer()
+    val sessionContainer = SessionContainer(context)
     val carContainer = CarContainer(context, sessionContainer.carSessionHolder)
 }

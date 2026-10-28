@@ -20,8 +20,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
-import io.github.octoclonius.libreauto.car.apps.PhoneApps
-import io.github.octoclonius.libreauto.car.home.HomeApps
+import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.car.home.HomeDrag
 import io.github.octoclonius.libreauto.car.home.HomeDragGhost
 import io.github.octoclonius.libreauto.car.home.HomeScreen
@@ -42,6 +41,9 @@ class CarHomeActivity : ComponentActivity() {
     }
 
     private var touchIndicator: TouchIndicatorState? = null
+
+    private val homeApps: HomeAppsRepository
+        get() = carContainer.homeAppsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,10 +70,10 @@ class CarHomeActivity : ComponentActivity() {
     @Composable
     private fun CarHome(carUi: CarUi, indicator: TouchIndicatorState?) {
         val home = carUi.home
-        val loadedApps by PhoneApps.sections.collectAsStateWithLifecycle()
+        val loadedApps by carContainer.phoneAppsRepository.sections.collectAsStateWithLifecycle()
         val apps = loadedApps.orEmpty()
         val isDrawerOpen by home.isDrawerOpen.collectAsState()
-        val homeComponents by HomeApps.components.collectAsState()
+        val homeComponents by homeApps.components.collectAsState()
         val carDisplay by carUi.session.displays.car.state.collectAsStateWithLifecycle()
         val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
         ProvideCarDensity(shownDisplay?.carDensity) {
@@ -125,11 +127,11 @@ class CarHomeActivity : ComponentActivity() {
     ) {
         home.closeDrawer()
         when {
-            isRemoved && from != null -> HomeApps.remove(from)
+            isRemoved && from != null -> homeApps.remove(from)
             cell == null -> {}
             else -> {
-                val to = tiles.getOrNull(cell)?.index ?: HomeApps.components.value.size
-                if (from != null) HomeApps.move(from, to) else HomeApps.add(app.component, to)
+                val to = tiles.getOrNull(cell)?.index ?: homeApps.components.value.size
+                if (from != null) homeApps.move(from, to) else homeApps.add(app.component, to)
             }
         }
     }

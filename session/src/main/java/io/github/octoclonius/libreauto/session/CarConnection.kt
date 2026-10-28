@@ -25,6 +25,7 @@ import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryRes
 import io.github.octoclonius.libreauto.protocol.control.pingResponse
 import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
+import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import java.io.EOFException
@@ -34,7 +35,11 @@ import java.io.OutputStream
 import java.net.ProtocolException
 import javax.net.ssl.SSLException
 
-class CarConnection(context: Context, private val holder: CarSessionHolder) {
+class CarConnection(
+    context: Context,
+    private val holder: CarSessionHolder,
+    private val calls: CallRepository,
+) {
 
     companion object {
         private const val TAG = "CarConnection"
@@ -111,7 +116,7 @@ class CarConnection(context: Context, private val holder: CarSessionHolder) {
                 when (message.type) {
                     MessageType.SERVICE_DISCOVERY_RESPONSE ->
                         if (session == null) {
-                            val started = CarSession(context, link, control, version)
+                            val started = CarSession(context, link, control, version, calls)
                             session = started
                             holder.onSession(started)
                             start(started, parseServiceDiscoveryResponse(message.body))

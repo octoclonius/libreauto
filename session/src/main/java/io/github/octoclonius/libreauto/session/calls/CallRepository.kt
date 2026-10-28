@@ -20,24 +20,31 @@ data class PhoneCallState(val isRinging: Boolean, val isInCall: Boolean) {
     }
 }
 
-object PhoneCalls {
+class CallRepository(context: Context) {
 
-    private const val TAG = "PhoneCalls"
+    private companion object {
+        const val TAG = "CallRepository"
 
-    private val RINGING_STATES = setOf(Call.STATE_RINGING, Call.STATE_SIMULATED_RINGING)
-    private val ACTIVE_ORDER =
-        listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_PULLING_CALL, Call.STATE_HOLDING)
+        val RINGING_STATES = setOf(Call.STATE_RINGING, Call.STATE_SIMULATED_RINGING)
+        val ACTIVE_ORDER =
+            listOf(
+                Call.STATE_ACTIVE,
+                Call.STATE_DIALING,
+                Call.STATE_PULLING_CALL,
+                Call.STATE_HOLDING,
+            )
+    }
 
     private val _state = MutableStateFlow(PhoneCallState.IDLE)
     val state: StateFlow<PhoneCallState> = _state.asStateFlow()
 
+    private val telecom = context.getSystemService(TelecomManager::class.java)
     private val main = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(Dispatchers.IO)
     private val calls = mutableListOf<Call>()
-    private lateinit var telecom: TelecomManager
 
-    fun start(context: Context) {
-        telecom = context.getSystemService(TelecomManager::class.java)
-        CoroutineScope(Dispatchers.IO).launch {
+    fun start() {
+        scope.launch {
             PrivilegedServiceConnection.service.collect { service ->
                 if (service != null) PrivilegedCalls.allowAccess(service)
             }
@@ -112,7 +119,9 @@ object PhoneCalls {
     private fun topLevelCalls(): List<Call> = calls.filter { it.parent == null }
 
     private fun firstActive(calls: List<Call>): Call? =
-        ACTIVE_ORDER.firstNotNullOfOrNull { state -> calls.firstOrNull { it.details.state == state } }
+        ACTIVE_ORDER.firstNotNullOfOrNull { state ->
+            calls.firstOrNull { it.details.state == state }
+        }
 
     private fun callingPackage(call: Call): String? =
         if (call.details.hasProperty(Call.Details.PROPERTY_SELF_MANAGED)) {

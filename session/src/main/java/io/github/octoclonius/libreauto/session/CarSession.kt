@@ -15,6 +15,7 @@ import io.github.octoclonius.libreauto.session.audio.AudioChannel
 import io.github.octoclonius.libreauto.session.audio.CarAudio
 import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
 import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
+import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
@@ -27,6 +28,7 @@ class CarSession internal constructor(
     private val link: CarLink,
     private val control: ChannelSender,
     private val version: ProtocolVersion,
+    private val calls: CallRepository,
 ) : Closeable {
 
     private companion object {
@@ -35,7 +37,7 @@ class CarSession internal constructor(
 
     val displays = CarDisplays()
     val tasks = CarTasks()
-    val buttons = CarButtons(context)
+    val buttons = CarButtons(context, calls)
 
     private val channels = LinkedHashMap<Int, CarChannel>()
     private var audio: CarAudio? = null
@@ -106,7 +108,7 @@ class CarSession internal constructor(
         val source = audioSource(services)
         if (source == null) Log.w(TAG, "The car has no microphone")
         if (sinks.isEmpty() && source == null) return
-        val carAudio = CarAudio(context, control)
+        val carAudio = CarAudio(context, control, calls)
         audio = carAudio
         val audioChannels =
             sinks.map { (type, sink) ->

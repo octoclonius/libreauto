@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.session.calls
 import android.telecom.Call
 import android.telecom.InCallService
 import android.util.Log
+import io.github.octoclonius.libreauto.session.sessionContainer
 
 class CallService : InCallService() {
 
@@ -10,14 +11,17 @@ class CallService : InCallService() {
         const val TAG = "CallService"
     }
 
+    private val calls: CallRepository
+        get() = sessionContainer.callRepository
+
     private val callback =
         object : Call.Callback() {
             override fun onStateChanged(call: Call, state: Int) {
-                PhoneCalls.onCallChanged()
+                calls.onCallChanged()
             }
 
             override fun onDetailsChanged(call: Call, details: Call.Details) {
-                PhoneCalls.onCallChanged()
+                calls.onCallChanged()
             }
         }
 
@@ -28,17 +32,17 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         Log.i(TAG, "Telecom unbound the call service")
-        PhoneCalls.onUnbound()
+        calls.onUnbound()
         super.onDestroy()
     }
 
     override fun onCallAdded(call: Call) {
         call.registerCallback(callback)
-        PhoneCalls.onCallAdded(call)
+        calls.onCallAdded(call)
     }
 
     override fun onCallRemoved(call: Call) {
         call.unregisterCallback(callback)
-        PhoneCalls.onCallRemoved(call)
+        calls.onCallRemoved(call)
     }
 }
