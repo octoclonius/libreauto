@@ -3,17 +3,22 @@ package io.github.octoclonius.libreauto.session.bluetooth
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothProfile
 import android.content.Context
-import android.os.Handler
-import android.os.HandlerThread
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.MessageStatus
 import io.github.octoclonius.libreauto.protocol.bluetooth.PairingResponse
 import java.io.Closeable
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 
 internal class CarHandsFree(
     context: Context,
     private val privileged: PrivilegedBluetooth,
+    private val scope: CoroutineScope,
     private val carAddress: String,
     private val pairingMethod: Int,
     private val sendPairingRequest: (phoneAddress: String, pairingMethod: Int) -> Unit,
@@ -31,11 +36,9 @@ internal class CarHandsFree(
             )
     }
 
-    private val thread = HandlerThread("car-bluetooth").apply { start() }
-    private val handler = Handler(thread.looper)
     private val machine = HandsFreeMachine()
-    private val timeoutToken = Any()
-    private val scheduledToken = Any()
+    private val timeouts = Job(scope.coroutineContext.job)
+    private val scheduled = Job(scope.coroutineContext.job)
     private var isClosed = false
     private var isPairingRequestSent = false
     private var pairingVariant: Int? = null
@@ -46,7 +49,7 @@ internal class CarHandsFree(
         AndroidBluetooth(
             context,
             carAddress,
-            handler,
+            scope,
             object : AndroidBluetooth.Listener {
                 override fun onEnabled() = onEvent(HandsFreeEvent.Enabled)
 
@@ -83,64 +86,52 @@ internal class CarHandsFree(
         )
 
     fun start() {
-        handler.post {
-            if (isClosed) return@post
-            Log.i(
-                TAG,
-                "Connecting hands-free to the car $carAddress, pairing method $pairingMethod",
-            )
-            privileged.grantPermission()
-            phone.start()
-            enter(HandsFreeState.Enabling)
-        }
+        if (isClosed) return
+        Log.i(TAG, "Connecting hands-free to the car $carAddress, pairing method $pairingMethod")
+        privileged.grantPermission()
+        phone.start()
+        enter(HandsFreeState.Enabling)
     }
 
     fun onPairingResponse(response: PairingResponse) {
-        handler.post {
-            if (isClosed) return@post
-            if (!isPairingRequestSent) {
-                Log.w(TAG, "A pairing response without a pairing request")
-                return@post
+        if (isClosed) return
+        if (!isPairingRequestSent) {
+            Log.w(TAG, "A pairing response without a pairing request")
+            return
+        }
+        Log.i(
+            TAG,
+            "The car answers the pairing request: status ${response.status}, " +
+                "already paired ${response.isAlreadyPaired}",
+        )
+        when (response.status) {
+            MessageStatus.SUCCESS -> {
+                machine.onPairingResponse(response.isAlreadyPaired)
+                onEvent(HandsFreeEvent.CarReadyForPairing)
             }
-            Log.i(
-                TAG,
-                "The car answers the pairing request: status ${response.status}, " +
-                    "already paired ${response.isAlreadyPaired}",
-            )
-            when (response.status) {
-                MessageStatus.SUCCESS -> {
-                    machine.onPairingResponse(response.isAlreadyPaired)
-                    onEvent(HandsFreeEvent.CarReadyForPairing)
-                }
-                MessageStatus.BLUETOOTH_PAIRING_DELAYED ->
-                    onEvent(HandsFreeEvent.CarDelayingPairing)
-                else -> Log.w(TAG, "A pairing response with status ${response.status}")
-            }
+            MessageStatus.BLUETOOTH_PAIRING_DELAYED -> onEvent(HandsFreeEvent.CarDelayingPairing)
+            else -> Log.w(TAG, "A pairing response with status ${response.status}")
         }
     }
 
     fun onAuthenticationData(data: String?) {
-        handler.post {
-            if (isClosed) return@post
-            if (data == null) {
-                Log.w(TAG, "Authentication data from the car without data")
-                return@post
-            }
-            Log.i(TAG, "The car sent its authentication data")
-            authenticationData = data
-            authenticateIfReady()
+        if (isClosed) return
+        if (data == null) {
+            Log.w(TAG, "Authentication data from the car without data")
+            return
         }
+        Log.i(TAG, "The car sent its authentication data")
+        authenticationData = data
+        authenticateIfReady()
     }
 
     override fun close() {
-        handler.post {
-            isClosed = true
-            handler.removeCallbacksAndMessages(null)
-            phone.close()
-            Log.i(TAG, "Stopped connecting hands-free in ${machine.state}")
-        }
-        thread.quitSafely()
-        thread.join()
+        if (isClosed) return
+        isClosed = true
+        timeouts.cancel()
+        scheduled.cancel()
+        phone.close()
+        Log.i(TAG, "Stopped connecting hands-free in ${machine.state}")
     }
 
     private fun onEvent(event: HandsFreeEvent) {
@@ -152,7 +143,7 @@ internal class CarHandsFree(
         if (step.delayMillis == 0L) {
             enter(step.state)
         } else {
-            handler.postDelayed({ enter(step.state) }, scheduledToken, step.delayMillis)
+            schedule(scheduled, step.delayMillis) { enter(step.state) }
         }
     }
 
@@ -164,19 +155,22 @@ internal class CarHandsFree(
     }
 
     private fun cancelScheduled() {
-        handler.removeCallbacksAndMessages(scheduledToken)
-        handler.removeCallbacksAndMessages(timeoutToken)
+        scheduled.cancelChildren()
+        timeouts.cancelChildren()
+    }
+
+    private fun schedule(group: Job, delayMillis: Long, block: () -> Unit) {
+        scope.launch(group) {
+            delay(delayMillis)
+            block()
+        }
     }
 
     private fun enter(state: HandsFreeState) {
         if (isClosed) return
-        handler.removeCallbacksAndMessages(timeoutToken)
+        timeouts.cancelChildren()
         if (state.timeoutMillis > 0) {
-            handler.postDelayed(
-                { onEvent(HandsFreeEvent.Timeout) },
-                timeoutToken,
-                state.timeoutMillis,
-            )
+            schedule(timeouts, state.timeoutMillis) { onEvent(HandsFreeEvent.Timeout) }
         }
         val phoneState = phone.state()
         Log.i(TAG, "Entering $state with $phoneState")
@@ -187,11 +181,7 @@ internal class CarHandsFree(
                 if (entry.delayMillis == 0L) {
                     perform(entry.action)
                 } else {
-                    handler.postDelayed(
-                        { perform(entry.action) },
-                        scheduledToken,
-                        entry.delayMillis,
-                    )
+                    schedule(scheduled, entry.delayMillis) { perform(entry.action) }
                 }
             HandsFreeEntry.Wait -> {}
         }
@@ -246,11 +236,7 @@ internal class CarHandsFree(
         }
         Log.i(TAG, "Canceling the pairing under way")
         privileged.cancelPairing(carAddress)
-        handler.postDelayed(
-            { onEvent(HandsFreeEvent.Timeout) },
-            scheduledToken,
-            CANCEL_TIMEOUT_MILLIS,
-        )
+        schedule(scheduled, CANCEL_TIMEOUT_MILLIS) { onEvent(HandsFreeEvent.Timeout) }
     }
 
     private fun authenticateIfReady() {

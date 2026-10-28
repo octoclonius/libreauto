@@ -8,6 +8,7 @@ import io.github.octoclonius.libreauto.privileged.IAudioActivityListener;
 import io.github.octoclonius.libreauto.privileged.ICarAudioSession;
 import io.github.octoclonius.libreauto.privileged.ICarDisplaySession;
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener;
+import io.github.octoclonius.libreauto.privileged.IPhoneBluetoothService;
 
 interface IPrivilegedService {
     void destroy() = 16777114;
@@ -24,23 +25,5 @@ interface IPrivilegedService {
 
     void allowCallAccess() = 15;
 
-    void grantBluetoothPermission() = 16;
-
-    boolean turnOnBluetooth() = 17;
-
-    @nullable String getBluetoothAddress() = 18;
-
-    boolean pairBluetooth(String address) = 19;
-
-    boolean cancelBluetoothPairing(String address) = 20;
-
-    boolean removeBluetoothPairing(String address) = 21;
-
-    boolean setBluetoothPin(String address, String pin) = 22;
-
-    boolean confirmBluetoothPairing(String address, boolean isConfirmed) = 23;
-
-    boolean allowHandsFree(String address) = 24;
-
-    boolean connectHandsFree(String address) = 25;
+    IPhoneBluetoothService getBluetoothService() = 26;
 }

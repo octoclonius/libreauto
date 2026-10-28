@@ -1,6 +1,5 @@
 package io.github.octoclonius.libreauto.privileged
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.hardware.usb.UsbManager
@@ -23,7 +22,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val association = CompanionAssociation(shellContext)
     private val keys = DisplayKeys(shellContext)
     private val settings = PhoneSettings(shellContext)
-    private val bluetooth = PhoneBluetooth(shellContext)
+    private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
     private val callAccess = CallAccess(shellContext)
     private val displayLock = Any()
     private val audioLock = Any()
@@ -114,42 +113,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         }
     }
 
-    override fun grantBluetoothPermission() {
-        identityCall(TAG, "Granting the app Bluetooth access") {
-            bluetooth.grantPermission(appPackage, Manifest.permission.BLUETOOTH_CONNECT)
-        }
-    }
-
-    override fun turnOnBluetooth(): Boolean =
-        identityCall(TAG, "Turning Bluetooth on") { settings.turnOnBluetooth() } == true
-
-    override fun getBluetoothAddress(): String? =
-        identityCall(TAG, "Reading the phone's Bluetooth address") { bluetooth.address() }
-
-    override fun pairBluetooth(address: String): Boolean =
-        deviceCall("Pairing with", address) { bluetooth.pair(address) }
-
-    override fun cancelBluetoothPairing(address: String): Boolean =
-        deviceCall("Canceling the pairing with", address) { bluetooth.cancelPairing(address) }
-
-    override fun removeBluetoothPairing(address: String): Boolean =
-        deviceCall("Removing the pairing with", address) { bluetooth.removePairing(address) }
-
-    override fun setBluetoothPin(address: String, pin: String): Boolean =
-        checkedCall(TAG, "Setting the PIN for $address", pinRequestError(address, pin)) {
-            bluetooth.setPin(address, pin)
-        } == true
-
-    override fun confirmBluetoothPairing(address: String, isConfirmed: Boolean): Boolean =
-        deviceCall("Answering the pairing with", address) {
-            bluetooth.confirmPairing(address, isConfirmed)
-        }
-
-    override fun allowHandsFree(address: String): Boolean =
-        deviceCall("Allowing hands-free for", address) { bluetooth.allowHandsFree(address) }
-
-    override fun connectHandsFree(address: String): Boolean =
-        deviceCall("Connecting hands-free to", address) { bluetooth.connectHandsFree(address) }
+    override fun getBluetoothService(): IPhoneBluetoothService = bluetoothService
 
     override fun exitAccessoryMode() {
         identityCall(TAG, "Leaving USB accessory mode") {
@@ -171,7 +135,4 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         carAudio?.close()
         carAudio = null
     }
-
-    private fun deviceCall(action: String, address: String, call: () -> Boolean): Boolean =
-        checkedCall(TAG, "$action $address", bluetoothRequestError(address), call) == true
 }

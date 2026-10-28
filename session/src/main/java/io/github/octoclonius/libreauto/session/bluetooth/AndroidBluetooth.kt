@@ -9,15 +9,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Handler
 import android.util.Log
 import io.github.octoclonius.libreauto.session.closeAll
 import java.io.Closeable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 internal class AndroidBluetooth(
     private val context: Context,
     private val carAddress: String,
-    private val handler: Handler,
+    private val scope: CoroutineScope,
     private val listener: Listener,
 ) : Closeable {
 
@@ -55,18 +56,19 @@ internal class AndroidBluetooth(
         object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
-                    BluetoothAdapter.ACTION_STATE_CHANGED -> onAdapterState(intent)
+                    BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+                        scope.launch { onAdapterState(state) }
+                    }
                     BluetoothDevice.ACTION_BOND_STATE_CHANGED ->
                         if (isCar(intent)) {
-                            listener.onBondState(
-                                intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
-                            )
+                            val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
+                            scope.launch { listener.onBondState(state) }
                         }
                     BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED ->
                         if (isCar(intent)) {
-                            listener.onHandsFreeState(
-                                intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
-                            )
+                            val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                            scope.launch { listener.onHandsFreeState(state) }
                         }
                 }
             }
@@ -84,12 +86,11 @@ internal class AndroidBluetooth(
                             Log.w(TAG, "A pairing request from the car without a variant")
                             return
                         }
-                        listener.onPairingRequest(
-                            variant,
-                            intent.getIntExtra(BluetoothDevice.EXTRA_PAIRING_KEY, Int.MIN_VALUE),
-                        )
+                        val key =
+                            intent.getIntExtra(BluetoothDevice.EXTRA_PAIRING_KEY, Int.MIN_VALUE)
+                        scope.launch { listener.onPairingRequest(variant, key) }
                     }
-                    BluetoothDevice.ACTION_KEY_MISSING -> listener.onKeyMissing()
+                    BluetoothDevice.ACTION_KEY_MISSING -> scope.launch { listener.onKeyMissing() }
                     else -> return
                 }
                 if (isOrderedBroadcast) abortBroadcast()
@@ -104,8 +105,6 @@ internal class AndroidBluetooth(
                 addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
                 addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
             },
-            null,
-            handler,
             Context.RECEIVER_EXPORTED,
         )
         context.registerReceiver(
@@ -115,8 +114,6 @@ internal class AndroidBluetooth(
                 addAction(BluetoothDevice.ACTION_KEY_MISSING)
                 priority = PAIRING_PRIORITY
             },
-            null,
-            handler,
             Context.RECEIVER_EXPORTED,
         )
         isRegistered = true
@@ -151,11 +148,11 @@ internal class AndroidBluetooth(
                 context,
                 object : BluetoothProfile.ServiceListener {
                     override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
-                        handler.post {
+                        scope.launch {
                             isProfileRequested = false
                             if (!isRegistered) {
                                 current.closeProfileProxy(BluetoothProfile.HEADSET, proxy)
-                                return@post
+                                return@launch
                             }
                             headset = proxy as BluetoothHeadset
                             listener.onProfileReady()
@@ -163,7 +160,7 @@ internal class AndroidBluetooth(
                     }
 
                     override fun onServiceDisconnected(profile: Int) {
-                        handler.post { headset = null }
+                        scope.launch { headset = null }
                     }
                 },
                 BluetoothProfile.HEADSET,
@@ -192,8 +189,8 @@ internal class AndroidBluetooth(
         }
     }
 
-    private fun onAdapterState(intent: Intent) {
-        when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)) {
+    private fun onAdapterState(state: Int) {
+        when (state) {
             BluetoothAdapter.STATE_ON -> listener.onEnabled()
             BluetoothAdapter.STATE_OFF -> {
                 closeProfile()

@@ -189,6 +189,7 @@ class CarSession internal constructor(
                 bluetooth,
                 version,
                 privileged,
+                scope,
             )
         )
     }

@@ -17,6 +17,7 @@ import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import kotlinx.coroutines.CoroutineScope
 
 internal class BluetoothChannel(
     private val context: Context,
@@ -24,6 +25,7 @@ internal class BluetoothChannel(
     private val car: CarBluetooth,
     private val version: ProtocolVersion,
     private val privileged: PrivilegedServiceConnection,
+    private val scope: CoroutineScope,
 ) : CarChannel {
 
     companion object {
@@ -68,6 +70,7 @@ internal class BluetoothChannel(
             CarHandsFree(
                     context,
                     PrivilegedBluetooth(privileged),
+                    scope,
                     address,
                     car.pairingMethod,
                     { phoneAddress, method ->
