@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.util.Log
+import io.github.octoclonius.libreauto.session.closeAll
 import java.io.Closeable
 
 internal class AndroidBluetooth(
@@ -177,12 +178,18 @@ internal class AndroidBluetooth(
     }
 
     override fun close() {
-        if (isRegistered) {
-            context.unregisterReceiver(stateReceiver)
-            context.unregisterReceiver(pairingReceiver)
-            isRegistered = false
+        closeAll(TAG) {
+            if (isRegistered) {
+                step("Unregistering the Bluetooth state receiver") {
+                    context.unregisterReceiver(stateReceiver)
+                }
+                step("Unregistering the pairing receiver") {
+                    context.unregisterReceiver(pairingReceiver)
+                }
+                isRegistered = false
+            }
+            step("Closing the hands-free profile") { closeProfile() }
         }
-        closeProfile()
     }
 
     private fun onAdapterState(intent: Intent) {

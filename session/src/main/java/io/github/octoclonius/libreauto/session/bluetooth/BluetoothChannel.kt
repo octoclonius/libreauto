@@ -13,16 +13,16 @@ import io.github.octoclonius.libreauto.protocol.bluetooth.parseAuthenticationDat
 import io.github.octoclonius.libreauto.protocol.bluetooth.parsePairingResponse
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
+import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
-import java.io.Closeable
 
 internal class BluetoothChannel(
     private val context: Context,
     private val sender: ChannelSender,
     private val car: CarBluetooth,
     private val version: ProtocolVersion,
-) : Closeable {
+) : CarChannel {
 
     companion object {
         private const val TAG = "BluetoothChannel"
@@ -30,15 +30,15 @@ internal class BluetoothChannel(
 
     private var handsFree: CarHandsFree? = null
 
-    val channel: Int
+    override val channel: Int
         get() = sender.channel
 
-    fun open() {
+    override fun open() {
         Log.i(TAG, "Opening the Bluetooth channel $channel")
         sender.sendOpenRequest()
     }
 
-    fun onMessage(message: ChannelMessage): Boolean {
+    override fun onMessage(message: ChannelMessage): Boolean {
         when (message.type) {
             MessageType.CHANNEL_OPEN_RESPONSE -> onOpenResponse(message)
             BluetoothMessageType.PAIRING_RESPONSE ->

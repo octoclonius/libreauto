@@ -15,6 +15,7 @@ import io.github.octoclonius.libreauto.protocol.control.parseAudioFocusNotificat
 import io.github.octoclonius.libreauto.protocol.media.AudioType
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.calls.PhoneCalls
+import io.github.octoclonius.libreauto.session.closeAll
 import io.github.octoclonius.libreauto.session.media.MediaResumption
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
@@ -100,11 +101,15 @@ internal class CarAudio(private val context: Context, private val control: Chann
         }
         executor
             .submit {
-                privileged?.close()
-                privileged = null
-                channels.forEach(AudioChannel::close)
-                microphone?.close()
-                androidFocus.abandon()
+                closeAll(TAG) {
+                    step("Stopping the diverted audio") { privileged?.close() }
+                    privileged = null
+                    for (channel in channels) {
+                        step("Closing the audio channel ${channel.channel}") { channel.close() }
+                    }
+                    step("Closing the microphone") { microphone?.close() }
+                    step("Abandoning Android audio focus") { androidFocus.abandon() }
+                }
             }
             .get()
         executor.shutdown()

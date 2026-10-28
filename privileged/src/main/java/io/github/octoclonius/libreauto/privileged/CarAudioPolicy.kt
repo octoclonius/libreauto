@@ -215,13 +215,12 @@ private constructor(
     fun focusStack(): List<AudioFocusInfo> = policy.focusStack
 
     override fun close() {
-        try {
-            sinks.forEach(MixSink::close)
-            source?.close()
-        } finally {
-            unregister(audioManager, policy)
-            Log.i(TAG, "Stopped diverting audio to the car")
+        closeAll(TAG) {
+            for (sink in sinks) step("Stopping a mix") { sink.close() }
+            step("Stopping the microphone source") { source?.close() }
+            step("Unregistering the audio policy") { unregister(audioManager, policy) }
         }
+        Log.i(TAG, "Stopped diverting audio to the car")
     }
 
     private class MixSink(private val record: AudioRecord) : Closeable {
@@ -242,11 +241,13 @@ private constructor(
 
         override fun close() {
             isClosed = true
-            record.stop()
-            if (thread.isAlive) thread.join()
-            record.release()
-            pipe[0].close()
-            pipe[1].close()
+            closeAll(TAG) {
+                step("Stopping a mix's recording") { record.stop() }
+                step("Waiting for a mix's copy") { if (thread.isAlive) thread.join() }
+                step("Releasing a mix's recording") { record.release() }
+                step("Closing a mix's read end") { pipe[0].close() }
+                step("Closing a mix's write end") { pipe[1].close() }
+            }
         }
 
         private fun copy() {
@@ -284,13 +285,15 @@ private constructor(
         }
 
         override fun close() {
-            wakeUp[1].close()
-            if (thread.isAlive) thread.join()
-            track.stop()
-            track.release()
-            pipe[0].close()
-            pipe[1].close()
-            wakeUp[0].close()
+            closeAll(TAG) {
+                step("Waking the microphone copy") { wakeUp[1].close() }
+                step("Waiting for the microphone copy") { if (thread.isAlive) thread.join() }
+                step("Stopping the microphone track") { track.stop() }
+                step("Releasing the microphone track") { track.release() }
+                step("Closing the microphone's read end") { pipe[0].close() }
+                step("Closing the microphone's write end") { pipe[1].close() }
+                step("Closing the microphone's wake-up pipe") { wakeUp[0].close() }
+            }
         }
 
         private fun copy() {

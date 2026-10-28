@@ -373,25 +373,13 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     private fun release() {
         val watched = tasks
+        val released = display
         tasks = null
-        try {
-            watched?.moveToPhone()
-        } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "Moving the car display's tasks to the phone failed", cause)
-        }
-        try {
-            watched?.close()
-        } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "Stopping watching the tasks on the car display failed", cause)
-        }
-        val released = display ?: return
         display = null
-        try {
-            released.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "Releasing the car display ${released.id} failed", e)
+        closeAll(TAG) {
+            step("Moving the car display's tasks to the phone") { watched?.moveToPhone() }
+            step("Stopping watching the tasks on the car display") { watched?.close() }
+            step("Releasing the car display ${released?.id}") { released?.close() }
         }
     }
 
@@ -400,16 +388,9 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         val policy = audio
         audioActivity = null
         audio = null
-        try {
-            policy?.close()
-        } catch (e: Exception) {
-            val cause = if (e is InvocationTargetException) e.targetException else e
-            Log.e(TAG, "Unregistering the car audio policy failed", cause)
-        }
-        try {
-            monitor?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "Stopping the audio activity monitor failed", e)
+        closeAll(TAG) {
+            step("Unregistering the car audio policy") { policy?.close() }
+            step("Stopping the audio activity monitor") { monitor?.close() }
         }
     }
 

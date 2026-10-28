@@ -121,11 +121,14 @@ internal class DisplayTasks(
 
     override fun close() {
         isClosed = true
-        try {
-            taskManager.unregisterTaskStackListener(stackListener)
-        } finally {
-            thread.quitSafely()
-            thread.join()
+        closeAll(TAG) {
+            step("Unregistering the task stack listener") {
+                taskManager.unregisterTaskStackListener(stackListener)
+            }
+            step("Stopping the task thread") {
+                thread.quitSafely()
+                thread.join()
+            }
         }
     }
 

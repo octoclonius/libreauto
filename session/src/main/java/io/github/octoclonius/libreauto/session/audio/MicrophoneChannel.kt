@@ -14,15 +14,15 @@ import io.github.octoclonius.libreauto.protocol.media.mediaAck
 import io.github.octoclonius.libreauto.protocol.media.mediaDataPayload
 import io.github.octoclonius.libreauto.protocol.media.microphoneRequest
 import io.github.octoclonius.libreauto.protocol.media.parseMicrophoneResponse
+import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
-import java.io.Closeable
 
 internal class MicrophoneChannel(
     private val sender: ChannelSender,
     val config: PcmConfig,
     private val onSettled: () -> Unit,
-) : Closeable {
+) : CarChannel {
 
     companion object {
         private const val TAG = "MicrophoneChannel"
@@ -38,7 +38,7 @@ internal class MicrophoneChannel(
     private var droppedBytes = 0L
     private var output: ParcelFileDescriptor? = null
 
-    val channel: Int
+    override val channel: Int
         get() = sender.channel
 
     val isSettled: Boolean
@@ -47,12 +47,12 @@ internal class MicrophoneChannel(
     val isReady: Boolean
         get() = synchronized(lock) { isUsable }
 
-    fun open() {
+    override fun open() {
         Log.i(TAG, "Opening the microphone channel $channel")
         sender.sendOpenRequest()
     }
 
-    fun onMessage(message: ChannelMessage): Boolean {
+    override fun onMessage(message: ChannelMessage): Boolean {
         when (message.type) {
             MessageType.CHANNEL_OPEN_RESPONSE -> onOpenResponse(message)
             MediaMessageType.MICROPHONE_RESPONSE -> onMicrophoneResponse(message)

@@ -5,6 +5,7 @@ import android.util.Log
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
+import io.github.octoclonius.libreauto.session.closeAll
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
 import java.util.concurrent.ExecutorService
@@ -144,10 +145,12 @@ internal class VideoStream(
 
     private fun release() {
         synchronized(displaysLock) {
-            display?.close()
-            overlay?.close()
-            rail?.close()
-            compositor?.close()
+            closeAll(TAG) {
+                step("Releasing the car display") { display?.close() }
+                step("Releasing the overlay display") { overlay?.close() }
+                step("Releasing the rail display") { rail?.close() }
+                step("Releasing the compositor") { compositor?.close() }
+            }
             display = null
             overlay = null
             rail = null

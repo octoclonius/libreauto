@@ -39,7 +39,6 @@ import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.F
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
 import io.github.octoclonius.libreauto.session.video.VideoChannel
-import java.io.Closeable
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -98,8 +97,10 @@ class CarConnection(context: Context) {
                 } else {
                     CarConnectionState.Failed
                 }
-            input.closeQuietly()
-            output.closeQuietly()
+            closeAll(TAG) {
+                step("Closing the input from the car") { input.close() }
+                step("Closing the output to the car") { output.close() }
+            }
         }
     }
 
@@ -109,12 +110,8 @@ class CarConnection(context: Context) {
         control: ChannelSender,
         version: ProtocolVersion,
     ) {
-        var video: VideoChannel? = null
-        var input: InputChannel? = null
+        val channels = LinkedHashMap<Int, CarChannel>()
         var audio: CarAudio? = null
-        var audioChannels: List<AudioChannel> = emptyList()
-        var microphone: MicrophoneChannel? = null
-        var bluetooth: BluetoothChannel? = null
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -125,29 +122,9 @@ class CarConnection(context: Context) {
                             .format(message.type, message.channel)
                     )
                 }
-                if (video != null && message.channel == video.channel) {
-                    if (!video.onMessage(message)) logUnhandled(message)
-                    continue
-                }
-                if (input != null && message.channel == input.channel) {
-                    if (!input.onMessage(message)) logUnhandled(message)
-                    continue
-                }
-                val audioChannel = audioChannels.firstOrNull { it.channel == message.channel }
-                if (audioChannel != null) {
-                    if (!audioChannel.onMessage(message)) logUnhandled(message)
-                    continue
-                }
-                if (microphone != null && message.channel == microphone.channel) {
-                    if (!microphone.onMessage(message)) logUnhandled(message)
-                    continue
-                }
-                if (bluetooth != null && message.channel == bluetooth.channel) {
-                    if (!bluetooth.onMessage(message)) logUnhandled(message)
-                    continue
-                }
                 if (message.channel != CONTROL_CHANNEL) {
-                    logUnhandled(message)
+                    val target = channels[message.channel]
+                    if (target == null || !target.onMessage(message)) logUnhandled(message)
                     continue
                 }
                 when (message.type) {
@@ -172,14 +149,14 @@ class CarConnection(context: Context) {
                         } else {
                             val videoChannel =
                                 VideoChannel(
-                                        context,
-                                        ChannelSender(link, sink.channel),
-                                        sink.configs,
-                                        version,
-                                        connected.isDriverOnRight,
-                                    )
-                                    .also { it.open() }
-                            video = videoChannel
+                                    context,
+                                    ChannelSender(link, sink.channel),
+                                    sink.configs,
+                                    version,
+                                    connected.isDriverOnRight,
+                                )
+                            channels[videoChannel.channel] = videoChannel
+                            videoChannel.open()
                             val source = inputSource(response, sink.displayId)
                             if (source == null) {
                                 Log.w(
@@ -187,14 +164,15 @@ class CarConnection(context: Context) {
                                     "The car has no input channel for display ${sink.displayId}",
                                 )
                             } else {
-                                input =
+                                val input =
                                     InputChannel(
-                                            ChannelSender(link, source.channel),
-                                            source.keycodes,
-                                            videoChannel::layout,
-                                            CarButtons(context),
-                                        )
-                                        .also { it.open() }
+                                        ChannelSender(link, source.channel),
+                                        source.keycodes,
+                                        videoChannel::layout,
+                                        CarButtons(context),
+                                    )
+                                channels[input.channel] = input
+                                input.open()
                             }
                         }
                         val audioSinks =
@@ -209,7 +187,7 @@ class CarConnection(context: Context) {
                         if (audioSinks.isNotEmpty() || audioSource != null) {
                             val carAudio = CarAudio(context, control)
                             audio = carAudio
-                            audioChannels =
+                            val audioChannels =
                                 audioSinks.map { (type, audioSink) ->
                                     AudioChannel(
                                         type,
@@ -219,7 +197,7 @@ class CarConnection(context: Context) {
                                         carAudio::onStreamStartedOrStopped,
                                     )
                                 }
-                            microphone =
+                            val microphone =
                                 audioSource?.let {
                                     MicrophoneChannel(
                                         ChannelSender(link, it.channel),
@@ -227,22 +205,24 @@ class CarConnection(context: Context) {
                                         carAudio::onChannelSettled,
                                     )
                                 }
+                            val opened = audioChannels + listOfNotNull(microphone)
+                            opened.forEach { channels[it.channel] = it }
                             carAudio.start(audioChannels, microphone)
-                            audioChannels.forEach(AudioChannel::open)
-                            microphone?.open()
+                            opened.forEach(CarChannel::open)
                         }
                         val carBluetooth = carBluetooth(response)
                         if (carBluetooth == null) {
                             Log.w(TAG, "The car has no Bluetooth service LibreAuto can pair with")
                         } else {
-                            bluetooth =
+                            val bluetooth =
                                 BluetoothChannel(
-                                        context,
-                                        ChannelSender(link, carBluetooth.channel),
-                                        carBluetooth,
-                                        version,
-                                    )
-                                    .also { it.open() }
+                                    context,
+                                    ChannelSender(link, carBluetooth.channel),
+                                    carBluetooth,
+                                    version,
+                                )
+                            channels[bluetooth.channel] = bluetooth
+                            bluetooth.open()
                         }
                     }
                     MessageType.AUDIO_FOCUS_NOTIFICATION ->
@@ -262,9 +242,12 @@ class CarConnection(context: Context) {
                 }
             }
         } finally {
-            bluetooth?.close()
-            audio?.close()
-            video?.close()
+            closeAll(TAG) {
+                step("Closing the car audio") { audio?.close() }
+                for (channel in channels.values) {
+                    step("Closing the channel ${channel.channel}") { channel.close() }
+                }
+            }
         }
     }
 
@@ -286,10 +269,4 @@ class CarConnection(context: Context) {
             }
         }
     }
-}
-
-private fun Closeable.closeQuietly() {
-    try {
-        close()
-    } catch (_: IOException) {}
 }

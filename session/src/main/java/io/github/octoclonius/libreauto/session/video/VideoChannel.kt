@@ -25,9 +25,9 @@ import io.github.octoclonius.libreauto.protocol.media.updatedUiConfig
 import io.github.octoclonius.libreauto.protocol.media.videoFormat
 import io.github.octoclonius.libreauto.protocol.media.videoSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.withUiConfig
+import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
-import java.io.Closeable
 import java.io.IOException
 import java.net.ProtocolException
 
@@ -37,7 +37,7 @@ internal class VideoChannel(
     configs: List<VideoConfig>,
     private val car: ProtocolVersion,
     private val isDriverOnRight: Boolean,
-) : Closeable {
+) : CarChannel {
 
     companion object {
         private const val TAG = "VideoChannel"
@@ -45,18 +45,18 @@ internal class VideoChannel(
 
     private var state: VideoChannelState? = VideoChannelState.Opening(configs)
 
-    val channel: Int
+    override val channel: Int
         get() = sender.channel
 
     val layout: CarLayout?
         get() = (state as? VideoChannelState.Started)?.layout
 
-    fun open() {
+    override fun open() {
         Log.i(TAG, "Opening the video channel $channel")
         sender.sendOpenRequest()
     }
 
-    fun onMessage(message: ChannelMessage): Boolean {
+    override fun onMessage(message: ChannelMessage): Boolean {
         val current = state
         when {
             current is VideoChannelState.Opening &&

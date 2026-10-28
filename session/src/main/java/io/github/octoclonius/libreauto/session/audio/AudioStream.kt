@@ -7,6 +7,7 @@ import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.mediaData
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import io.github.octoclonius.libreauto.protocol.media.pcmFrameBytes
+import io.github.octoclonius.libreauto.session.closeAll
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
@@ -87,11 +88,15 @@ internal class AudioStream(
 
     override fun close() {
         isClosed = true
-        drainTimer.shutdownNow()
-        stopReading()
-        lock.withLock {
-            acked.signalAll()
-            if (isStarted) stopLocked()
+        closeAll(TAG) {
+            step("Stopping the drain timer") { drainTimer.shutdownNow() }
+            step("Stopping reading the diverted audio") { stopReading() }
+            step("Stopping the stream") {
+                lock.withLock {
+                    acked.signalAll()
+                    if (isStarted) stopLocked()
+                }
+            }
         }
     }
 

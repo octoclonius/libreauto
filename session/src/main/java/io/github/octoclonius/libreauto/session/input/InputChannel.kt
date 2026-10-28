@@ -11,6 +11,7 @@ import io.github.octoclonius.libreauto.protocol.input.buttonPresses
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
+import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.video.CarLayout
@@ -22,7 +23,7 @@ internal class InputChannel(
     keycodes: List<Int>,
     private val layout: () -> CarLayout?,
     private val buttons: CarButtons,
-) {
+) : CarChannel {
 
     companion object {
         private const val TAG = "InputChannel"
@@ -35,15 +36,15 @@ internal class InputChannel(
     private val overlayTouches = WindowTouches("overlay", OverlayDisplay::onTouch)
     private var appsGesture = AppsGesture.App
 
-    val channel: Int
+    override val channel: Int
         get() = sender.channel
 
-    fun open() {
+    override fun open() {
         Log.i(TAG, "Opening the input channel $channel")
         sender.sendOpenRequest()
     }
 
-    fun onMessage(message: ChannelMessage): Boolean =
+    override fun onMessage(message: ChannelMessage): Boolean =
         when (val current = state) {
             is InputChannelState.Opening ->
                 message.type == MessageType.CHANNEL_OPEN_RESPONSE &&

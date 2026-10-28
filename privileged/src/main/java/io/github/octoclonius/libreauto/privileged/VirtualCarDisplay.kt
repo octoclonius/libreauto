@@ -161,18 +161,13 @@ private constructor(
     }
 
     override fun close() {
-        try {
-            try {
-                try {
-                    touchscreen?.close()
-                } finally {
-                    display.release()
-                }
-            } finally {
-                device.close()
+        closeAll(TAG) {
+            step("Closing the touchscreen of the display $id") { touchscreen?.close() }
+            step("Releasing the display $id") { display.release() }
+            step("Closing the virtual device of the display $id") { device.close() }
+            step("Releasing the companion association $associationId") {
+                association.release(associationId)
             }
-        } finally {
-            association.release(associationId)
         }
         Log.i(TAG, "Released the display $id")
     }

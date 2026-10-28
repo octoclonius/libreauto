@@ -8,9 +8,9 @@ import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.audioSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
+import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
-import java.io.Closeable
 import java.net.ProtocolException
 
 internal class AudioChannel(
@@ -19,7 +19,7 @@ internal class AudioChannel(
     private val configs: List<PcmConfig>,
     private val onSettled: () -> Unit,
     private val onStreamStartedOrStopped: () -> Unit,
-) : Closeable {
+) : CarChannel {
 
     companion object {
         private const val TAG = "AudioChannel"
@@ -34,7 +34,7 @@ internal class AudioChannel(
     private val frameSamples =
         checkNotNull(audioFrameSamples(audioType)) { "No frame size for $audioType" }
 
-    val channel: Int
+    override val channel: Int
         get() = sender.channel
 
     val ready: AudioChannelState.Ready?
@@ -43,12 +43,12 @@ internal class AudioChannel(
     val isSettled: Boolean
         get() = state == null || state is AudioChannelState.Ready
 
-    fun open() {
+    override fun open() {
         Log.i(TAG, "Opening the audio channel $channel for audio type $audioType")
         sender.sendOpenRequest()
     }
 
-    fun onMessage(message: ChannelMessage): Boolean {
+    override fun onMessage(message: ChannelMessage): Boolean {
         val current = state
         when {
             current == AudioChannelState.Opening &&
