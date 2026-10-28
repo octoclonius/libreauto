@@ -96,7 +96,10 @@ message MediaSourceService {
   optional AudioConfig audio_config = 2;
 }
 
-message BluetoothService {}
+message BluetoothService {
+  optional string car_address = 1;
+  repeated int32 supported_pairing_methods = 2 [packed = true];
+}
 
 message RadioService {}
 

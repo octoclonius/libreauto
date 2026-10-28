@@ -34,6 +34,8 @@ internal class FocusNegotiation {
     private var demand: Int? = null
     private var sources: Set<String> = emptySet()
     private var yieldedSources: Set<String> = emptySet()
+    private var droppedSources: Set<String> = emptySet()
+    private var isInCall = false
     private var isIdle = true
     private var isReleaseOwed = false
 
@@ -43,8 +45,16 @@ internal class FocusNegotiation {
                 focusHolders.map { "focus ${it.clientId}" }
         val previous = demand
         demand = carFocusRequest(players, focusHolders)
-        if (demand == null) yieldedSources = emptySet()
+        if (demand == null) {
+            yieldedSources = emptySet()
+            droppedSources = emptySet()
+        }
         isReleaseOwed = demand == null && (previous != null || isReleaseOwed)
+        return listOfNotNull(nextRequest())
+    }
+
+    fun onCall(isInCall: Boolean): List<Action> {
+        this.isInCall = isInCall
         return listOfNotNull(nextRequest())
     }
 
@@ -69,13 +79,29 @@ internal class FocusNegotiation {
         val request =
             when {
                 wanted != null ->
-                    wanted.takeIf { requestRank(it) > heldRank() && !hasYieldedToTheCar() }
+                    wanted.takeIf {
+                        requestRank(it) > heldRank() &&
+                            !hasYieldedToTheCar() &&
+                            !isDroppedForCall(it)
+                    }
                 isReleaseOwed && heldRank() > 0 && isIdle -> AudioFocusRequestType.RELEASE
                 else -> null
             } ?: return null
         pending = request
         if (request == AudioFocusRequestType.RELEASE) isReleaseOwed = false
         return Action.RequestCarFocus(request)
+    }
+
+    private fun isDroppedForCall(request: Int): Boolean {
+        if (
+            isInCall &&
+                (request == AudioFocusRequestType.GAIN ||
+                    carState == AudioFocusState.LOSS_TRANSIENT)
+        ) {
+            droppedSources = sources
+            return true
+        }
+        return droppedSources.isNotEmpty() && droppedSources.containsAll(sources)
     }
 
     private fun hasYieldedToTheCar(): Boolean =

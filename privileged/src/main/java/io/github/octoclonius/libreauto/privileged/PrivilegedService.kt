@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -26,6 +27,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val association = CompanionAssociation(shellContext)
     private val keys = DisplayKeys(shellContext)
     private val settings = PhoneSettings(shellContext)
+    private val bluetooth = PhoneBluetooth(shellContext)
+    private val callAccess = CallAccess(shellContext)
     private val displayLock = Any()
     private val audioLock = Any()
     private var display: VirtualCarDisplay? = null
@@ -33,6 +36,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private var audio: CarAudioPolicy? = null
     private var audioActivity: AudioActivityMonitor? = null
     private val audioThread = HandlerThread("car-audio").apply { start() }
+
+    init {
+        MainlineModules.initialize()
+    }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         val caller = Binder.getCallingUid()
@@ -304,6 +311,52 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         synchronized(audioLock) { releaseAudio() }
     }
 
+    override fun allowCallAccess() {
+        identityCall("Allowing the app the phone's calls") { callAccess.allow(appUid, appPackage) }
+    }
+
+    override fun grantBluetoothPermission() {
+        identityCall("Granting the app Bluetooth access") {
+            bluetooth.grantPermission(appPackage, Manifest.permission.BLUETOOTH_CONNECT)
+        }
+    }
+
+    override fun turnOnBluetooth(): Boolean =
+        identityCall("Turning Bluetooth on") { settings.turnOnBluetooth() } == true
+
+    override fun getBluetoothAddress(): String? =
+        identityCall("Reading the phone's Bluetooth address") { bluetooth.address() }
+
+    override fun pairBluetooth(address: String): Boolean =
+        deviceCall("Pairing with", address) { bluetooth.pair(address) }
+
+    override fun cancelBluetoothPairing(address: String): Boolean =
+        deviceCall("Canceling the pairing with", address) { bluetooth.cancelPairing(address) }
+
+    override fun removeBluetoothPairing(address: String): Boolean =
+        deviceCall("Removing the pairing with", address) { bluetooth.removePairing(address) }
+
+    override fun setBluetoothPin(address: String, pin: String): Boolean {
+        val error = pinRequestError(address, pin)
+        if (error != null) {
+            Log.w(TAG, "Didn't set a Bluetooth PIN: $error")
+            return false
+        }
+        return identityCall("Setting the PIN for $address") { bluetooth.setPin(address, pin) } ==
+            true
+    }
+
+    override fun confirmBluetoothPairing(address: String, isConfirmed: Boolean): Boolean =
+        deviceCall("Answering the pairing with", address) {
+            bluetooth.confirmPairing(address, isConfirmed)
+        }
+
+    override fun allowHandsFree(address: String): Boolean =
+        deviceCall("Allowing hands-free for", address) { bluetooth.allowHandsFree(address) }
+
+    override fun connectHandsFree(address: String): Boolean =
+        deviceCall("Connecting hands-free to", address) { bluetooth.connectHandsFree(address) }
+
     override fun exitAccessoryMode() {
         try {
             val none = UsbManager::class.java.getField("FUNCTION_NONE").getLong(null)
@@ -357,6 +410,28 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
             monitor?.close()
         } catch (e: Exception) {
             Log.e(TAG, "Stopping the audio activity monitor failed", e)
+        }
+    }
+
+    private fun deviceCall(action: String, address: String, call: () -> Boolean): Boolean {
+        val error = bluetoothRequestError(address)
+        if (error != null) {
+            Log.w(TAG, "$action a Bluetooth device refused: $error")
+            return false
+        }
+        return identityCall("$action $address", call) == true
+    }
+
+    private fun <T> identityCall(action: String, call: () -> T): T? {
+        val identity = Binder.clearCallingIdentity()
+        return try {
+            call()
+        } catch (e: Exception) {
+            val cause = if (e is InvocationTargetException) e.targetException else e
+            Log.e(TAG, "$action failed", cause)
+            null
+        } finally {
+            Binder.restoreCallingIdentity(identity)
         }
     }
 }

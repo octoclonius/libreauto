@@ -2,8 +2,10 @@ package io.github.octoclonius.libreauto.session.input
 
 import android.content.Context
 import android.media.AudioManager
+import android.util.Log
 import android.view.KeyEvent
 import io.github.octoclonius.libreauto.protocol.input.CarButton
+import io.github.octoclonius.libreauto.session.calls.PhoneCalls
 import io.github.octoclonius.libreauto.session.pressMediaKey
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,6 +19,7 @@ enum class NavigationButton {
 class CarButtons(context: Context) {
 
     companion object {
+        private const val TAG = "CarButtons"
         private const val BUFFER = 8
 
         private val _presses = MutableSharedFlow<NavigationButton>(extraBufferCapacity = BUFFER)
@@ -42,6 +45,23 @@ class CarButtons(context: Context) {
             _presses.tryEmit(NavigationButton.Home)
         } else if (code == CarButton.BACK) {
             _presses.tryEmit(NavigationButton.Back)
+        } else if (code == CarButton.CALL || code == CarButton.END_CALL) {
+            onCallButton(code)
+        }
+    }
+
+    private fun onCallButton(code: Int) {
+        val call = PhoneCalls.state.value
+        when {
+            code == CarButton.CALL && call.isRinging -> {
+                Log.i(TAG, "Answering the ringing call for the car's call button")
+                PhoneCalls.answer()
+            }
+            code == CarButton.END_CALL && call.isInCall -> {
+                Log.i(TAG, "Ending the call for the car's end call button")
+                PhoneCalls.end()
+            }
+            else -> Log.i(TAG, "The car's call button $code without a call to act on")
         }
     }
 }

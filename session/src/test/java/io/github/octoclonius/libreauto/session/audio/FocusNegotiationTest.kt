@@ -187,6 +187,65 @@ class FocusNegotiationTest {
     }
 
     @Test
+    fun inACallAGainRequestIsDropped() {
+        negotiation.onCall(true)
+        assertEquals(emptyList<Action>(), playing(player(1, media)))
+        assertEquals(emptyList<Action>(), negotiation.onCall(false))
+        assertEquals(emptyList<Action>(), playing(player(1, media)))
+    }
+
+    @Test
+    fun aNewPlayerAfterTheCallAsksForFocus() {
+        negotiation.onCall(true)
+        playing(player(1, media))
+        negotiation.onCall(false)
+        assertEquals(
+            listOf(Action.RequestCarFocus(requestGain)),
+            playing(player(1, media), player(2, media)),
+        )
+    }
+
+    @Test
+    fun inACallTransientRequestsStillGoOut() {
+        negotiation.onCall(true)
+        assertEquals(
+            listOf(Action.RequestCarFocus(requestMayDuck)),
+            playing(player(1, navigation)),
+        )
+    }
+
+    @Test
+    fun inACallNothingIsAskedWhileTheCarHoldsFocusTransiently() {
+        playing(player(1, media))
+        negotiation.onCarFocus(gain, false)
+        negotiation.onCall(true)
+        negotiation.onCarFocus(lossTransient, true)
+        assertEquals(
+            emptyList<Action>(),
+            playing(player(1, media), player(2, navigation)),
+        )
+        assertEquals(emptyList<Action>(), negotiation.onCall(false))
+        assertEquals(
+            listOf(Action.AbandonAndroidFocus),
+            negotiation.onCarFocus(gain, true),
+        )
+    }
+
+    @Test
+    fun theCallEndingSendsNothingForADroppedRequest() {
+        playing(player(1, media))
+        negotiation.onCarFocus(gain, false)
+        negotiation.onCall(true)
+        negotiation.onCarFocus(lossTransient, true)
+        playing(player(1, media), player(2, media))
+        assertEquals(emptyList<Action>(), negotiation.onCall(false))
+        assertEquals(
+            emptyList<Action>(),
+            playing(player(1, media), player(2, media)),
+        )
+    }
+
+    @Test
     fun streamsMayPlayWhileTheCarGrantsTheirTypeOrDucks() {
         for (state in listOf(gain, gainTransient, lossTransientCanDuck)) {
             assertTrue(isStreamAllowed(mediaType, state))

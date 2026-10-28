@@ -21,4 +21,7 @@ internal class ShellContext(base: Context) : ContextWrapper(base) {
     override fun getAttributionSource(): AttributionSource = attribution
 
     override fun getApplicationContext(): Context = this
+
+    override fun createDeviceContext(deviceId: Int): Context =
+        ShellContext(super.createDeviceContext(deviceId))
 }

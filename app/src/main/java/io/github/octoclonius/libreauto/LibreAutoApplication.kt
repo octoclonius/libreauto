@@ -8,6 +8,7 @@ import io.github.octoclonius.libreauto.car.home.CarButtonHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.privileged.PrivilegedService
+import io.github.octoclonius.libreauto.session.calls.PhoneCalls
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
 open class LibreAutoApplication : Application() {
@@ -18,6 +19,7 @@ open class LibreAutoApplication : Application() {
             service = ComponentName(this, PrivilegedService::class.java),
             carHome = ComponentName(this, CarHomeActivity::class.java),
         )
+        PhoneCalls.start(this)
         PhoneApps.start(this)
         RailHost(this).start()
         QuickSettingsHost(this).start()

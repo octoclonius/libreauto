@@ -39,4 +39,26 @@ interface IPrivilegedService {
     oneway void setPhoneSetting(int setting, boolean isOn) = 13;
 
     oneway void restoreTasks(int displayId, in int[] taskIds, int frontTaskId) = 14;
+
+    void allowCallAccess() = 15;
+
+    void grantBluetoothPermission() = 16;
+
+    boolean turnOnBluetooth() = 17;
+
+    @nullable String getBluetoothAddress() = 18;
+
+    boolean pairBluetooth(String address) = 19;
+
+    boolean cancelBluetoothPairing(String address) = 20;
+
+    boolean removeBluetoothPairing(String address) = 21;
+
+    boolean setBluetoothPin(String address, String pin) = 22;
+
+    boolean confirmBluetoothPairing(String address, boolean isConfirmed) = 23;
+
+    boolean allowHandsFree(String address) = 24;
+
+    boolean connectHandsFree(String address) = 25;
 }

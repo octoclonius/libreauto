@@ -9,6 +9,7 @@ import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.TlsServer
+import io.github.octoclonius.libreauto.protocol.bluetooth.carBluetooth
 import io.github.octoclonius.libreauto.protocol.control.Handshake
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
@@ -32,6 +33,7 @@ import io.github.octoclonius.libreauto.protocol.media.videoSink
 import io.github.octoclonius.libreauto.session.audio.AudioChannel
 import io.github.octoclonius.libreauto.session.audio.CarAudio
 import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
+import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider
 import io.github.octoclonius.libreauto.session.certificate.CertificateProvider.FetchResult
 import io.github.octoclonius.libreauto.session.input.CarButtons
@@ -112,6 +114,7 @@ class CarConnection(context: Context) {
         var audio: CarAudio? = null
         var audioChannels: List<AudioChannel> = emptyList()
         var microphone: MicrophoneChannel? = null
+        var bluetooth: BluetoothChannel? = null
         try {
             while (true) {
                 val message = reader.readMessage()
@@ -136,6 +139,10 @@ class CarConnection(context: Context) {
                 }
                 if (microphone != null && message.channel == microphone.channel) {
                     if (!microphone.onMessage(message)) logUnhandled(message)
+                    continue
+                }
+                if (bluetooth != null && message.channel == bluetooth.channel) {
+                    if (!bluetooth.onMessage(message)) logUnhandled(message)
                     continue
                 }
                 if (message.channel != CONTROL_CHANNEL) {
@@ -223,6 +230,19 @@ class CarConnection(context: Context) {
                             audioChannels.forEach(AudioChannel::open)
                             microphone?.open()
                         }
+                        val carBluetooth = carBluetooth(response)
+                        if (carBluetooth == null) {
+                            Log.w(TAG, "The car has no Bluetooth service LibreAuto can pair with")
+                        } else {
+                            bluetooth =
+                                BluetoothChannel(
+                                        context,
+                                        ChannelSender(writer, tls, carBluetooth.channel),
+                                        carBluetooth,
+                                        version,
+                                    )
+                                    .also { it.open() }
+                        }
                     }
                     MessageType.AUDIO_FOCUS_NOTIFICATION ->
                         audio?.onFocusNotification(message) ?: logUnhandled(message)
@@ -241,6 +261,7 @@ class CarConnection(context: Context) {
                 }
             }
         } finally {
+            bluetooth?.close()
             audio?.close()
             video?.close()
         }

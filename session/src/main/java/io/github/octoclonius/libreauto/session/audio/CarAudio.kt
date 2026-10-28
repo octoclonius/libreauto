@@ -14,11 +14,20 @@ import io.github.octoclonius.libreauto.protocol.control.audioFocusRequest
 import io.github.octoclonius.libreauto.protocol.control.parseAudioFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.AudioType
 import io.github.octoclonius.libreauto.session.ChannelSender
+import io.github.octoclonius.libreauto.session.calls.PhoneCalls
 import io.github.octoclonius.libreauto.session.media.MediaResumption
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 internal class CarAudio(private val context: Context, private val control: ChannelSender) :
     Closeable {
@@ -31,6 +40,7 @@ internal class CarAudio(private val context: Context, private val control: Chann
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "car-audio") }
     private val negotiation = FocusNegotiation()
     private val androidFocus = AndroidAudioFocus(context)
+    private val calls = CoroutineScope(Dispatchers.Default)
     private var channels: List<AudioChannel> = emptyList()
     private var streaming: List<AudioChannel> = emptyList()
     private var microphone: MicrophoneChannel? = null
@@ -46,6 +56,9 @@ internal class CarAudio(private val context: Context, private val control: Chann
             this.channels = channels
             this.microphone = microphone
         }
+        calls.launch {
+            PhoneCalls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
+        }
     }
 
     fun onChannelSettled() {
@@ -54,6 +67,13 @@ internal class CarAudio(private val context: Context, private val control: Chann
 
     fun onStreamStartedOrStopped() {
         executor.execute { act(negotiation.onIdle(isIdle())) }
+    }
+
+    private fun onCall(isInCall: Boolean) {
+        executor.execute {
+            Log.i(TAG, if (isInCall) "In a call" else "Not in a call")
+            act(negotiation.onCall(isInCall))
+        }
     }
 
     fun onFocusNotification(message: ChannelMessage) {
@@ -73,6 +93,7 @@ internal class CarAudio(private val context: Context, private val control: Chann
     }
 
     override fun close() {
+        runBlocking { calls.coroutineContext.job.cancelAndJoin() }
         val paused = executor.submit(::pauseMedia).get()
         if (paused?.await(PAUSE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS) == false) {
             Log.w(TAG, "Media still plays $PAUSE_TIMEOUT_MILLIS ms after pausing it")

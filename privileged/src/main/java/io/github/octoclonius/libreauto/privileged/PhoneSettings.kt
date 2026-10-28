@@ -42,6 +42,8 @@ internal class PhoneSettings(private val context: Context) {
         }
     }
 
+    fun turnOnBluetooth(): Boolean = setBluetooth(true)
+
     private fun setBluetooth(isOn: Boolean): Boolean {
         val bluetooth = IBluetoothManager.Stub.asInterface(service(BLUETOOTH_MANAGER_SERVICE))
         val source = context.attributionSource

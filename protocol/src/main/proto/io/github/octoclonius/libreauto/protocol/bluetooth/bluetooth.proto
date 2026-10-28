@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package io.github.octoclonius.libreauto.protocol.bluetooth;
+
+message BluetoothPairingRequest {
+  optional string phone_address = 1;
+  optional int32 pairing_method = 2;
+}
+
+message BluetoothPairingResponse {
+  optional int32 status = 1;
+  optional bool already_paired = 2;
+}
+
+message BluetoothAuthenticationData {
+  optional string auth_data = 1;
+}
+
+message BluetoothAuthenticationResult {
+  optional int32 status = 1;
+}
