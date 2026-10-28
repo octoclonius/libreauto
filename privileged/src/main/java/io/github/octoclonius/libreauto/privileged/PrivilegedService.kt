@@ -1,14 +1,11 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.Manifest
-import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.hardware.usb.UsbManager
-import android.os.Binder
 import android.os.HandlerThread
 import android.os.Parcel
-import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
 import android.view.Surface
@@ -39,11 +36,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-        val caller = Binder.getCallingUid()
-        if (!isCallerAllowed(code, caller, appUid, Process.myUid())) {
-            Log.w(TAG, "Refused the call $code from uid $caller")
-            throw SecurityException("The uid $caller may not make the call $code")
-        }
+        checkCaller(TAG, code) { isCallerAllowed(code, it, appUid, Process.myUid()) }
         return super.onTransact(code, data, reply, flags)
     }
 
@@ -62,7 +55,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         densityDpi: Int,
         home: ComponentName,
         tasks: IDisplayTaskListener,
-    ): Int {
+    ): ICarDisplaySession {
         val error = displayRequestError(width, height, densityDpi, home.packageName, appPackage)
         if (error != null) throw IllegalArgumentException(error)
         synchronized(displayLock) {
@@ -81,79 +74,38 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                     tasks,
                 )
             carDisplay = created
-            return created.id
+            return created
         }
-    }
-
-    override fun resizeDisplay(displayId: Int, width: Int, height: Int, densityDpi: Int) {
-        val current =
-            synchronized(displayLock) { carDisplay }
-                ?: throw IllegalArgumentException("There is no car display")
-        current.resize(displayId, width, height, densityDpi)
-    }
-
-    override fun releaseDisplay(displayId: Int) {
-        synchronized(displayLock) {
-            if (carDisplay?.id == displayId) releaseCarDisplay()
-        }
-    }
-
-    override fun sendTouch(
-        eventTimeNanos: Long,
-        action: Int,
-        actionIndex: Int,
-        pointerIds: IntArray,
-        xs: IntArray,
-        ys: IntArray,
-    ) {
-        displayCall { it.sendTouch(eventTimeNanos, action, actionIndex, pointerIds, xs, ys) }
-    }
-
-    override fun sendKey(displayId: Int, keyCode: Int) {
-        displayCall { it.sendKey(displayId, keyCode) }
-    }
-
-    override fun showActivity(displayId: Int, activity: PendingIntent) {
-        displayCall { it.showActivity(displayId, activity) }
-    }
-
-    override fun showTask(displayId: Int, taskId: Int) {
-        displayCall { it.showTask(displayId, taskId) }
-    }
-
-    override fun closeTask(displayId: Int, taskId: Int) {
-        displayCall { it.closeTask(displayId, taskId) }
-    }
-
-    override fun setPhoneSetting(setting: Int, isOn: Boolean) {
-        checkedCall(TAG, "Changing the setting $setting", settingRequestError(setting)) {
-            settings.set(setting, isOn)
-        }
-    }
-
-    override fun restoreTasks(displayId: Int, taskIds: IntArray, frontTaskId: Int) {
-        displayCall { it.restoreTasks(displayId, taskIds, frontTaskId) }
     }
 
     override fun startAudio(
         outputs: Array<AudioOutput>,
         input: AudioInput?,
         listener: IAudioActivityListener,
-    ): Array<ParcelFileDescriptor> {
+    ): ICarAudioSession {
         val error = audioRequestError(outputs.toList(), input)
         if (error != null) throw IllegalArgumentException(error)
         synchronized(audioLock) {
             releaseCarAudio()
             val started =
-                CarAudioSession(shellContext, outputs.toList(), input, listener, audioThread.looper)
-            val pipes = started.start()
+                CarAudioSession(
+                    shellContext,
+                    outputs.toList(),
+                    input,
+                    listener,
+                    audioThread.looper,
+                    appUid,
+                )
+            started.start()
             carAudio = started
-            return pipes.toTypedArray()
+            return started
         }
     }
 
-    override fun stopAudio() {
-        synchronized(audioLock) { releaseCarAudio() }
+    override fun setPhoneSetting(setting: Int, isOn: Boolean) {
+        checkedCall(TAG, "Changing the setting $setting", settingRequestError(setting)) {
+            settings.set(setting, isOn)
+        }
     }
 
     override fun allowCallAccess() {
@@ -222,13 +174,4 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     private fun deviceCall(action: String, address: String, call: () -> Boolean): Boolean =
         checkedCall(TAG, "$action $address", bluetoothRequestError(address), call) == true
-
-    private fun displayCall(call: (CarDisplaySession) -> Unit) {
-        val current = synchronized(displayLock) { carDisplay }
-        if (current == null) {
-            Log.w(TAG, "Refused a call to the car display: there is none")
-            return
-        }
-        call(current)
-    }
 }

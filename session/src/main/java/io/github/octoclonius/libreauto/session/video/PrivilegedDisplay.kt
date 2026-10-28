@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.session.video
 
 import android.util.Log
 import android.view.Surface
+import io.github.octoclonius.libreauto.privileged.ICarDisplaySession
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.privileged.NO_TASK
@@ -34,6 +35,7 @@ internal class PrivilegedDisplay(
     private val scope = CoroutineScope(Dispatchers.IO)
     private val lock = Any()
     private var current: OwnedDisplay<IPrivilegedService>? = null
+    private var session: ICarDisplaySession? = null
     private var tasks: IDisplayTaskListener? = null
 
     fun start() {
@@ -53,8 +55,8 @@ internal class PrivilegedDisplay(
             this.layout = layout
             val display = current ?: return
             val apps = layout.apps
-            display.service.call("resize the car display") {
-                it.resizeDisplay(display.id, apps.width, apps.height, layout.appsDensity)
+            session?.call("resize the car display") {
+                it.resize(apps.width, apps.height, layout.appsDensity)
             } ?: return
             Log.i(
                 TAG,
@@ -82,7 +84,7 @@ internal class PrivilegedDisplay(
         val home = carDisplay.home.component
         val remembered = openTasks.load()
         val listener = carTasks.listener(home.packageName, openTasks::save)
-        val id =
+        val created =
             service.call("create the car display") {
                 it.createDisplay(
                     surface,
@@ -93,21 +95,24 @@ internal class PrivilegedDisplay(
                     listener,
                 )
             }
-        if (id == null) {
+        val id = created?.call("read the car display's id") { it.displayId }
+        if (created == null || id == null) {
+            created?.call("release the car display") { it.release() }
             carTasks.onReleased(listener)
             return null
         }
+        session = created
         tasks = listener
         Log.i(TAG, "The privileged service created the car display $id")
-        carDisplay.onCreated(id, layout.format.density)
-        restore(service, id, remembered)
+        carDisplay.onCreated(created, id, layout.format.density)
+        restore(created, id, remembered)
         return id
     }
 
-    private fun restore(service: IPrivilegedService, id: Int, remembered: OpenTasks) {
+    private fun restore(display: ICarDisplaySession, id: Int, remembered: OpenTasks) {
         if (remembered.taskIds.isEmpty()) return
-        service.call("bring back the car's tasks") {
-            it.restoreTasks(id, remembered.taskIds.toIntArray(), remembered.frontTaskId ?: NO_TASK)
+        display.call("bring back the car's tasks") {
+            it.restoreTasks(remembered.taskIds.toIntArray(), remembered.frontTaskId ?: NO_TASK)
         } ?: return
         Log.i(TAG, "Asked to bring back the tasks ${remembered.taskIds} to the car display $id")
     }
@@ -116,9 +121,9 @@ internal class PrivilegedDisplay(
         carDisplay.onReleased(display.id)
         tasks?.let(carTasks::onReleased)
         tasks = null
-        display.service.call("release the car display ${display.id}") {
-            it.releaseDisplay(display.id)
-        } ?: return
+        val released = session
+        session = null
+        released?.call("release the car display ${display.id}") { it.release() } ?: return
         Log.i(TAG, "Released the car display ${display.id}")
     }
 }

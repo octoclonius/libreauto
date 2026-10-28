@@ -51,8 +51,8 @@ class CarSession internal constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
-    val displays = CarDisplays(privileged, carHome)
-    val tasks = CarTasks(displays.car, privileged, scope)
+    val displays = CarDisplays(carHome)
+    val tasks = CarTasks(displays.car, scope)
     val buttons = CarButtons(context, calls)
 
     private val inbox = SessionInbox(scope, ::handle)
@@ -137,7 +137,6 @@ class CarSession internal constructor(
                 video::layout,
                 buttons,
                 displays,
-                privileged,
             )
         )
     }

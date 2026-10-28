@@ -9,37 +9,19 @@ class ActivityRequestTest {
     private val appUid = 10274
 
     @Test
-    fun theAppsActivityOnTheCarDisplayIsAccepted() {
-        assertNull(
-            activityRequestError(7, 7, isActivity = true, creatorUid = appUid, appUid = appUid)
-        )
-    }
-
-    @Test
-    fun anActivityWithoutACarDisplayIsRefused() {
-        assertNotNull(
-            activityRequestError(7, null, isActivity = true, creatorUid = appUid, appUid = appUid)
-        )
-    }
-
-    @Test
-    fun anActivityOnAnotherDisplayIsRefused() {
-        assertNotNull(
-            activityRequestError(0, 7, isActivity = true, creatorUid = appUid, appUid = appUid)
-        )
+    fun theAppsActivityIsAccepted() {
+        assertNull(activityRequestError(isActivity = true, creatorUid = appUid, appUid = appUid))
     }
 
     @Test
     fun anIntentThatIsNoActivityIsRefused() {
         assertNotNull(
-            activityRequestError(7, 7, isActivity = false, creatorUid = appUid, appUid = appUid)
+            activityRequestError(isActivity = false, creatorUid = appUid, appUid = appUid)
         )
     }
 
     @Test
     fun anIntentFromAnotherAppIsRefused() {
-        assertNotNull(
-            activityRequestError(7, 7, isActivity = true, creatorUid = 10001, appUid = appUid)
-        )
+        assertNotNull(activityRequestError(isActivity = true, creatorUid = 10001, appUid = appUid))
     }
 }

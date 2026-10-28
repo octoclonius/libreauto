@@ -2,7 +2,6 @@ package io.github.octoclonius.libreauto.session.tasks
 
 import io.github.octoclonius.libreauto.privileged.DisplayTask
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.video.CarDisplay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +20,6 @@ data class CarTasksState(val tasks: List<CarTask>, val frontTaskId: Int?) {
 class CarTasks
 internal constructor(
     private val display: CarDisplay,
-    private val privileged: PrivilegedServiceConnection,
     private val scope: CoroutineScope,
 ) {
     private var listener: IDisplayTaskListener? = null
@@ -30,13 +28,11 @@ internal constructor(
     val state: StateFlow<CarTasksState> = _state.asStateFlow()
 
     fun show(task: CarTask) {
-        val id = display.state.value?.id ?: return
-        privileged.call("show the task ${task.taskId}") { it.showTask(id, task.taskId) }
+        display.call("show the task ${task.taskId}") { it.showTask(task.taskId) }
     }
 
     fun close(task: CarTask) {
-        val id = display.state.value?.id ?: return
-        privileged.call("close the task ${task.taskId}") { it.closeTask(id, task.taskId) }
+        display.call("close the task ${task.taskId}") { it.closeTask(task.taskId) }
     }
 
     internal fun listener(

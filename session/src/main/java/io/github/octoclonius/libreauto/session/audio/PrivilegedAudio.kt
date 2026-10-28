@@ -7,6 +7,7 @@ import io.github.octoclonius.libreauto.privileged.AudioInput
 import io.github.octoclonius.libreauto.privileged.AudioOutput
 import io.github.octoclonius.libreauto.privileged.AudioPlayer
 import io.github.octoclonius.libreauto.privileged.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.ICarAudioSession
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
@@ -32,6 +33,7 @@ internal class PrivilegedAudio(
 
     private var following: Job? = null
     private var current: IPrivilegedService? = null
+    private var session: ICarAudioSession? = null
     private val listener =
         object : IAudioActivityListener.Stub() {
             override fun onAudioActivity(
@@ -52,25 +54,25 @@ internal class PrivilegedAudio(
 
     suspend fun close() {
         following?.cancelAndJoin()
-        current?.let(::stop)
-        current = null
+        stop()
     }
 
     private fun follow(service: IPrivilegedService?) {
         if (service === current) return
-        current?.let(::stop)
-        current = null
+        stop()
         onActivity(emptyList(), emptyList())
         onMicrophoneActivity(false)
         if (service == null) {
             Log.i(TAG, "No audio for the car while the privileged service isn't running")
             return
         }
-        val pipes =
+        val started =
             service.call("divert audio to the car") {
                 it.startAudio(outputs.toTypedArray(), input, listener)
             } ?: return
         current = service
+        session = started
+        val pipes = started.call("take the car audio's pipes") { it.pipes } ?: return
         Log.i(
             TAG,
             "The privileged service diverts ${outputs.size} outputs to the car" +
@@ -79,7 +81,9 @@ internal class PrivilegedAudio(
         onPipes(pipes.toList())
     }
 
-    private fun stop(service: IPrivilegedService) {
-        service.call("stop the car audio") { it.stopAudio() }
+    private fun stop() {
+        session?.call("stop the car audio") { it.stop() }
+        session = null
+        current = null
     }
 }

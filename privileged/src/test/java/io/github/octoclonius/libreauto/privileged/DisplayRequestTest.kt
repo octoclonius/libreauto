@@ -32,19 +32,13 @@ class DisplayRequestTest {
     }
 
     @Test
-    fun aResizeOfTheCarDisplayIsAccepted() {
-        assertNull(resizeRequestError(7, 1280, 720, 160, currentId = 7))
-    }
-
-    @Test
-    fun aResizeOfAnotherDisplayIsRefused() {
-        assertNotNull(resizeRequestError(8, 1280, 720, 160, currentId = 7))
-        assertNotNull(resizeRequestError(7, 1280, 720, 160, currentId = null))
+    fun aResizeIsAccepted() {
+        assertNull(resizeRequestError(1280, 720, 160))
     }
 
     @Test
     fun aResizeToAnEmptySizeOrDensityIsRefused() {
-        assertNotNull(resizeRequestError(7, 0, 720, 160, currentId = 7))
-        assertNotNull(resizeRequestError(7, 1280, 720, 0, currentId = 7))
+        assertNotNull(resizeRequestError(0, 720, 160))
+        assertNotNull(resizeRequestError(1280, 720, 0))
     }
 }

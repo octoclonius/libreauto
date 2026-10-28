@@ -14,9 +14,8 @@ class CallerPolicyTest {
     private val interfaceDescriptor = 0x5f4e5446
     private val getUid = 2
     private val createDisplay = 3
-    private val releaseDisplay = 4
-    private val sendTouch = 5
     private val exitAccessoryMode = 6
+    private val startAudio = 8
 
     @Test
     fun onlyShizukuMayDestroy() {
@@ -27,7 +26,7 @@ class CallerPolicyTest {
 
     @Test
     fun onlyLibreAutoMayMakeTheOtherCalls() {
-        for (code in listOf(getUid, createDisplay, releaseDisplay, sendTouch, exitAccessoryMode)) {
+        for (code in listOf(getUid, createDisplay, exitAccessoryMode, startAudio)) {
             assertTrue(isCallerAllowed(code, appUid, appUid, serviceUid))
             assertFalse(isCallerAllowed(code, serviceUid, appUid, serviceUid))
             assertFalse(isCallerAllowed(code, otherUid, appUid, serviceUid))
@@ -45,5 +44,21 @@ class CallerPolicyTest {
     fun unknownCallsAreLibreAutosOnly() {
         assertTrue(isCallerAllowed(99, appUid, appUid, serviceUid))
         assertFalse(isCallerAllowed(99, serviceUid, appUid, serviceUid))
+    }
+
+    @Test
+    fun onlyLibreAutoMayCallASession() {
+        for (code in listOf(1, 2, 3, destroy)) {
+            assertTrue(isAppCallAllowed(code, appUid, appUid, serviceUid))
+            assertFalse(isAppCallAllowed(code, serviceUid, appUid, serviceUid))
+            assertFalse(isAppCallAllowed(code, otherUid, appUid, serviceUid))
+        }
+    }
+
+    @Test
+    fun shizukuAndLibreAutoMayAskForASessionsInterface() {
+        assertTrue(isAppCallAllowed(interfaceDescriptor, serviceUid, appUid, serviceUid))
+        assertTrue(isAppCallAllowed(interfaceDescriptor, appUid, appUid, serviceUid))
+        assertFalse(isAppCallAllowed(interfaceDescriptor, otherUid, appUid, serviceUid))
     }
 }

@@ -3,6 +3,9 @@ package io.github.octoclonius.libreauto.privileged
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
+import android.os.IBinder
+import android.os.Parcel
+import android.os.Process
 import android.util.Log
 import android.view.Surface
 import java.io.Closeable
@@ -14,7 +17,8 @@ private constructor(
     private val tasks: DisplayTasks,
     private val keys: DisplayKeys,
     private val appUid: Int,
-) : Closeable {
+    private val app: IBinder,
+) : ICarDisplaySession.Stub(), Closeable {
 
     companion object {
         private const val TAG = "CarDisplaySession"
@@ -51,18 +55,37 @@ private constructor(
                 ) {
                     DisplayTasks(context, display.id, home.packageName, listener).apply { start() }
                 }
-            return CarDisplaySession(context, display, tasks, keys, appUid)
+            val session =
+                CarDisplaySession(context, display, tasks, keys, appUid, listener.asBinder())
+            reportingCall(TAG, "Watching the app", onFailure = session::close) {
+                session.watchApp()
+            }
+            return session
         }
     }
 
     private val lock = Any()
     private var isClosed = false
+    private var isWatchingApp = false
+    private val appDeath =
+        IBinder.DeathRecipient {
+            Log.w(TAG, "The app died; releasing the car display $id")
+            close()
+        }
 
     val id: Int = display.id
 
-    fun resize(displayId: Int, width: Int, height: Int, densityDpi: Int) {
+    override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+        checkCaller(TAG, code) { isAppCallAllowed(code, it, appUid, Process.myUid()) }
+        return super.onTransact(code, data, reply, flags)
+    }
+
+    override fun getDisplayId(): Int = id
+
+    override fun resize(width: Int, height: Int, densityDpi: Int) {
         synchronized(lock) {
-            val error = resizeRequestError(displayId, width, height, densityDpi, currentId())
+            if (isClosed) throw IllegalStateException("The car display $id is released")
+            val error = resizeRequestError(width, height, densityDpi)
             if (error != null) throw IllegalArgumentException(error)
             reportingCall(TAG, "Resizing the car display $id") {
                 display.resize(width, height, densityDpi)
@@ -70,7 +93,7 @@ private constructor(
         }
     }
 
-    fun sendTouch(
+    override fun sendTouch(
         eventTimeNanos: Long,
         action: Int,
         actionIndex: Int,
@@ -87,57 +110,50 @@ private constructor(
         }
     }
 
-    fun sendKey(displayId: Int, keyCode: Int) {
-        call(
-            "Sending the key $keyCode to the car display $displayId",
-            { keyRequestError(displayId, keyCode, id) },
-        ) {
+    override fun sendKey(keyCode: Int) {
+        call("Sending the key $keyCode to the car display $id", { keyRequestError(keyCode) }) {
             keys.press(id, keyCode)
         }
     }
 
-    fun showActivity(displayId: Int, activity: PendingIntent) {
+    override fun showActivity(activity: PendingIntent) {
         call(
-            "Starting an activity on the car display $displayId",
-            {
-                activityRequestError(
-                    displayId,
-                    id,
-                    activity.isActivity,
-                    activity.creatorUid,
-                    appUid,
-                )
-            },
+            "Starting an activity on the car display $id",
+            { activityRequestError(activity.isActivity, activity.creatorUid, appUid) },
         ) {
             display.showActivity(context, activity)
         }
     }
 
-    fun showTask(displayId: Int, taskId: Int) {
+    override fun showTask(taskId: Int) {
         call(
-            "Showing the task $taskId on the car display $displayId",
-            { taskRequestError(displayId, taskId, id, tasks.taskIds) },
+            "Showing the task $taskId on the car display $id",
+            { taskRequestError(taskId, tasks.taskIds) },
         ) {
             tasks.show(taskId)
         }
     }
 
-    fun closeTask(displayId: Int, taskId: Int) {
+    override fun closeTask(taskId: Int) {
         call(
-            "Closing the task $taskId on the car display $displayId",
-            { taskRequestError(displayId, taskId, id, tasks.taskIds) },
+            "Closing the task $taskId on the car display $id",
+            { taskRequestError(taskId, tasks.taskIds) },
         ) {
             tasks.close(taskId)
         }
     }
 
-    fun restoreTasks(displayId: Int, taskIds: IntArray, frontTaskId: Int) {
+    override fun restoreTasks(taskIds: IntArray, frontTaskId: Int) {
         call(
-            "Bringing back tasks to the car display $displayId",
-            { restoreRequestError(displayId, id, taskIds.toList(), frontTaskId) },
+            "Bringing back tasks to the car display $id",
+            { restoreRequestError(taskIds.toList(), frontTaskId) },
         ) {
             tasks.restore(taskIds.toList(), frontTaskId)
         }
+    }
+
+    override fun release() {
+        close()
     }
 
     override fun close() {
@@ -145,6 +161,9 @@ private constructor(
             if (isClosed) return
             isClosed = true
             closeAll(TAG) {
+                step("Stopping watching the app") {
+                    if (isWatchingApp) app.unlinkToDeath(appDeath, 0)
+                }
                 step("Moving the car display's tasks to the phone") { tasks.moveToPhone() }
                 step("Stopping watching the tasks on the car display") { tasks.close() }
                 step("Releasing the car display $id") { display.close() }
@@ -152,7 +171,12 @@ private constructor(
         }
     }
 
-    private fun currentId(): Int? = id.takeUnless { isClosed }
+    private fun watchApp() {
+        synchronized(lock) {
+            app.linkToDeath(appDeath, 0)
+            isWatchingApp = true
+        }
+    }
 
     private fun call(action: String, refusal: () -> String?, block: () -> Unit) {
         synchronized(lock) {

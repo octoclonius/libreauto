@@ -6,6 +6,7 @@ import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.IBinder
+import android.os.IInterface
 import android.os.RemoteException
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
@@ -18,7 +19,7 @@ import rikka.shizuku.Shizuku
 
 private const val TAG = "PrivilegedServiceConnection"
 
-internal fun <T> IPrivilegedService.call(action: String, block: (IPrivilegedService) -> T): T? =
+internal fun <B : IInterface, T> B.call(action: String, block: (B) -> T): T? =
     try {
         block(this)
     } catch (e: RemoteException) {
