@@ -37,7 +37,7 @@ data class MainUiState(
 class MainViewModel(
     private val certificateProvider: CertificateProvider,
     carConnectionState: StateFlow<CarConnectionState>,
-    privilegedServiceState: StateFlow<PrivilegedServiceState>,
+    private val privilegedService: PrivilegedServiceConnection,
 ) : ViewModel() {
 
     companion object {
@@ -47,7 +47,7 @@ class MainViewModel(
                 MainViewModel(
                     CertificateProvider(application),
                     application.sessionContainer.carSessionHolder.state,
-                    PrivilegedServiceConnection.state,
+                    application.sessionContainer.privilegedServiceConnection,
                 )
             }
         }
@@ -62,7 +62,7 @@ class MainViewModel(
     private val foreground =
         object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                PrivilegedServiceConnection.refresh()
+                privilegedService.refresh()
                 checkCertificate()
             }
         }
@@ -73,7 +73,7 @@ class MainViewModel(
             carConnectionState.collect { car -> _uiState.update { it.copy(car = car) } }
         }
         viewModelScope.launch {
-            privilegedServiceState.collect { service ->
+            privilegedService.state.collect { service ->
                 _uiState.update { it.copy(privilegedService = service) }
             }
         }
@@ -85,12 +85,12 @@ class MainViewModel(
 
     fun refresh() {
         _uiState.update { it.copy(isRefreshing = true) }
-        PrivilegedServiceConnection.retry()
+        privilegedService.retry()
         checkCertificate()
     }
 
     fun requestShizukuPermission() {
-        PrivilegedServiceConnection.requestPermission()
+        privilegedService.requestPermission()
     }
 
     fun openCertificatePicker() {

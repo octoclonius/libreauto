@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import io.github.octoclonius.libreauto.session.closeAll
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
@@ -21,6 +22,7 @@ internal class VideoStream(
     private val send: (type: Int, body: ByteArray) -> Boolean,
     private val displays: CarDisplays,
     private val tasks: CarTasks,
+    private val privileged: PrivilegedServiceConnection,
 ) : Closeable {
 
     companion object {
@@ -136,6 +138,7 @@ internal class VideoStream(
                     PrivilegedDisplay(
                             appsInput,
                             layout,
+                            privileged,
                             OpenCarTasks(context),
                             displays.car,
                             tasks,

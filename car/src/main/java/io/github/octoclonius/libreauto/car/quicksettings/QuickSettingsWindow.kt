@@ -11,13 +11,13 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.ComponentDialog
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.CarConnectionState
-import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
 
 internal class QuickSettingsWindow(context: Context, display: Display, private val carUi: CarUi) :
     ComponentDialog(
@@ -38,12 +38,16 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
                 setContent {
                     val rail by carUi.session.displays.rail.state.collectAsStateWithLifecycle()
                     val connection by carUi.connection.collectAsStateWithLifecycle()
+                    val settings by
+                        remember { carUi.phoneSettings.settings }.collectAsStateWithLifecycle(null)
                     CarTheme {
                         QuickSettingsPanel(
+                            settings = settings,
                             railSide = rail?.side,
                             isDriverOnRight =
                                 (connection as? CarConnectionState.Connected)?.isDriverOnRight ==
                                     true,
+                            onToggle = carUi.phoneSettings::set,
                             onClose = { carUi.quickSettings.close() },
                             onShowPage = ::showPage,
                         )
@@ -61,7 +65,6 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
 
     private fun showPage(page: PendingIntent) {
         carUi.quickSettings.close()
-        val display = carUi.session.displays.car.state.value ?: return
-        PrivilegedSettings.showPage(display.id, page)
+        carUi.session.displays.car.show(page)
     }
 }

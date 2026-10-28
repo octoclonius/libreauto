@@ -7,6 +7,7 @@ import android.telecom.Call
 import android.telecom.TelecomManager
 import android.util.Log
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.session.privileged.call
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,10 @@ data class PhoneCallState(val isRinging: Boolean, val isInCall: Boolean) {
     }
 }
 
-class CallRepository(context: Context) {
+class CallRepository(
+    context: Context,
+    private val privileged: PrivilegedServiceConnection,
+) {
 
     private companion object {
         const val TAG = "CallRepository"
@@ -45,8 +49,8 @@ class CallRepository(context: Context) {
 
     fun start() {
         scope.launch {
-            PrivilegedServiceConnection.service.collect { service ->
-                if (service != null) PrivilegedCalls.allowAccess(service)
+            privileged.service.collect { service ->
+                service?.call("allow the phone's calls") { it.allowCallAccess() }
             }
         }
     }

@@ -17,6 +17,7 @@ import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.closeAll
 import io.github.octoclonius.libreauto.session.media.MediaResumption
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -34,6 +35,7 @@ internal class CarAudio(
     private val context: Context,
     private val control: ChannelSender,
     private val calls: CallRepository,
+    private val privileged: PrivilegedServiceConnection,
 ) : Closeable {
 
     companion object {
@@ -48,7 +50,7 @@ internal class CarAudio(
     private var channels: List<AudioChannel> = emptyList()
     private var streaming: List<AudioChannel> = emptyList()
     private var microphone: MicrophoneChannel? = null
-    private var privileged: PrivilegedAudio? = null
+    private var privilegedAudio: PrivilegedAudio? = null
     private var mediaResumption: MediaResumption? = null
     private var isMediaResumed = false
     private var isMediaPlaying = false
@@ -105,8 +107,8 @@ internal class CarAudio(
         executor
             .submit {
                 closeAll(TAG) {
-                    step("Stopping the diverted audio") { privileged?.close() }
-                    privileged = null
+                    step("Stopping the diverted audio") { privilegedAudio?.close() }
+                    privilegedAudio = null
                     for (channel in channels) {
                         step("Closing the audio channel ${channel.channel}") { channel.close() }
                     }
@@ -119,7 +121,7 @@ internal class CarAudio(
     }
 
     private fun divertWhenSettled() {
-        if (privileged != null || !channels.all(AudioChannel::isSettled)) return
+        if (privilegedAudio != null || !channels.all(AudioChannel::isSettled)) return
         if (microphone?.isSettled == false) return
         streaming = channels.filter { it.ready != null }
         if (streaming.isEmpty()) {
@@ -139,8 +141,15 @@ internal class CarAudio(
         if (streaming.any { it.audioType == AudioType.MEDIA }) {
             mediaResumption = MediaResumption(context)
         }
-        privileged =
-            PrivilegedAudio(outputs, input, ::onPipes, ::onActivity, ::onMicrophoneActivity)
+        privilegedAudio =
+            PrivilegedAudio(
+                    privileged,
+                    outputs,
+                    input,
+                    ::onPipes,
+                    ::onActivity,
+                    ::onMicrophoneActivity,
+                )
                 .also(PrivilegedAudio::start)
     }
 

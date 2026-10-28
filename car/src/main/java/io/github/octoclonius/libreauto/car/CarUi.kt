@@ -10,6 +10,7 @@ import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.session.CarConnectionState
 import io.github.octoclonius.libreauto.session.CarSession
 import io.github.octoclonius.libreauto.session.input.NavigationButton
+import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -21,6 +22,7 @@ internal constructor(
     context: Context,
     val session: CarSession,
     internal val connection: StateFlow<CarConnectionState>,
+    internal val phoneSettings: PhoneSettingsRepository,
 ) : Closeable {
 
     internal val home = HomeState()

@@ -1,8 +1,10 @@
 package io.github.octoclonius.libreauto.session.video
 
-class CarDisplays internal constructor() {
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
-    val car = CarDisplay()
+class CarDisplays internal constructor(privileged: PrivilegedServiceConnection, home: CarHome) {
+
+    val car = CarDisplay(privileged, home)
     val rail = RailDisplay()
     val overlay = OverlayDisplay()
 }

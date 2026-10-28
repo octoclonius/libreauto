@@ -17,7 +17,6 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import io.github.octoclonius.libreauto.session.usb.AccessoryLink
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.usb.AccessorySessions
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -55,12 +54,7 @@ class SessionService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        connection =
-            CarConnection(
-                this,
-                sessionContainer.carSessionHolder,
-                sessionContainer.callRepository,
-            )
+        connection = sessionContainer.carConnection()
         executor =
             Executors.newSingleThreadExecutor { Thread(it, "usb-car").apply { isDaemon = true } }
         sessions = AccessorySessions(executor, ::stopSelf, ::leaveAccessoryMode)
@@ -108,8 +102,9 @@ class SessionService : Service() {
     }
 
     private fun leaveAccessoryMode() {
-        PrivilegedServiceConnection.call("leave accessory mode") { it.exitAccessoryMode() }
-            ?: return
+        sessionContainer.privilegedServiceConnection.call("leave accessory mode") {
+            it.exitAccessoryMode()
+        } ?: return
         Log.i(TAG, "Leaving accessory mode so the car can connect again")
     }
 

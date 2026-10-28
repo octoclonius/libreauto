@@ -21,6 +21,7 @@ import kotlinx.coroutines.runBlocking
 internal class PrivilegedDisplay(
     private val surface: Surface,
     private var layout: CarLayout,
+    private val privileged: PrivilegedServiceConnection,
     private val openTasks: OpenCarTasks,
     private val carDisplay: CarDisplay,
     private val carTasks: CarTasks,
@@ -36,7 +37,7 @@ internal class PrivilegedDisplay(
     private var tasks: IDisplayTaskListener? = null
 
     fun start() {
-        scope.launch { PrivilegedServiceConnection.service.collect(::follow) }
+        scope.launch { privileged.service.collect(::follow) }
     }
 
     override fun close() {
@@ -78,7 +79,7 @@ internal class PrivilegedDisplay(
     }
 
     private fun create(service: IPrivilegedService): Int? {
-        val home = PrivilegedServiceConnection.carHome
+        val home = carDisplay.home.component
         val remembered = openTasks.load()
         val listener = carTasks.listener(home.packageName, openTasks::save)
         val id =

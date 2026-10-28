@@ -4,10 +4,7 @@ import android.view.KeyEvent
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.session.CarSession
-import io.github.octoclonius.libreauto.session.input.PrivilegedKeys
 import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.tasks.PrivilegedTasks
-import io.github.octoclonius.libreauto.session.video.PrivilegedHome
 
 internal class HomeNavigation(
     private val session: CarSession,
@@ -37,7 +34,7 @@ internal class HomeNavigation(
             rail.cancelClosing() -> {}
             quickSettings.close() -> {}
             home.isDrawerOpen.value -> home.closeDrawer()
-            isAppInFront() -> carDisplayId()?.let { PrivilegedKeys.send(it, KeyEvent.KEYCODE_BACK) }
+            isAppInFront() -> session.displays.car.sendKey(KeyEvent.KEYCODE_BACK)
         }
     }
 
@@ -52,25 +49,22 @@ internal class HomeNavigation(
 
     fun onRailAppClick(task: CarTask) {
         quickSettings.close()
-        carDisplayId()?.let { PrivilegedTasks.show(it, task.taskId) }
+        session.tasks.show(task)
     }
 
     fun onRailAppClose(task: CarTask) {
-        val displayId = carDisplayId()
-        if (displayId == null) {
+        if (session.displays.car.state.value == null) {
             rail.cancelClosing()
             return
         }
         rail.onClosed(task.taskId)
-        if (session.tasks.state.value.frontTaskId == task.taskId) PrivilegedHome.show(displayId)
-        PrivilegedTasks.close(displayId, task.taskId)
+        if (session.tasks.state.value.frontTaskId == task.taskId) session.displays.car.showHome()
+        session.tasks.close(task)
     }
 
     private fun isAppInFront(): Boolean = session.tasks.state.value.frontTaskId != null
 
     private fun showHome() {
-        carDisplayId()?.let(PrivilegedHome::show)
+        session.displays.car.showHome()
     }
-
-    private fun carDisplayId(): Int? = session.displays.car.state.value?.id
 }

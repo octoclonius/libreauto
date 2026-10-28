@@ -16,12 +16,14 @@ import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
 internal class BluetoothChannel(
     private val context: Context,
     private val sender: ChannelSender,
     private val car: CarBluetooth,
     private val version: ProtocolVersion,
+    private val privileged: PrivilegedServiceConnection,
 ) : CarChannel {
 
     companion object {
@@ -65,6 +67,7 @@ internal class BluetoothChannel(
         handsFree =
             CarHandsFree(
                     context,
+                    PrivilegedBluetooth(privileged),
                     address,
                     car.pairingMethod,
                     { phoneAddress, method ->

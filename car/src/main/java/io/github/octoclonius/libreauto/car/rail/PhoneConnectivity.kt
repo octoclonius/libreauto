@@ -13,12 +13,12 @@ import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.telephony.CellSignalStrength
 import android.telephony.ServiceState
 import android.telephony.SignalStrength
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
+import io.github.octoclonius.libreauto.session.settings.isAirplaneModeOn
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -119,6 +119,3 @@ fun phoneConnectivity(context: Context): Flow<Connectivity> = callbackFlow {
         context.unregisterReceiver(airplaneModeReceiver)
     }
 }
-
-internal fun isAirplaneModeOn(context: Context): Boolean =
-    Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0

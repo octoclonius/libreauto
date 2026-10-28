@@ -3,7 +3,7 @@ package io.github.octoclonius.libreauto.session.bluetooth
 import io.github.octoclonius.libreauto.privileged.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 
-internal object PrivilegedBluetooth {
+internal class PrivilegedBluetooth(private val connection: PrivilegedServiceConnection) {
 
     fun grantPermission() {
         call("grant the app Bluetooth access") { it.grantBluetoothPermission() }
@@ -35,5 +35,5 @@ internal object PrivilegedBluetooth {
         call("connect hands-free to the car") { it.connectHandsFree(address) } == true
 
     private fun <T> call(action: String, block: (IPrivilegedService) -> T): T? =
-        PrivilegedServiceConnection.call(action, block)
+        connection.call(action, block)
 }

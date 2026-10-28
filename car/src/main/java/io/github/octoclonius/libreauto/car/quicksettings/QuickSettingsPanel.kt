@@ -21,8 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -33,12 +31,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
-import io.github.octoclonius.libreauto.session.settings.PrivilegedSettings
+import io.github.octoclonius.libreauto.session.settings.PhoneSettingsState
 import io.github.octoclonius.libreauto.session.settings.QuickSetting
 import io.github.octoclonius.libreauto.session.video.RailSide
 
@@ -60,13 +57,13 @@ private class SettingTile(
 
 @Composable
 internal fun QuickSettingsPanel(
+    settings: PhoneSettingsState?,
     railSide: RailSide?,
     isDriverOnRight: Boolean,
+    onToggle: (QuickSetting, Boolean) -> Unit,
     onClose: () -> Unit,
     onShowPage: (PendingIntent) -> Unit,
 ) {
-    val context = LocalContext.current
-    val settings by remember(context) { phoneSettings(context) }.collectAsStateWithLifecycle(null)
     val alignment =
         when (railSide) {
             RailSide.Right -> Alignment.TopEnd
@@ -88,7 +85,13 @@ internal fun QuickSettingsPanel(
                 .toInt()
                 .coerceIn(1, MAX_COLUMNS)
         settings?.let {
-            Panel(tiles(it), columns, onShowPage, Modifier.align(alignment).padding(PANEL_MARGIN))
+            Panel(
+                tiles(it),
+                columns,
+                onToggle,
+                onShowPage,
+                Modifier.align(alignment).padding(PANEL_MARGIN),
+            )
         }
     }
 }
@@ -143,6 +146,7 @@ private fun tiles(settings: PhoneSettingsState): List<SettingTile> =
 private fun Panel(
     tiles: List<SettingTile>,
     columns: Int,
+    onToggle: (QuickSetting, Boolean) -> Unit,
     onShowPage: (PendingIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -157,7 +161,7 @@ private fun Panel(
         ) {
             tiles.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
-                    row.forEach { Tile(it, onShowPage) }
+                    row.forEach { Tile(it, onToggle, onShowPage) }
                 }
             }
         }
@@ -165,7 +169,11 @@ private fun Panel(
 }
 
 @Composable
-private fun Tile(tile: SettingTile, onShowPage: (PendingIntent) -> Unit) {
+private fun Tile(
+    tile: SettingTile,
+    onToggle: (QuickSetting, Boolean) -> Unit,
+    onShowPage: (PendingIntent) -> Unit,
+) {
     val context = LocalContext.current
     val isOn = tile.isOn == true
     Surface(
@@ -184,7 +192,7 @@ private fun Tile(tile: SettingTile, onShowPage: (PendingIntent) -> Unit) {
                     enabled = tile.isOn != null,
                     role = Role.Switch,
                     onLongClick = { onShowPage(settingsPage(context, tile)) },
-                    onClick = { PrivilegedSettings.set(tile.setting, !isOn) },
+                    onClick = { onToggle(tile.setting, !isOn) },
                 )
                 .padding(horizontal = TILE_PADDING),
             horizontalArrangement = Arrangement.spacedBy(TILE_PADDING),

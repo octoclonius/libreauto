@@ -18,8 +18,10 @@ import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
 import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.video.CarDisplays
+import io.github.octoclonius.libreauto.session.video.CarHome
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
 
@@ -29,14 +31,16 @@ class CarSession internal constructor(
     private val control: ChannelSender,
     private val version: ProtocolVersion,
     private val calls: CallRepository,
+    private val privileged: PrivilegedServiceConnection,
+    carHome: CarHome,
 ) : Closeable {
 
     private companion object {
         const val TAG = "CarSession"
     }
 
-    val displays = CarDisplays()
-    val tasks = CarTasks()
+    val displays = CarDisplays(privileged, carHome)
+    val tasks = CarTasks(displays.car, privileged)
     val buttons = CarButtons(context, calls)
 
     private val channels = LinkedHashMap<Int, CarChannel>()
@@ -81,6 +85,7 @@ class CarSession internal constructor(
                 isDriverOnRight,
                 displays,
                 tasks,
+                privileged,
             )
         open(video)
         val source = inputSource(services, sink.displayId)
@@ -95,6 +100,7 @@ class CarSession internal constructor(
                 video::layout,
                 buttons,
                 displays,
+                privileged,
             )
         )
     }
@@ -108,7 +114,7 @@ class CarSession internal constructor(
         val source = audioSource(services)
         if (source == null) Log.w(TAG, "The car has no microphone")
         if (sinks.isEmpty() && source == null) return
-        val carAudio = CarAudio(context, control, calls)
+        val carAudio = CarAudio(context, control, calls, privileged)
         audio = carAudio
         val audioChannels =
             sinks.map { (type, sink) ->
@@ -140,7 +146,15 @@ class CarSession internal constructor(
             Log.w(TAG, "The car has no Bluetooth service LibreAuto can pair with")
             return
         }
-        open(BluetoothChannel(context, ChannelSender(link, bluetooth.channel), bluetooth, version))
+        open(
+            BluetoothChannel(
+                context,
+                ChannelSender(link, bluetooth.channel),
+                bluetooth,
+                version,
+                privileged,
+            )
+        )
     }
 
     private fun open(channel: CarChannel) {

@@ -14,6 +14,7 @@ import io.github.octoclonius.libreauto.protocol.input.parseInputReport
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.video.CarLayout
 import io.github.octoclonius.libreauto.session.video.CarDisplays
 
@@ -23,6 +24,7 @@ internal class InputChannel(
     private val layout: () -> CarLayout?,
     private val buttons: CarButtons,
     private val displays: CarDisplays,
+    private val privileged: PrivilegedServiceConnection,
 ) : CarChannel {
 
     companion object {
@@ -114,12 +116,25 @@ internal class InputChannel(
                         }
                 }
                 when (appsGesture) {
-                    AppsGesture.App -> PrivilegedTouches.send(eventTimeNanos, routed.touch)
+                    AppsGesture.App -> sendToApps(eventTimeNanos, routed.touch)
                     AppsGesture.Overlay -> overlayTouches.send(eventTimeNanos, routed.touch)
                     AppsGesture.Captured -> {}
                 }
             }
             TouchTarget.Rail -> railTouches.send(eventTimeNanos, routed.touch)
+        }
+    }
+
+    private fun sendToApps(eventTimeNanos: Long, touch: Touch) {
+        privileged.call("take a touch") {
+            it.sendTouch(
+                eventTimeNanos,
+                touch.action,
+                touch.actionIndex,
+                IntArray(touch.pointers.size) { index -> touch.pointers[index].id },
+                IntArray(touch.pointers.size) { index -> touch.pointers[index].x },
+                IntArray(touch.pointers.size) { index -> touch.pointers[index].y },
+            )
         }
     }
 }

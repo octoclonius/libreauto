@@ -13,6 +13,7 @@ import java.util.Locale
 
 internal class CarHandsFree(
     context: Context,
+    private val privileged: PrivilegedBluetooth,
     private val carAddress: String,
     private val pairingMethod: Int,
     private val sendPairingRequest: (phoneAddress: String, pairingMethod: Int) -> Unit,
@@ -76,7 +77,7 @@ internal class CarHandsFree(
 
                 override fun onKeyMissing() {
                     Log.i(TAG, "The car lost the pairing's key; removing the pairing")
-                    PrivilegedBluetooth.removePairing(carAddress)
+                    privileged.removePairing(carAddress)
                 }
             },
         )
@@ -88,7 +89,7 @@ internal class CarHandsFree(
                 TAG,
                 "Connecting hands-free to the car $carAddress, pairing method $pairingMethod",
             )
-            PrivilegedBluetooth.grantPermission()
+            privileged.grantPermission()
             phone.start()
             enter(HandsFreeState.Enabling)
         }
@@ -204,21 +205,21 @@ internal class CarHandsFree(
                     switchTo(HandsFreeState.WaitingForProfile)
                 } else {
                     phone.closeProfile()
-                    if (!PrivilegedBluetooth.turnOn()) onEvent(HandsFreeEvent.EnablingFailed)
+                    if (!privileged.turnOn()) onEvent(HandsFreeEvent.EnablingFailed)
                 }
             HandsFreeAction.RequestProfile -> phone.requestProfile()
             HandsFreeAction.RequestPairing -> requestPairing()
             HandsFreeAction.Pair ->
-                if (!PrivilegedBluetooth.pair(carAddress)) {
+                if (!privileged.pair(carAddress)) {
                     Log.w(TAG, "Android didn't start pairing with the car")
                     switchTo(HandsFreeState.CancelingPairing)
                 }
             HandsFreeAction.ConnectBluetooth ->
-                if (!PrivilegedBluetooth.connectHandsFree(carAddress)) {
+                if (!privileged.connectHandsFree(carAddress)) {
                     Log.w(TAG, "Allowing and connecting hands-free failed")
                 }
             HandsFreeAction.AllowHandsFree ->
-                if (!PrivilegedBluetooth.allowHandsFree(carAddress)) {
+                if (!privileged.allowHandsFree(carAddress)) {
                     Log.w(TAG, "Allowing hands-free failed")
                 }
             HandsFreeAction.CancelPairing -> cancelPairing()
@@ -227,7 +228,7 @@ internal class CarHandsFree(
 
     private fun requestPairing() {
         clearAuthentication()
-        val phoneAddress = PrivilegedBluetooth.address()
+        val phoneAddress = privileged.address()
         if (phoneAddress == null) {
             Log.w(TAG, "The phone's Bluetooth address is unknown")
             onEvent(HandsFreeEvent.CarCannotBePaired)
@@ -244,7 +245,7 @@ internal class CarHandsFree(
             return
         }
         Log.i(TAG, "Canceling the pairing under way")
-        PrivilegedBluetooth.cancelPairing(carAddress)
+        privileged.cancelPairing(carAddress)
         handler.postDelayed(
             { onEvent(HandsFreeEvent.Timeout) },
             scheduledToken,
@@ -259,16 +260,16 @@ internal class CarHandsFree(
         val (isDone, status) =
             when (variant) {
                 BluetoothDevice.PAIRING_VARIANT_PIN ->
-                    PrivilegedBluetooth.setPin(carAddress, checkNotNull(data)) to
+                    privileged.setPin(carAddress, checkNotNull(data)) to
                         MessageStatus.SUCCESS
                 BluetoothDevice.PAIRING_VARIANT_PASSKEY_CONFIRMATION -> {
                     val passkey = String.format(Locale.US, "%0${PASSKEY_DIGITS}d", pairingKey)
                     if (passkey == data) {
-                        PrivilegedBluetooth.confirmPairing(carAddress, true) to
+                        privileged.confirmPairing(carAddress, true) to
                             MessageStatus.SUCCESS
                     } else {
                         Log.w(TAG, "The car's passkey doesn't match Android's")
-                        PrivilegedBluetooth.confirmPairing(carAddress, false)
+                        privileged.confirmPairing(carAddress, false)
                         false to MessageStatus.BLUETOOTH_AUTH_DATA_MISMATCH
                     }
                 }
@@ -282,7 +283,7 @@ internal class CarHandsFree(
             if (isDone) "Authenticated the pairing" else "The pairing's authentication failed",
         )
         clearAuthentication()
-        if (!isDone) PrivilegedBluetooth.cancelPairing(carAddress)
+        if (!isDone) privileged.cancelPairing(carAddress)
         sendAuthenticationResult(status)
     }
 

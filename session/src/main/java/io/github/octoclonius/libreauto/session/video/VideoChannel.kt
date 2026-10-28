@@ -28,6 +28,7 @@ import io.github.octoclonius.libreauto.protocol.media.withUiConfig
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import java.io.IOException
 import java.net.ProtocolException
@@ -40,6 +41,7 @@ internal class VideoChannel(
     private val isDriverOnRight: Boolean,
     private val displays: CarDisplays,
     private val tasks: CarTasks,
+    private val privileged: PrivilegedServiceConnection,
 ) : CarChannel {
 
     companion object {
@@ -281,6 +283,7 @@ internal class VideoChannel(
                 sender::send,
                 displays,
                 tasks,
+                privileged,
             )
         stream.start()
         return VideoChannelState.Started(layout, ready.uiConfig, stream, isProjected = true)

@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 internal class PrivilegedAudio(
+    private val privileged: PrivilegedServiceConnection,
     private val outputs: List<AudioOutput>,
     private val input: AudioInput?,
     private val onPipes: (List<ParcelFileDescriptor>) -> Unit,
@@ -47,7 +48,7 @@ internal class PrivilegedAudio(
         }
 
     fun start() {
-        scope.launch { PrivilegedServiceConnection.service.collect(::follow) }
+        scope.launch { privileged.service.collect(::follow) }
     }
 
     override fun close() {
