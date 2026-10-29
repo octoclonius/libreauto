@@ -1,7 +1,7 @@
 package io.github.octoclonius.libreauto.projection.tasks
 
 import android.content.Context
-import io.github.octoclonius.libreauto.projection.jsonDataStore
+import io.github.octoclonius.libreauto.projection.datastore.jsonDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

@@ -4,7 +4,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.util.Log
 import android.view.KeyEvent
-import io.github.octoclonius.libreauto.projection.jsonDataStore
+import io.github.octoclonius.libreauto.projection.datastore.jsonDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.serializer

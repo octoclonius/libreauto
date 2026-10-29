@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.projection
+package io.github.octoclonius.libreauto.projection.datastore
 
 import android.content.Context
 import androidx.datastore.core.CorruptionException

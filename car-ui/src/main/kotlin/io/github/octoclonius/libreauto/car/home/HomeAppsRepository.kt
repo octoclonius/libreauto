@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.util.Log
 import io.github.octoclonius.libreauto.car.apps.AppSection
 import io.github.octoclonius.libreauto.car.apps.PhoneAppsRepository
-import io.github.octoclonius.libreauto.projection.jsonDataStore
+import io.github.octoclonius.libreauto.projection.datastore.jsonDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

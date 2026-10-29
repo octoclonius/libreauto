@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import io.github.octoclonius.libreauto.projection.datastore.jsonDataStore
 import io.github.octoclonius.libreauto.projection.describe
-import io.github.octoclonius.libreauto.projection.jsonDataStore
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.X509Certificate

@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.projection
+package io.github.octoclonius.libreauto.projection.datastore
 
 import androidx.datastore.core.CorruptionException
 import kotlinx.serialization.builtins.ListSerializer

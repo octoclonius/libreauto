@@ -1,10 +1,10 @@
 package io.github.octoclonius.libreauto.projection.certificate
 
 import androidx.datastore.core.CorruptionException
-import io.github.octoclonius.libreauto.projection.JsonSerializer
 import io.github.octoclonius.libreauto.projection.certificate.CertificateRepository.Choice
-import io.github.octoclonius.libreauto.projection.read
-import io.github.octoclonius.libreauto.projection.readBack
+import io.github.octoclonius.libreauto.projection.datastore.JsonSerializer
+import io.github.octoclonius.libreauto.projection.datastore.read
+import io.github.octoclonius.libreauto.projection.datastore.readBack
 import kotlinx.serialization.builtins.nullable
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull

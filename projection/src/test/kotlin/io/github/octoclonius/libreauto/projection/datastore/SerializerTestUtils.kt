@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.projection
+package io.github.octoclonius.libreauto.projection.datastore
 
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.runBlocking
