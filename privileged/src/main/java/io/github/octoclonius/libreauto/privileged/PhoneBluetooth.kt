@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.privileged
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHeadset
@@ -13,6 +14,7 @@ import android.util.Log
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@SuppressLint("MissingPermission", "HardwareIds")
 internal class PhoneBluetooth(private val context: Context) {
 
     companion object {

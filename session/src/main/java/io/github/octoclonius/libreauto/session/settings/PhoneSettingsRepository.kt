@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.session.settings
 
+import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -81,7 +82,8 @@ class PhoneSettingsRepository(
                                     Settings.Global.BLUETOOTH_ON,
                                     0,
                                 ) == BLUETOOTH_ON,
-                            isMobileDataOn = telephony?.isDataEnabled,
+                            isMobileDataOn =
+                                @SuppressLint("MissingPermission") telephony?.isDataEnabled,
                             isAirplaneModeOn = isAirplaneModeOn(context),
                             isDoNotDisturbOn =
                                 notifications.currentInterruptionFilter !=
