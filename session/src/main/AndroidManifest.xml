@@ -55,7 +55,7 @@
         </service>
 
         <service
-            android:name=".SessionService"
+            android:name=".usb.SessionService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 

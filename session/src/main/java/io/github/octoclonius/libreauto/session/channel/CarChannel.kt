@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session
+package io.github.octoclonius.libreauto.session.channel
 
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.ChannelMessage

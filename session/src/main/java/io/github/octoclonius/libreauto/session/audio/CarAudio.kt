@@ -13,8 +13,8 @@ import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.audioFocusRequest
 import io.github.octoclonius.libreauto.protocol.control.parseAudioFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.AudioType
-import io.github.octoclonius.libreauto.session.ChannelSender
 import io.github.octoclonius.libreauto.session.calls.CallRepository
+import io.github.octoclonius.libreauto.session.channel.ChannelSender
 import io.github.octoclonius.libreauto.session.closeAll
 import io.github.octoclonius.libreauto.session.media.MediaResumption
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection

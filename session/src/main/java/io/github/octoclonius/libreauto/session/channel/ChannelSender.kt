@@ -1,9 +1,9 @@
-package io.github.octoclonius.libreauto.session
+package io.github.octoclonius.libreauto.session.channel
 
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.channelOpenRequest
 
-class ChannelSender(private val link: CarLink, val channel: Int) {
+internal class ChannelSender(private val link: CarLink, val channel: Int) {
 
     fun send(type: Int, body: ByteArray): Boolean =
         link.send(channel, isControl = false, type, body)

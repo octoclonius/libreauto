@@ -5,7 +5,6 @@ import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.util.Log
-import io.github.octoclonius.libreauto.session.SessionService
 
 class UsbAccessoryActivity : Activity() {
 

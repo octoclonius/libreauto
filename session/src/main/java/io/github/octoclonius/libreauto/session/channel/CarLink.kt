@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session
+package io.github.octoclonius.libreauto.session.channel
 
 import android.util.Log
 import io.github.octoclonius.libreauto.protocol.FrameWriter
@@ -6,7 +6,7 @@ import io.github.octoclonius.libreauto.protocol.TlsServer
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
-class CarLink(private val writer: FrameWriter, private val tls: TlsServer) {
+internal class CarLink(private val writer: FrameWriter, private val tls: TlsServer) {
 
     private companion object {
         const val TAG = "CarLink"

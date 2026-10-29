@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session
+package io.github.octoclonius.libreauto.session.usb
 
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
@@ -16,8 +16,9 @@ import android.hardware.usb.UsbManager
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import io.github.octoclonius.libreauto.session.usb.AccessoryLink
-import io.github.octoclonius.libreauto.session.usb.AccessorySessions
+import io.github.octoclonius.libreauto.session.CarConnection
+import io.github.octoclonius.libreauto.session.R
+import io.github.octoclonius.libreauto.session.sessionContainer
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException

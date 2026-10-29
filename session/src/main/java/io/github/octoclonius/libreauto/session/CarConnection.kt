@@ -25,6 +25,9 @@ import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
 import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.session.certificate.CertificateRepository.FetchResult
+import io.github.octoclonius.libreauto.session.channel.CarLink
+import io.github.octoclonius.libreauto.session.channel.ChannelSender
+import io.github.octoclonius.libreauto.session.channel.logUnhandled
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream

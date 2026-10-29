@@ -8,9 +8,9 @@ import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.audioSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.parseMediaAck
 import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
-import io.github.octoclonius.libreauto.session.CarChannel
-import io.github.octoclonius.libreauto.session.ChannelSender
-import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.channel.CarChannel
+import io.github.octoclonius.libreauto.session.channel.ChannelSender
+import io.github.octoclonius.libreauto.session.channel.isChannelOpened
 import java.net.ProtocolException
 
 internal class AudioChannel(

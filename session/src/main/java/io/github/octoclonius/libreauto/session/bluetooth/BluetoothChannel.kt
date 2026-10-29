@@ -13,9 +13,9 @@ import io.github.octoclonius.libreauto.protocol.bluetooth.parseAuthenticationDat
 import io.github.octoclonius.libreauto.protocol.bluetooth.parsePairingResponse
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
-import io.github.octoclonius.libreauto.session.CarChannel
-import io.github.octoclonius.libreauto.session.ChannelSender
-import io.github.octoclonius.libreauto.session.isChannelOpened
+import io.github.octoclonius.libreauto.session.channel.CarChannel
+import io.github.octoclonius.libreauto.session.channel.ChannelSender
+import io.github.octoclonius.libreauto.session.channel.isChannelOpened
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import kotlinx.coroutines.CoroutineScope
 

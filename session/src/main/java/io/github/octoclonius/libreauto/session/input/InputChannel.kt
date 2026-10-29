@@ -11,11 +11,11 @@ import io.github.octoclonius.libreauto.protocol.input.buttonPresses
 import io.github.octoclonius.libreauto.protocol.input.inputBindingRequest
 import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
-import io.github.octoclonius.libreauto.session.CarChannel
-import io.github.octoclonius.libreauto.session.ChannelSender
+import io.github.octoclonius.libreauto.session.channel.CarChannel
+import io.github.octoclonius.libreauto.session.channel.ChannelSender
+import io.github.octoclonius.libreauto.session.channel.isChannelOpened
 import io.github.octoclonius.libreauto.session.display.CarDisplays
 import io.github.octoclonius.libreauto.session.display.CarLayout
-import io.github.octoclonius.libreauto.session.isChannelOpened
 
 internal class InputChannel(
     private val sender: ChannelSender,
