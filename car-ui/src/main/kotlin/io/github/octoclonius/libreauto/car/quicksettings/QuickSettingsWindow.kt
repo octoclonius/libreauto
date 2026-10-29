@@ -14,11 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
+import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 
-internal class QuickSettingsWindow(context: Context, display: Display, private val carUi: CarUi) :
+internal class QuickSettingsWindow(
+    context: Context,
+    display: Display,
+    private val session: CarSession,
+    private val state: QuickSettingsState,
+    private val phoneSettings: PhoneSettingsRepository,
+) :
     ComponentDialog(
         context
             .createDisplayContext(display)
@@ -35,18 +42,18 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
         setContentView(
             ComposeView(context).apply {
                 setContent {
-                    val rail by carUi.session.displays.rail.state.collectAsStateWithLifecycle()
+                    val rail by session.displays.rail.state.collectAsStateWithLifecycle()
                     val settings by remember {
-                        carUi.phoneSettings.settings
+                        phoneSettings.settings
                     }
                         .collectAsStateWithLifecycle(null)
                     CarTheme {
                         QuickSettingsPanel(
                             settings = settings,
                             railSide = rail?.side,
-                            isDriverOnRight = carUi.session.car.isDriverOnRight,
-                            onToggle = carUi.phoneSettings::set,
-                            onClose = { carUi.quickSettings.close() },
+                            isDriverOnRight = session.car.isDriverOnRight,
+                            onToggle = phoneSettings::set,
+                            onClose = { state.close() },
                             onShowPage = ::showPage,
                         )
                     }
@@ -62,7 +69,7 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
     }
 
     private fun showPage(page: PendingIntent) {
-        carUi.quickSettings.close()
-        carUi.session.displays.car.show(page)
+        state.close()
+        session.displays.car.show(page)
     }
 }

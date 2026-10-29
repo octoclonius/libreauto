@@ -1,7 +1,6 @@
 package io.github.octoclonius.libreauto.car
 
 import android.content.Context
-import io.github.octoclonius.libreauto.car.home.HomeNavigation
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
@@ -20,18 +19,19 @@ class CarUi
 internal constructor(
     context: Context,
     val session: CarSession,
-    internal val phoneSettings: PhoneSettingsRepository,
-    internal val railOrder: RailOrderRepository,
+    phoneSettings: PhoneSettingsRepository,
+    railOrder: RailOrderRepository,
 ) : Closeable {
 
     internal val home = HomeState()
     internal val rail = RailState()
     internal val quickSettings = QuickSettingsState()
-    internal val navigation = HomeNavigation(session, home, rail, quickSettings)
+    internal val navigation = CarNavigation(session, home, rail, quickSettings)
 
     private val scope = MainScope()
-    private val railHost = RailHost(context, this)
-    private val quickSettingsHost = QuickSettingsHost(context, this)
+    private val railHost = RailHost(context, session, rail, railOrder, navigation)
+    private val quickSettingsHost =
+        QuickSettingsHost(context, session, quickSettings, phoneSettings)
 
     internal fun start() {
         railHost.start(scope)

@@ -4,7 +4,7 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
-import io.github.octoclonius.libreauto.car.CarUi
+import io.github.octoclonius.libreauto.projection.CarSession
 import io.github.octoclonius.libreauto.projection.display.RailDisplayState
 import io.github.octoclonius.libreauto.projection.tasks.CarTask
 import java.io.Closeable
@@ -14,7 +14,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-internal class RailHost(context: Context, private val carUi: CarUi) : Closeable {
+internal class RailHost(
+    context: Context,
+    private val session: CarSession,
+    private val state: RailState,
+    private val railOrder: RailOrderRepository,
+    private val actions: RailActions,
+) : Closeable {
 
     companion object {
         private const val TAG = "RailHost"
@@ -26,19 +32,18 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
     private var window: RailWindow? = null
 
     fun start(scope: CoroutineScope) {
-        val display = carUi.session.displays.rail
-        val rail = carUi.rail
-        val carTasks = carUi.session.tasks
+        val display = session.displays.rail
+        val carTasks = session.tasks
         scope.launch { display.state.collect(::show) }
         scope.launch { display.touches.collect { window?.dispatchTouchEvent(it) } }
-        scope.launch { display.outsideTouches.collect { rail.cancelClosing() } }
-        scope.launch { rail.closingTaskId.collect { display.captureOutsideTouches(it != null) } }
-        scope.launch { carTasks.state.collect(rail::onTasks) }
+        scope.launch { display.outsideTouches.collect { state.cancelClosing() } }
+        scope.launch { state.closingTaskId.collect { display.captureOutsideTouches(it != null) } }
+        scope.launch { carTasks.state.collect(state::onTasks) }
         scope.launch {
-            combine(carTasks.state, rail.closedTaskIds, shownCount) { tasks, closed, shown ->
+            combine(carTasks.state, state.closedTaskIds, shownCount) { tasks, closed, shown ->
                     nextRailOrder(
                         order.value,
-                        carUi.railOrder.taskIds.value,
+                        railOrder.taskIds.value,
                         withoutClosed(tasks, closed),
                         shown,
                     )
@@ -54,7 +59,7 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
 
     private fun onOrder(next: List<CarTask>) {
         order.value = next
-        carUi.railOrder.save(next.map { it.taskId })
+        railOrder.save(next.map { it.taskId })
     }
 
     private fun show(rail: RailDisplayState?) {
@@ -67,7 +72,7 @@ internal class RailHost(context: Context, private val carUi: CarUi) : Closeable 
             return
         }
         val created =
-            RailWindow(context, display, rail, carUi, order.asStateFlow()) {
+            RailWindow(context, display, rail, session, state, actions, order.asStateFlow()) {
                 shownCount.value = it
             }
         try {

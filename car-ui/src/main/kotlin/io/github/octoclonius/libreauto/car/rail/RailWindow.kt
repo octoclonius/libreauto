@@ -16,10 +16,10 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
+import io.github.octoclonius.libreauto.projection.CarSession
 import io.github.octoclonius.libreauto.projection.display.RailDisplayState
 import io.github.octoclonius.libreauto.projection.tasks.CarTask
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +28,9 @@ internal class RailWindow(
     context: Context,
     display: Display,
     private val rail: RailDisplayState,
-    private val carUi: CarUi,
+    private val session: CarSession,
+    private val state: RailState,
+    private val actions: RailActions,
     private val order: StateFlow<List<CarTask>>,
     private val onShownCount: (Int) -> Unit,
 ) :
@@ -47,7 +49,9 @@ internal class RailWindow(
         super.onCreate(savedInstanceState)
         setContentView(
             ComposeView(context).apply {
-                setContent { CarTheme { RailContent(rail, carUi, order, onShownCount) } }
+                setContent {
+                    CarTheme { RailContent(rail, session, state, actions, order, onShownCount) }
+                }
             }
         )
         window?.run {
@@ -60,20 +64,21 @@ internal class RailWindow(
 @Composable
 private fun RailContent(
     rail: RailDisplayState,
-    carUi: CarUi,
+    session: CarSession,
+    state: RailState,
+    actions: RailActions,
     order: StateFlow<List<CarTask>>,
     onShownCount: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val apps by
         remember(context, order) {
-                railApps(context, order, carDensities(carUi.session.displays.car), RAIL_ICON_SIZE)
+                railApps(context, order, carDensities(session.displays.car), RAIL_ICON_SIZE)
             }
             .collectAsStateWithLifecycle(emptyList())
-    val closingTaskId by carUi.rail.closingTaskId.collectAsStateWithLifecycle()
-    val closedTaskIds by carUi.rail.closedTaskIds.collectAsStateWithLifecycle()
-    val tasks by carUi.session.tasks.state.collectAsStateWithLifecycle()
-    val navigation = carUi.navigation
+    val closingTaskId by state.closingTaskId.collectAsStateWithLifecycle()
+    val closedTaskIds by state.closedTaskIds.collectAsStateWithLifecycle()
+    val tasks by session.tasks.state.collectAsStateWithLifecycle()
     val insets = rail.contentInsets
     val padding =
         with(LocalDensity.current) {
@@ -86,18 +91,18 @@ private fun RailContent(
         }
     Rail(
         side = rail.side,
-        isDriverOnRight = carUi.session.car.isDriverOnRight,
-        carStatusBar = carUi.session.car.statusBar,
+        isDriverOnRight = session.car.isDriverOnRight,
+        carStatusBar = session.car.statusBar,
         contentPadding = padding,
         apps = apps.filter { it.task.taskId !in closedTaskIds },
         closingTaskId = closingTaskId,
         isAppInFront = tasks.frontTaskId != null,
-        onButtonClick = navigation::onAppsButton,
-        onAppClick = { navigation.onRailAppClick(it.task) },
-        onAppLongClick = { navigation.onRailAppLongClick(it.task) },
-        onAppClose = { navigation.onRailAppClose(it.task) },
-        onCancelClose = { carUi.rail.cancelClosing() },
-        onStatusClick = navigation::onRailStatusClick,
+        onButtonClick = actions::onAppsButton,
+        onAppClick = { actions.onAppClick(it.task) },
+        onAppLongClick = { actions.onAppLongClick(it.task) },
+        onAppClose = { actions.onAppClose(it.task) },
+        onCancelClose = { state.cancelClosing() },
+        onStatusClick = actions::onStatusClick,
         onShownCount = onShownCount,
         modifier = Modifier.fillMaxSize(),
     )
