@@ -145,8 +145,7 @@ internal class VideoChannel(
             uiConfig = updatedUiConfig
             reply(format, uiConfig)
         }
-        val ready =
-            VideoChannelState.Ready(configIndex, format, uiConfig, decoderDepth, maxUnacked)
+        val ready = VideoChannelState.Ready(configIndex, format, uiConfig, decoderDepth, maxUnacked)
         if (current.pendingFocus?.isProjected == true) return start(ready)
         sender.send(MediaMessageType.VIDEO_FOCUS_REQUEST, projectedVideoFocusRequest())
         Log.i(TAG, "Requested projected video focus on channel $channel")
@@ -257,8 +256,7 @@ internal class VideoChannel(
         )
         return when (current) {
             is VideoChannelState.SettingUp -> current.copy(pendingFocus = notification)
-            is VideoChannelState.Ready ->
-                if (notification.isProjected) start(current) else current
+            is VideoChannelState.Ready -> if (notification.isProjected) start(current) else current
             is VideoChannelState.Started -> onFocusChanged(current, notification.isProjected)
             else -> current
         }

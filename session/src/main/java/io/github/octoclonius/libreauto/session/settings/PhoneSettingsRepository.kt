@@ -50,89 +50,86 @@ class PhoneSettingsRepository(
 
     private val context = context.applicationContext
 
-    val settings: Flow<PhoneSettingsState> =
-        callbackFlow {
-                val handler = Handler(Looper.getMainLooper())
-                val wifi = context.getSystemService(WifiManager::class.java)
-                val notifications = context.getSystemService(NotificationManager::class.java)
-                val location = context.getSystemService(LocationManager::class.java)
-                val subscription = SubscriptionManager.getDefaultDataSubscriptionId()
-                val telephony =
-                    if (
-                        context.packageManager.hasSystemFeature(
-                            PackageManager.FEATURE_TELEPHONY_DATA
-                        ) && SubscriptionManager.isValidSubscriptionId(subscription)
-                    ) {
-                        context
-                            .getSystemService(TelephonyManager::class.java)
-                            .createForSubscriptionId(subscription)
-                    } else {
-                        null
-                    }
-
-                fun update() {
-                    trySend(
-                        PhoneSettingsState(
-                            isWifiOn =
-                                wifi.wifiState == WifiManager.WIFI_STATE_ENABLED ||
-                                    wifi.wifiState == WifiManager.WIFI_STATE_ENABLING,
-                            isBluetoothOn =
-                                Settings.Global.getInt(
-                                    context.contentResolver,
-                                    Settings.Global.BLUETOOTH_ON,
-                                    0,
-                                ) == BLUETOOTH_ON,
-                            isMobileDataOn =
-                                @SuppressLint("MissingPermission") telephony?.isDataEnabled,
-                            isAirplaneModeOn = isAirplaneModeOn(context),
-                            isDoNotDisturbOn =
-                                notifications.currentInterruptionFilter !=
-                                    NotificationManager.INTERRUPTION_FILTER_ALL &&
-                                    notifications.currentInterruptionFilter !=
-                                        NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
-                            isLocationOn = location.isLocationEnabled,
-                        )
-                    )
-                }
-
-                val receiver =
-                    object : BroadcastReceiver() {
-                        override fun onReceive(context: Context, intent: Intent) = update()
-                    }
-                val bluetoothObserver =
-                    object : ContentObserver(handler) {
-                        override fun onChange(selfChange: Boolean) = update()
-                    }
-                val telephonyCallback =
-                    object : TelephonyCallback(), TelephonyCallback.UserMobileDataStateListener {
-                        override fun onUserMobileDataStateChanged(enabled: Boolean) = update()
-                    }
-                context.registerReceiver(
-                    receiver,
-                    IntentFilter().apply {
-                        addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
-                        addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
-                        addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
-                        addAction(LocationManager.MODE_CHANGED_ACTION)
-                    },
-                    null,
-                    handler,
-                    Context.RECEIVER_NOT_EXPORTED,
-                )
-                context.contentResolver.registerContentObserver(
-                    Settings.Global.getUriFor(Settings.Global.BLUETOOTH_ON),
-                    false,
-                    bluetoothObserver,
-                )
-                telephony?.registerTelephonyCallback(context.mainExecutor, telephonyCallback)
-                update()
-                awaitClose {
-                    context.unregisterReceiver(receiver)
-                    context.contentResolver.unregisterContentObserver(bluetoothObserver)
-                    telephony?.unregisterTelephonyCallback(telephonyCallback)
-                }
+    val settings: Flow<PhoneSettingsState> = callbackFlow {
+        val handler = Handler(Looper.getMainLooper())
+        val wifi = context.getSystemService(WifiManager::class.java)
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        val location = context.getSystemService(LocationManager::class.java)
+        val subscription = SubscriptionManager.getDefaultDataSubscriptionId()
+        val telephony =
+            if (
+                context.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_DATA) &&
+                    SubscriptionManager.isValidSubscriptionId(subscription)
+            ) {
+                context
+                    .getSystemService(TelephonyManager::class.java)
+                    .createForSubscriptionId(subscription)
+            } else {
+                null
             }
-            .distinctUntilChanged()
+
+        fun update() {
+            trySend(
+                PhoneSettingsState(
+                    isWifiOn =
+                        wifi.wifiState == WifiManager.WIFI_STATE_ENABLED ||
+                            wifi.wifiState == WifiManager.WIFI_STATE_ENABLING,
+                    isBluetoothOn =
+                        Settings.Global.getInt(
+                            context.contentResolver,
+                            Settings.Global.BLUETOOTH_ON,
+                            0,
+                        ) == BLUETOOTH_ON,
+                    isMobileDataOn = @SuppressLint("MissingPermission") telephony?.isDataEnabled,
+                    isAirplaneModeOn = isAirplaneModeOn(context),
+                    isDoNotDisturbOn =
+                        notifications.currentInterruptionFilter !=
+                            NotificationManager.INTERRUPTION_FILTER_ALL &&
+                            notifications.currentInterruptionFilter !=
+                                NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
+                    isLocationOn = location.isLocationEnabled,
+                )
+            )
+        }
+
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) = update()
+            }
+        val bluetoothObserver =
+            object : ContentObserver(handler) {
+                override fun onChange(selfChange: Boolean) = update()
+            }
+        val telephonyCallback =
+            object : TelephonyCallback(), TelephonyCallback.UserMobileDataStateListener {
+                override fun onUserMobileDataStateChanged(enabled: Boolean) = update()
+            }
+        context.registerReceiver(
+            receiver,
+            IntentFilter().apply {
+                addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+                addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+                addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
+                addAction(LocationManager.MODE_CHANGED_ACTION)
+            },
+            null,
+            handler,
+            Context.RECEIVER_NOT_EXPORTED,
+        )
+        context.contentResolver.registerContentObserver(
+            Settings.Global.getUriFor(Settings.Global.BLUETOOTH_ON),
+            false,
+            bluetoothObserver,
+        )
+        telephony?.registerTelephonyCallback(context.mainExecutor, telephonyCallback)
+        update()
+        awaitClose {
+            context.unregisterReceiver(receiver)
+            context.contentResolver.unregisterContentObserver(bluetoothObserver)
+            telephony?.unregisterTelephonyCallback(telephonyCallback)
+        }
+    }
+        .distinctUntilChanged()
 
     fun set(setting: QuickSetting, isOn: Boolean) {
         privileged.call("change $setting") { it.setPhoneSetting(setting.code, isOn) }

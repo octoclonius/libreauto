@@ -36,8 +36,9 @@ internal fun audioFrameSamples(audioType: Int): Int? =
         else -> null
     }
 
-internal fun isMediaPlaying(players: List<AudioPlayer>): Boolean =
-    players.any { it.usage == AudioAttributes.USAGE_MEDIA }
+internal fun isMediaPlaying(players: List<AudioPlayer>): Boolean = players.any {
+    it.usage == AudioAttributes.USAGE_MEDIA
+}
 
 internal fun carFocusRequest(
     players: List<AudioPlayer>,

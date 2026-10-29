@@ -2,8 +2,8 @@ package io.github.octoclonius.libreauto.session.display
 
 import android.app.PendingIntent
 import android.graphics.Insets
-import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.privileged.ICarDisplaySession
+import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.session.privileged.call
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

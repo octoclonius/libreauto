@@ -23,15 +23,14 @@ internal class SessionInbox(
         private set
 
     fun start(first: () -> Unit) {
-        job =
-            scope.launch {
-                try {
-                    first()
-                    for (message in queue) handle(message)
-                } catch (e: IOException) {
-                    failure = e
-                }
+        job = scope.launch {
+            try {
+                first()
+                for (message in queue) handle(message)
+            } catch (e: IOException) {
+                failure = e
             }
+        }
     }
 
     fun send(message: ChannelMessage) {

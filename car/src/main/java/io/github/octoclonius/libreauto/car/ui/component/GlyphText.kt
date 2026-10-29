@@ -26,9 +26,9 @@ fun GlyphText(
 ) {
     val glyphs = remember(text) { glyphsOf(text) }
     Canvas(
-        modifier
-            .size(height * (glyphs.width() / GLYPH_HEIGHT), height)
-            .semantics { contentDescription = text }
+        modifier.size(height * (glyphs.width() / GLYPH_HEIGHT), height).semantics {
+            contentDescription = text
+        }
     ) {
         scale(size.height / GLYPH_HEIGHT, Offset.Zero) { drawGlyphs(glyphs, color) }
     }

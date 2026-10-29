@@ -50,22 +50,21 @@ internal fun railApps(
     order: Flow<List<CarTask>>,
     carDensities: Flow<Int>,
     size: Dp,
-): Flow<List<RailApp>> =
-    flow {
-            val looks = HashMap<Pair<String, Int>, Pair<String, Drawable>>()
-            combine(order, carDensities, ::Pair).collect { (tasks, carDensity) ->
-                emit(
-                    tasks.map { task ->
-                        val (label, icon) =
-                            looks.getOrPut(task.packageName to carDensity) {
-                                appLook(context, task.packageName, carDensity, size)
-                            }
-                        RailApp(task, label, icon)
+): Flow<List<RailApp>> = flow {
+    val looks = HashMap<Pair<String, Int>, Pair<String, Drawable>>()
+    combine(order, carDensities, ::Pair).collect { (tasks, carDensity) ->
+        emit(
+            tasks.map { task ->
+                val (label, icon) =
+                    looks.getOrPut(task.packageName to carDensity) {
+                        appLook(context, task.packageName, carDensity, size)
                     }
-                )
+                RailApp(task, label, icon)
             }
-        }
-        .flowOn(Dispatchers.IO)
+        )
+    }
+}
+    .flowOn(Dispatchers.IO)
 
 private fun appLook(
     context: Context,

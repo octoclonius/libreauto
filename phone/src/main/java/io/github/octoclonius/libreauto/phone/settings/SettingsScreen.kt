@@ -15,9 +15,7 @@ import io.github.octoclonius.libreauto.phone.ui.PageScaffold
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onAboutClick: () -> Unit) {
     PageScaffold(title = stringResource(R.string.settings_title), onBack = onBack) { innerPadding ->
-        Column(
-            Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())
-        ) {
+        Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())) {
             NavigationRow(title = stringResource(R.string.about_title), onClick = onAboutClick)
         }
     }

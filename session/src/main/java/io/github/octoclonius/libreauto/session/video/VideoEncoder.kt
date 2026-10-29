@@ -140,11 +140,10 @@ internal class VideoEncoder(
         }
     }
 
-    private fun takePermit(): Boolean =
-        lock.withLock {
-            while (unacked >= maxUnacked && !isClosed) permitFreed.await()
-            if (isClosed) return false
-            unacked++
-            true
-        }
+    private fun takePermit(): Boolean = lock.withLock {
+        while (unacked >= maxUnacked && !isClosed) permitFreed.await()
+        if (isClosed) return false
+        unacked++
+        true
+    }
 }

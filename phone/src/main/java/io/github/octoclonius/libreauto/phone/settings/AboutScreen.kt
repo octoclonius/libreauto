@@ -23,9 +23,7 @@ fun AboutScreen(onBack: () -> Unit, onLicensesClick: () -> Unit) {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }
     PageScaffold(title = stringResource(R.string.about_title), onBack = onBack) { innerPadding ->
-        Column(
-            Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())
-        ) {
+        Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())) {
             versionName?.let {
                 StatusRow(title = stringResource(R.string.version_title), status = it)
             }

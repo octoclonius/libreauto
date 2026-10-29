@@ -27,10 +27,9 @@ class CarUiHolder(
         externalScope.launch {
             carSessionHolder.session.collect { session ->
                 _carUi.value?.close()
-                _carUi.value =
-                    session?.let {
-                        CarUi(context, it, phoneSettings, railOrder).also(CarUi::start)
-                    }
+                _carUi.value = session?.let {
+                    CarUi(context, it, phoneSettings, railOrder).also(CarUi::start)
+                }
             }
         }
     }

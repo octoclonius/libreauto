@@ -43,7 +43,9 @@ class CertificateRepository(
     @Serializable
     class Choice(val packageName: String, val signer: ByteArray) {
         override fun equals(other: Any?): Boolean =
-            other is Choice && packageName == other.packageName && signer.contentEquals(other.signer)
+            other is Choice &&
+                packageName == other.packageName &&
+                signer.contentEquals(other.signer)
 
         override fun hashCode(): Int = 31 * packageName.hashCode() + signer.contentHashCode()
     }

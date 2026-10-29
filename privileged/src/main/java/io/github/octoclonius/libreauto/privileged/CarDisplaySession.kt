@@ -67,11 +67,10 @@ private constructor(
     private val lock = Any()
     private var isClosed = false
     private var isWatchingApp = false
-    private val appDeath =
-        IBinder.DeathRecipient {
-            Log.w(TAG, "The app died; releasing the car display $id")
-            close()
-        }
+    private val appDeath = IBinder.DeathRecipient {
+        Log.w(TAG, "The app died; releasing the car display $id")
+        close()
+    }
 
     val id: Int = display.id
 

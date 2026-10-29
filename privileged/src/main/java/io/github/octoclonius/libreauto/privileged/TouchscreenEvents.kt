@@ -10,12 +10,10 @@ internal fun touchscreenEvents(
     action: Int,
     actionIndex: Int,
     pointers: List<TouchPointer>,
-): List<TouchscreenEvent> =
-    pointers.mapIndexed { index, pointer ->
-        val pointerAction =
-            if (index == actionIndex) fingerAction(action) else MotionEvent.ACTION_MOVE
-        TouchscreenEvent(pointer.id, pointerAction, pointer.x, pointer.y)
-    }
+): List<TouchscreenEvent> = pointers.mapIndexed { index, pointer ->
+    val pointerAction = if (index == actionIndex) fingerAction(action) else MotionEvent.ACTION_MOVE
+    TouchscreenEvent(pointer.id, pointerAction, pointer.x, pointer.y)
+}
 
 private fun fingerAction(action: Int): Int =
     when (action) {

@@ -55,8 +55,9 @@ class SessionService : Service() {
     override fun onCreate() {
         super.onCreate()
         connection = sessionContainer.carConnection()
-        executor =
-            Executors.newSingleThreadExecutor { Thread(it, "usb-car").apply { isDaemon = true } }
+        executor = Executors.newSingleThreadExecutor {
+            Thread(it, "usb-car").apply { isDaemon = true }
+        }
         sessions = AccessorySessions(executor, ::stopSelf, ::leaveAccessoryMode)
         registerReceiver(
             detachReceiver,

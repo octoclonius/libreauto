@@ -50,16 +50,15 @@ private fun dots(vararg tops: Float) =
 private val COLON = dots(COLON_TOP, GLYPH_HEIGHT - DOT_DIAMETER)
 private val DOT = dots(GLYPH_HEIGHT - DOT_DIAMETER)
 
-fun glyphsOf(text: String): List<Glyph> =
-    text.mapNotNull { char ->
-        val digit = Character.digit(char, 10)
-        when {
-            digit >= 0 -> DIGIT_GLYPHS[digit]
-            char == ':' -> COLON
-            char == '.' -> DOT
-            else -> null
-        }
+fun glyphsOf(text: String): List<Glyph> = text.mapNotNull { char ->
+    val digit = Character.digit(char, 10)
+    when {
+        digit >= 0 -> DIGIT_GLYPHS[digit]
+        char == ':' -> COLON
+        char == '.' -> DOT
+        else -> null
     }
+}
 
 fun List<Glyph>.width(weight: Float = 0f): Float =
     if (isEmpty()) 0f

@@ -432,8 +432,7 @@ class VideoFormatTest {
 
     @Test
     fun anyOtherCutoutIsAColumnOfItsWidthOnTheRight() {
-        val format =
-            VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(500, 300, 700, 400)))
+        val format = VideoFormat(1280, 720, 30, 160, cutouts = listOf(CarRect(500, 300, 700, 400)))
         assertEquals(
             CarInsets(top = 0, bottom = 0, left = 0, right = 200),
             format.displayCutoutInsets,

@@ -12,9 +12,11 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -30,11 +32,14 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "LibreAuto"
-include(":app")
-include(":phone")
-include(":car")
-include(":session")
-include(":privileged")
-include(":privileged-api")
-include(":hidden-api")
-include(":protocol")
+
+include(
+    ":app",
+    ":phone",
+    ":car",
+    ":session",
+    ":privileged",
+    ":privileged-api",
+    ":hidden-api",
+    ":protocol",
+)

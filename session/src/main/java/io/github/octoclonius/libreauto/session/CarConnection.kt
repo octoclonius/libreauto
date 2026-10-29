@@ -48,7 +48,8 @@ internal class CarConnection(
         holder.onState(CarConnectionState.Connecting)
         try {
             val credentials = runBlocking { credentials() } ?: return false
-            val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
+            val tls =
+                TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
             val reader = FrameReader(input, tls::decrypt, SystemClock::uptimeNanos)
             val writer = FrameWriter(output)
             val version = Handshake(reader, writer, tls).run()

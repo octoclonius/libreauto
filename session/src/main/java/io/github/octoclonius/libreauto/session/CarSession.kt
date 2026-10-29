@@ -35,7 +35,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 
-class CarSession internal constructor(
+class CarSession
+internal constructor(
     private val context: Context,
     private val link: CarLink,
     private val control: ChannelSender,
@@ -156,24 +157,22 @@ class CarSession internal constructor(
         if (sinks.isEmpty() && source == null) return
         val carAudio = CarAudio(context, control, calls, privileged, mediaResumption, scope)
         audio = carAudio
-        val audioChannels =
-            sinks.map { (type, sink) ->
-                AudioChannel(
-                    type,
-                    ChannelSender(link, sink.channel),
-                    sink.configs,
-                    carAudio::onChannelSettled,
-                    carAudio::onStreamStartedOrStopped,
-                )
-            }
-        val microphone =
-            source?.let {
-                MicrophoneChannel(
-                    ChannelSender(link, it.channel),
-                    it.config,
-                    carAudio::onChannelSettled,
-                )
-            }
+        val audioChannels = sinks.map { (type, sink) ->
+            AudioChannel(
+                type,
+                ChannelSender(link, sink.channel),
+                sink.configs,
+                carAudio::onChannelSettled,
+                carAudio::onStreamStartedOrStopped,
+            )
+        }
+        val microphone = source?.let {
+            MicrophoneChannel(
+                ChannelSender(link, it.channel),
+                it.config,
+                carAudio::onChannelSettled,
+            )
+        }
         val all = audioChannels + listOfNotNull(microphone)
         all.forEach { channels[it.channel] = it }
         carAudio.start(audioChannels, microphone)

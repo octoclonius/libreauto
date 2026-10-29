@@ -57,13 +57,11 @@ class InputTest {
     fun aReportHasTheTimeAsField1AndTheTouchAsField3() {
         val report =
             parseInputReport(
-                bytes(
-                    0x08, 0x80, 0xC1, 0xD5, 0xD6, 0xCE, 0x91, 0xDD, 0xED, 0x18,
-                    0x1A, 0x0E,
-                    0x0A, 0x08, 0x08, 0x90, 0x03, 0x10, 0xAC, 0x02, 0x18, 0x00,
-                    0x10, 0x00,
-                    0x18, 0x00,
-                )
+                bytes(0x08, 0x80, 0xC1, 0xD5, 0xD6, 0xCE, 0x91, 0xDD, 0xED, 0x18) +
+                    bytes(0x1A, 0x0E) +
+                    bytes(0x0A, 0x08, 0x08, 0x90, 0x03, 0x10, 0xAC, 0x02, 0x18, 0x00) +
+                    bytes(0x10, 0x00) +
+                    bytes(0x18, 0x00)
             )
         assertEquals(1_791_153_425_394_000_000, report.timestamp)
         val touch = report.touch
@@ -79,13 +77,11 @@ class InputTest {
     fun aTouchKeepsItsPointersInOrder() {
         val touch =
             parseInputReport(
-                    bytes(
-                        0x1A, 0x17,
-                        0x0A, 0x07, 0x08, 0x64, 0x10, 0xC8, 0x01, 0x18, 0x00,
-                        0x0A, 0x08, 0x08, 0xAC, 0x02, 0x10, 0x90, 0x03, 0x18, 0x01,
-                        0x10, 0x01,
-                        0x18, 0x05,
-                    )
+                    bytes(0x1A, 0x17) +
+                        bytes(0x0A, 0x07, 0x08, 0x64, 0x10, 0xC8, 0x01, 0x18, 0x00) +
+                        bytes(0x0A, 0x08, 0x08, 0xAC, 0x02, 0x10, 0x90, 0x03, 0x18, 0x01) +
+                        bytes(0x10, 0x01) +
+                        bytes(0x18, 0x05)
                 )
                 .touch
         assertEquals(
@@ -99,9 +95,7 @@ class InputTest {
     @Test
     fun aReportsButtonEventsAreField4WithTheCodeAsField1AndPressedAsField2() {
         val presses =
-            buttonPresses(
-                parseInputReport(bytes(0x22, 0x06, 0x0A, 0x04, 0x08, 0x03, 0x10, 0x01))
-            )
+            buttonPresses(parseInputReport(bytes(0x22, 0x06, 0x0A, 0x04, 0x08, 0x03, 0x10, 0x01)))
         assertEquals(listOf(3 to true), presses.map { it.code to it.isPressed })
     }
 
@@ -109,9 +103,7 @@ class InputTest {
     fun aButtonEventWithoutPressedIsAReleaseAndOneWithoutACodeIsSkipped() {
         val presses =
             buttonPresses(
-                parseInputReport(
-                    bytes(0x22, 0x08, 0x0A, 0x02, 0x08, 0x04, 0x0A, 0x02, 0x10, 0x01)
-                )
+                parseInputReport(bytes(0x22, 0x08, 0x0A, 0x02, 0x08, 0x04, 0x0A, 0x02, 0x10, 0x01))
             )
         assertEquals(listOf(4 to false), presses.map { it.code to it.isPressed })
     }
@@ -121,11 +113,9 @@ class InputTest {
         val presses =
             buttonPresses(
                 parseInputReport(
-                    bytes(
-                        0x22, 0x0C,
-                        0x0A, 0x04, 0x08, 0x55, 0x10, 0x01,
-                        0x0A, 0x04, 0x08, 0x57, 0x10, 0x00,
-                    )
+                    bytes(0x22, 0x0C) +
+                        bytes(0x0A, 0x04, 0x08, 0x55, 0x10, 0x01) +
+                        bytes(0x0A, 0x04, 0x08, 0x57, 0x10, 0x00)
                 )
             )
         assertEquals(listOf(85 to true, 87 to false), presses.map { it.code to it.isPressed })

@@ -57,10 +57,9 @@ internal class CarAudio(
     fun start(channels: List<AudioChannel>, microphone: MicrophoneChannel?) {
         this.channels = channels
         this.microphone = microphone
-        callState =
-            scope.launch {
-                calls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
-            }
+        callState = scope.launch {
+            calls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
+        }
     }
 
     fun onChannelSettled() {
@@ -83,9 +82,9 @@ internal class CarAudio(
         Log.i(TAG, "Car audio focus $state, unsolicited $isUnsolicited")
         act(negotiation.onCarFocus(state, isUnsolicited))
         for (channel in streaming) {
-            channel.ready?.stream?.setAllowed(
-                isStreamAllowed(channel.audioType, negotiation.carState)
-            )
+            channel.ready
+                ?.stream
+                ?.setAllowed(isStreamAllowed(channel.audioType, negotiation.carState))
         }
         act(negotiation.onIdle(isIdle()))
     }
@@ -126,11 +125,10 @@ internal class CarAudio(
                 ?.let { AudioInput(it.config.sampleRate, it.config.channelCount) }
         if (input == null) Log.i(TAG, "Recordings keep the phone's microphone")
         if (streaming.isEmpty() && input == null) return
-        val outputs =
-            streaming.map { channel ->
-                val config = checkNotNull(channel.ready).config
-                AudioOutput(channel.usages, config.sampleRate, config.channelCount)
-            }
+        val outputs = streaming.map { channel ->
+            val config = checkNotNull(channel.ready).config
+            AudioOutput(channel.usages, config.sampleRate, config.channelCount)
+        }
         if (streaming.any { it.audioType == AudioType.MEDIA }) {
             mediaResumption = resumption
         }
@@ -180,9 +178,7 @@ internal class CarAudio(
             isMediaPlaying = isMediaPlaying(divertedPlayers)
             if (!isMediaPlaying) mediaPaused?.complete(Unit)
             for (channel in streaming) {
-                channel.ready?.stream?.setActive(
-                    divertedPlayers.any { it.usage in channel.usages }
-                )
+                channel.ready?.stream?.setActive(divertedPlayers.any { it.usage in channel.usages })
             }
             act(negotiation.onIdle(isIdle()))
             act(

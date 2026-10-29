@@ -111,20 +111,19 @@ internal class VideoCompositor(
     }
 
     fun setAreas(areas: List<Area>, onApplied: (lastFrameNanos: Long?) -> Unit) {
-        val isPosted =
-            handler.post {
-                if (isReleased || isFailed) {
-                    onApplied(null)
-                    return@post
-                }
-                for ((layer, area) in layers.zip(areas)) {
-                    layer.area = area
-                    layer.texture.setDefaultBufferSize(area.width, area.height)
-                }
-                onApplied(lastFrameNanos)
-                hasNewPicture = true
-                if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+        val isPosted = handler.post {
+            if (isReleased || isFailed) {
+                onApplied(null)
+                return@post
             }
+            for ((layer, area) in layers.zip(areas)) {
+                layer.area = area
+                layer.texture.setDefaultBufferSize(area.width, area.height)
+            }
+            onApplied(lastFrameNanos)
+            hasNewPicture = true
+            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+        }
         if (!isPosted) onApplied(null)
     }
 

@@ -26,8 +26,7 @@ class CarLink(private val writer: FrameWriter, private val tls: TlsServer) {
             if (lost.compareAndSet(false, true)) {
                 Log.w(
                     TAG,
-                    "Sending 0x%04x on channel %d failed"
-                        .format(type, channel),
+                    "Sending 0x%04x on channel %d failed".format(type, channel),
                     e,
                 )
             }

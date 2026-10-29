@@ -128,9 +128,14 @@ class FrameReader(
         val data: ByteArray,
         val receivedNanos: Long,
     ) {
-        val isFirst get() = flags and FrameFlags.FIRST != 0
-        val isLast get() = flags and FrameFlags.LAST != 0
-        val isEncrypted get() = flags and FrameFlags.ENCRYPTED != 0
+        val isFirst
+            get() = flags and FrameFlags.FIRST != 0
+
+        val isLast
+            get() = flags and FrameFlags.LAST != 0
+
+        val isEncrypted
+            get() = flags and FrameFlags.ENCRYPTED != 0
     }
 
     private class PendingMessage(val type: Int, val body: ByteArray, val receivedNanos: Long) {

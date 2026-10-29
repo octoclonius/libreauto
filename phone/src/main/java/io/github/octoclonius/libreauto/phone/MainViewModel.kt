@@ -95,11 +95,10 @@ class MainViewModel(
     fun openCertificatePicker() {
         if (_uiState.value.certificateProvider.picker != null) return
         updateCertificateProvider { it.copy(picker = Picker.Loading) }
-        pickerLoadJob =
-            viewModelScope.launch {
-                val options = certificates.options()
-                updateCertificateProvider { it.copy(picker = Picker.Success(options)) }
-            }
+        pickerLoadJob = viewModelScope.launch {
+            val options = certificates.options()
+            updateCertificateProvider { it.copy(picker = Picker.Success(options)) }
+        }
     }
 
     fun closeCertificatePicker() {
@@ -117,33 +116,30 @@ class MainViewModel(
 
     private fun checkCertificate() {
         certificateCheckJob?.cancel()
-        certificateCheckJob =
-            viewModelScope.launch {
-                val choice = certificates.selection.first()
-                if (choice == null) {
-                    updateSelection(Selection.None)
-                } else {
-                    val shown = _uiState.value.certificateProvider.selection
-                    val certificate =
-                        (shown as? Selection.Selected)?.takeIf { it.choice == choice }?.certificate
-                    updateSelection(
-                        Selection.Selected(choice, certificate ?: CertificateState.Loading)
-                    )
-                    val result = certificates.fetch(choice)
-                    val fetched =
-                        when (result) {
-                            is CertificateRepository.FetchResult.Success ->
-                                CertificateState.Success(
-                                    result.certificate.notBefore.toInstant(),
-                                    result.certificate.notAfter.toInstant(),
-                                )
-                            is CertificateRepository.FetchResult.Error ->
-                                CertificateState.Error(result.message)
-                        }
-                    updateSelection(Selection.Selected(choice, fetched))
-                }
-                _uiState.update { it.copy(isRefreshing = false) }
+        certificateCheckJob = viewModelScope.launch {
+            val choice = certificates.selection.first()
+            if (choice == null) {
+                updateSelection(Selection.None)
+            } else {
+                val shown = _uiState.value.certificateProvider.selection
+                val certificate =
+                    (shown as? Selection.Selected)?.takeIf { it.choice == choice }?.certificate
+                updateSelection(Selection.Selected(choice, certificate ?: CertificateState.Loading))
+                val result = certificates.fetch(choice)
+                val fetched =
+                    when (result) {
+                        is CertificateRepository.FetchResult.Success ->
+                            CertificateState.Success(
+                                result.certificate.notBefore.toInstant(),
+                                result.certificate.notAfter.toInstant(),
+                            )
+                        is CertificateRepository.FetchResult.Error ->
+                            CertificateState.Error(result.message)
+                    }
+                updateSelection(Selection.Selected(choice, fetched))
             }
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
     }
 
     private fun updateSelection(selection: Selection) {

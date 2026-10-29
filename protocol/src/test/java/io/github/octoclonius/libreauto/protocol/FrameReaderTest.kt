@@ -76,8 +76,7 @@ class FrameReaderTest {
     fun aMessageWithAPlaintextFrameIsNotEncrypted() {
         val encrypted = TestCipher.encrypt(bytes(0, 1, 1))
         val bytes =
-            frame(4, FIRST or ENCRYPTED, encrypted, totalSize = 4) +
-                frame(4, LAST, bytes(2))
+            frame(4, FIRST or ENCRYPTED, encrypted, totalSize = 4) + frame(4, LAST, bytes(2))
         assertFalse(readAll(bytes).single().isEncrypted)
     }
 
@@ -87,10 +86,7 @@ class FrameReaderTest {
             readAll(frame(1, FIRST or LAST, bytes(1)))
         }
         assertThrows<ProtocolException> {
-            readAll(
-                frame(1, FIRST, bytes(1), totalSize = 3) +
-                    frame(1, LAST, bytes(1, 2))
-            )
+            readAll(frame(1, FIRST, bytes(1), totalSize = 3) + frame(1, LAST, bytes(1, 2)))
         }
     }
 
@@ -107,17 +103,13 @@ class FrameReaderTest {
 
     @Test
     fun moreDataThanTheTotalBreaksTheFraming() {
-        val bytes =
-            frame(1, FIRST, ByteArray(2), totalSize = 3) +
-                frame(1, LAST, ByteArray(2))
+        val bytes = frame(1, FIRST, ByteArray(2), totalSize = 3) + frame(1, LAST, ByteArray(2))
         assertThrows<ProtocolException> { readAll(bytes) }
     }
 
     @Test
     fun lessDataThanTheTotalBreaksTheFraming() {
-        val bytes =
-            frame(1, FIRST, ByteArray(2), totalSize = 4) +
-                frame(1, LAST, ByteArray(1))
+        val bytes = frame(1, FIRST, ByteArray(2), totalSize = 4) + frame(1, LAST, ByteArray(1))
         assertThrows<ProtocolException> { readAll(bytes) }
     }
 

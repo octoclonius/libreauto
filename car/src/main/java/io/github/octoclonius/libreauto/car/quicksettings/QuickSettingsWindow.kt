@@ -36,8 +36,10 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
             ComposeView(context).apply {
                 setContent {
                     val rail by carUi.session.displays.rail.state.collectAsStateWithLifecycle()
-                    val settings by
-                        remember { carUi.phoneSettings.settings }.collectAsStateWithLifecycle(null)
+                    val settings by remember {
+                        carUi.phoneSettings.settings
+                    }
+                        .collectAsStateWithLifecycle(null)
                     CarTheme {
                         QuickSettingsPanel(
                             settings = settings,

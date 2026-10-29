@@ -5,9 +5,8 @@ import android.hardware.input.VirtualTouchscreen
 import android.hardware.input.VirtualTouchscreenConfig
 import java.io.Closeable
 
-internal class VirtualCarTouchscreen private constructor(
-    private val touchscreen: VirtualTouchscreen
-) : Closeable {
+internal class VirtualCarTouchscreen
+private constructor(private val touchscreen: VirtualTouchscreen) : Closeable {
 
     companion object {
         private const val NAME = "LibreAuto touchscreen"

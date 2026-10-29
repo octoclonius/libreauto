@@ -250,13 +250,11 @@ internal class CarHandsFree(
         val (isDone, status) =
             when (variant) {
                 BluetoothDevice.PAIRING_VARIANT_PIN ->
-                    privileged.setPin(carAddress, checkNotNull(data)) to
-                        MessageStatus.SUCCESS
+                    privileged.setPin(carAddress, checkNotNull(data)) to MessageStatus.SUCCESS
                 BluetoothDevice.PAIRING_VARIANT_PASSKEY_CONFIRMATION -> {
                     val passkey = String.format(Locale.US, "%0${PASSKEY_DIGITS}d", pairingKey)
                     if (passkey == data) {
-                        privileged.confirmPairing(carAddress, true) to
-                            MessageStatus.SUCCESS
+                        privileged.confirmPairing(carAddress, true) to MessageStatus.SUCCESS
                     } else {
                         Log.w(TAG, "The car's passkey doesn't match Android's")
                         privileged.confirmPairing(carAddress, false)

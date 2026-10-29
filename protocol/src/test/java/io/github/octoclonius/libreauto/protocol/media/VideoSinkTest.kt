@@ -69,8 +69,7 @@ class VideoSinkTest {
 
     private fun pick(vararg services: ByteArray) = sinkOf(*services)?.channel
 
-    private fun sink(channel: Int, vararg fields: ByteArray) =
-        service(channel, message(3, *fields))
+    private fun sink(channel: Int, vararg fields: ByteArray) = service(channel, message(3, *fields))
 
     private fun service(channel: Int, service: ByteArray) = varint(1, channel) + service
 

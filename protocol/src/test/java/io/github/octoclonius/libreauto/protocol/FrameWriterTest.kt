@@ -67,15 +67,12 @@ class FrameWriterTest {
 
         val messages = frames.chunked(framesPerMessage)
         assertTrue(messages.all { message -> message.map { it[0] }.distinct().size == 1 })
-        val records =
-            messages.flatMap { message ->
-                message.mapIndexed { index, frame ->
-                    val dataOffset =
-                        if (index == 0) HEADER_BYTES + TOTAL_SIZE_BYTES
-                        else HEADER_BYTES
-                    frame[dataOffset]
-                }
+        val records = messages.flatMap { message ->
+            message.mapIndexed { index, frame ->
+                val dataOffset = if (index == 0) HEADER_BYTES + TOTAL_SIZE_BYTES else HEADER_BYTES
+                frame[dataOffset]
             }
+        }
         assertEquals(List(frames.size) { it.toByte() }, records)
     }
 

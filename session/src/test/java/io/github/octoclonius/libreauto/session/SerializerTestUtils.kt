@@ -9,5 +9,6 @@ internal fun <T> readBack(serializer: JsonSerializer<T>, value: T): T {
     return read(serializer, written.toString())
 }
 
-internal fun <T> read(serializer: JsonSerializer<T>, saved: String): T =
-    runBlocking { serializer.readFrom(saved.byteInputStream()) }
+internal fun <T> read(serializer: JsonSerializer<T>, saved: String): T = runBlocking {
+    serializer.readFrom(saved.byteInputStream())
+}

@@ -74,9 +74,7 @@ class ServiceDiscoveryTest {
     @Test
     fun aCarWithoutADisplayNameIsNamedByItsMakeAndModel() {
         val body =
-            message(2, "Make".toByteArray()) +
-                message(3, "Model".toByteArray()) +
-                message(14)
+            message(2, "Make".toByteArray()) + message(3, "Model".toByteArray()) + message(14)
         assertEquals("Make Model", carName(parseServiceDiscoveryResponse(body)))
     }
 

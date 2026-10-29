@@ -26,11 +26,10 @@ class HomeAppsRepository(context: Context, private val externalScope: CoroutineS
     private val _components = MutableStateFlow<List<ComponentName>>(emptyList())
     val components: StateFlow<List<ComponentName>> = _components.asStateFlow()
 
-    private val loading =
-        externalScope.launch {
-            _components.value =
-                dataStore.data.first().map { ComponentName(it.packageName, it.className) }
-        }
+    private val loading = externalScope.launch {
+        _components.value =
+            dataStore.data.first().map { ComponentName(it.packageName, it.className) }
+    }
 
     internal fun add(component: ComponentName, at: Int? = null) {
         update { withAdded(it, component, at ?: it.size) }

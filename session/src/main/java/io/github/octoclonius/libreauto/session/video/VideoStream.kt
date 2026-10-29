@@ -36,8 +36,9 @@ internal class VideoStream(
         private const val OVERLAY_LAYER = 2
     }
 
-    private val executor: ExecutorService =
-        Executors.newSingleThreadExecutor { Thread(it, "video-stream").apply { isDaemon = true } }
+    private val executor: ExecutorService = Executors.newSingleThreadExecutor {
+        Thread(it, "video-stream").apply { isDaemon = true }
+    }
     private var session = FIRST_SESSION
     @Volatile private var encoder: VideoEncoder? = null
     private val displaysLock = Any()

@@ -26,11 +26,10 @@ internal class CarAudioSession(
     private var monitor: AudioActivityMonitor? = null
     private var policy: CarAudioPolicy? = null
     private var isWatchingApp = false
-    private val appDeath =
-        IBinder.DeathRecipient {
-            Log.w(TAG, "The app died; stopping the car audio")
-            close()
-        }
+    private val appDeath = IBinder.DeathRecipient {
+        Log.w(TAG, "The app died; stopping the car audio")
+        close()
+    }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         checkCaller(TAG, code) { isAppCallAllowed(code, it, appUid, Process.myUid()) }

@@ -14,7 +14,6 @@ fun PhoneTheme(
 ) {
     val context = LocalContext.current
     val colorScheme =
-        if (darkTheme) dynamicDarkColorScheme(context)
-        else dynamicLightColorScheme(context)
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     MaterialTheme(colorScheme = colorScheme, content = content)
 }

@@ -4,8 +4,8 @@ import android.companion.AssociationRequest
 import android.companion.CompanionDeviceManager
 import android.content.Context
 import android.os.Process
-import android.os.UserHandle
 import android.os.SystemClock
+import android.os.UserHandle
 import android.util.Log
 import java.util.concurrent.TimeUnit
 

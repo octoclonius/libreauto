@@ -40,8 +40,9 @@ internal class AudioStream(
     private var session = 0
     private var unacked = 0
     private var carQueueEndNanos = 0L
-    private val drainTimer =
-        Executors.newSingleThreadScheduledExecutor { Thread(it, "audio-stream-drain") }
+    private val drainTimer = Executors.newSingleThreadScheduledExecutor {
+        Thread(it, "audio-stream-drain")
+    }
     private var input: InputStream? = null
     private var reader: Thread? = null
     @Volatile private var isClosed = false
@@ -64,17 +65,16 @@ internal class AudioStream(
     }
 
     fun setAllowed(isAllowed: Boolean) {
-        val stopped =
-            lock.withLock {
-                this.isAllowed = isAllowed
-                if (!isAllowed) isTailing = false
-                if (!isAllowed && isStarted) {
-                    stopLocked()
-                    true
-                } else {
-                    false
-                }
+        val stopped = lock.withLock {
+            this.isAllowed = isAllowed
+            if (!isAllowed) isTailing = false
+            if (!isAllowed && isStarted) {
+                stopLocked()
+                true
+            } else {
+                false
             }
+        }
         if (stopped) onStartedOrStopped()
     }
 
@@ -126,14 +126,13 @@ internal class AudioStream(
             endTail()
             return
         }
-        val started =
-            lock.withLock {
-                if (!isAllowed || (!isActive && !isTailing)) return
-                val starting = !isStarted
-                if (starting) startLocked()
-                sendLocked(frame, capturedNanos)
-                starting
-            }
+        val started = lock.withLock {
+            if (!isAllowed || (!isActive && !isTailing)) return
+            val starting = !isStarted
+            if (starting) startLocked()
+            sendLocked(frame, capturedNanos)
+            starting
+        }
         if (started) onStartedOrStopped()
     }
 
@@ -141,11 +140,10 @@ internal class AudioStream(
         lock.withLock { isTailing } && frame.all { it == 0.toByte() }
 
     private fun endTail() {
-        val stopped =
-            lock.withLock {
-                isTailing = false
-                stopWhenCarQueueEmptyLocked()
-            }
+        val stopped = lock.withLock {
+            isTailing = false
+            stopWhenCarQueueEmptyLocked()
+        }
         if (stopped) onStartedOrStopped()
     }
 
@@ -166,8 +164,7 @@ internal class AudioStream(
     }
 
     private fun onCarQueueEmpty(drainingSession: Int) {
-        val stopped =
-            lock.withLock { drainingSession == session && stopWhenCarQueueEmptyLocked() }
+        val stopped = lock.withLock { drainingSession == session && stopWhenCarQueueEmptyLocked() }
         if (stopped) onStartedOrStopped()
     }
 

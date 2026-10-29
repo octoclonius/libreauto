@@ -14,8 +14,7 @@ fun ProvideCarDensity(carDensity: Int?, content: @Composable () -> Unit) {
     val displayDensity = LocalDensity.current
     val displayViewConfiguration = LocalViewConfiguration.current
     val density =
-        carDensity?.let { it.toFloat() / DisplayMetrics.DENSITY_DEFAULT }
-            ?: displayDensity.density
+        carDensity?.let { it.toFloat() / DisplayMetrics.DENSITY_DEFAULT } ?: displayDensity.density
     val scale = density / displayDensity.density
     val viewConfiguration =
         remember(displayViewConfiguration, scale) {

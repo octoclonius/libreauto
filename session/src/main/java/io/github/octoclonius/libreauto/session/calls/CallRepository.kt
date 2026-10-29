@@ -122,10 +122,9 @@ class CallRepository(
 
     private fun topLevelCalls(): List<Call> = calls.filter { it.parent == null }
 
-    private fun firstActive(calls: List<Call>): Call? =
-        ACTIVE_ORDER.firstNotNullOfOrNull { state ->
-            calls.firstOrNull { it.details.state == state }
-        }
+    private fun firstActive(calls: List<Call>): Call? = ACTIVE_ORDER.firstNotNullOfOrNull { state ->
+        calls.firstOrNull { it.details.state == state }
+    }
 
     private fun callingPackage(call: Call): String? =
         if (call.details.hasProperty(Call.Details.PROPERTY_SELF_MANAGED)) {
