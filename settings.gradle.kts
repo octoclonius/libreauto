@@ -35,8 +35,8 @@ rootProject.name = "LibreAuto"
 
 include(
     ":app",
-    ":phone",
-    ":car",
+    ":phone-ui",
+    ":car-ui",
     ":session",
     ":privileged",
     ":privileged-api",

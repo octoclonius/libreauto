@@ -23,8 +23,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":car"))
-    implementation(project(":phone"))
+    implementation(project(":car-ui"))
+    implementation(project(":phone-ui"))
     implementation(project(":privileged"))
     implementation(project(":session"))
 }
