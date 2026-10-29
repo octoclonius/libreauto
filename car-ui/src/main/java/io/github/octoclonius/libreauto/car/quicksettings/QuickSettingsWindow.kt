@@ -16,7 +16,7 @@ import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
-import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
 
 internal class QuickSettingsWindow(context: Context, display: Display, private val carUi: CarUi) :
     ComponentDialog(

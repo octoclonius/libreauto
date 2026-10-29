@@ -45,8 +45,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
-import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarAlpha
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch

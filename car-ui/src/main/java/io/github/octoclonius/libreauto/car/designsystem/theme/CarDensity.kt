@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui
+package io.github.octoclonius.libreauto.car.designsystem.theme
 
 import android.util.DisplayMetrics
 import androidx.compose.runtime.Composable

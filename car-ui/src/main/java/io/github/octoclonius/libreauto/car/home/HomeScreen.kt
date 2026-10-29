@@ -58,8 +58,8 @@ import io.github.octoclonius.libreauto.car.apps.AppTileSize
 import io.github.octoclonius.libreauto.car.apps.HOME_TILE
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
 import io.github.octoclonius.libreauto.car.apps.TILE_GAP
-import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
-import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarAlpha
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarShapes
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay

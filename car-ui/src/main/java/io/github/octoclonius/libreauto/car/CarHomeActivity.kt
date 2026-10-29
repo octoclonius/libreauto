@@ -20,6 +20,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.apps.AppDrawer
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
+import io.github.octoclonius.libreauto.car.designsystem.component.RetainedVisibility
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
+import io.github.octoclonius.libreauto.car.designsystem.theme.ProvideCarDensity
 import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.car.home.HomeDrag
 import io.github.octoclonius.libreauto.car.home.HomeDragGhost
@@ -30,9 +33,6 @@ import io.github.octoclonius.libreauto.car.home.homeDrag
 import io.github.octoclonius.libreauto.car.home.homeTiles
 import io.github.octoclonius.libreauto.car.touch.TouchIndicator
 import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
-import io.github.octoclonius.libreauto.car.ui.ProvideCarDensity
-import io.github.octoclonius.libreauto.car.ui.RetainedVisibility
-import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 
 class CarHomeActivity : ComponentActivity() {
 

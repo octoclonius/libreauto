@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.theme
+package io.github.octoclonius.libreauto.car.designsystem.theme
 
 object CarAlpha {
     const val DISABLED = 0.38f

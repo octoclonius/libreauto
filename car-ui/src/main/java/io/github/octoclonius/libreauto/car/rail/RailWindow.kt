@@ -19,7 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.carDensities
-import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
 import io.github.octoclonius.libreauto.projection.display.RailDisplayState
 import io.github.octoclonius.libreauto.projection.tasks.CarTask
 import kotlinx.coroutines.flow.StateFlow

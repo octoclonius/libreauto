@@ -16,7 +16,7 @@
  * Modified by LibreAuto: the digit outlines of SystemUI's BatteryGlyph.kt, unchanged, as data.
  */
 
-package io.github.octoclonius.libreauto.car.ui.glyph
+package io.github.octoclonius.libreauto.car.designsystem.glyph
 
 internal val DIGIT_GLYPHS =
     listOf(

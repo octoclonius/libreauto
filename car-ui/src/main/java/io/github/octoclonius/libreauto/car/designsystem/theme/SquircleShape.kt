@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.theme
+package io.github.octoclonius.libreauto.car.designsystem.theme
 
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline

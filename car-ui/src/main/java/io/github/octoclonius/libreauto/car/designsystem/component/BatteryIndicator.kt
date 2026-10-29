@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.component
+package io.github.octoclonius.libreauto.car.designsystem.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.padding
@@ -23,13 +23,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.github.octoclonius.libreauto.car.ui.glyph.GLYPH_HEIGHT
-import io.github.octoclonius.libreauto.car.ui.glyph.Glyph
-import io.github.octoclonius.libreauto.car.ui.glyph.drawGlyphs
-import io.github.octoclonius.libreauto.car.ui.glyph.glyphsOf
-import io.github.octoclonius.libreauto.car.ui.glyph.scaledGlyph
-import io.github.octoclonius.libreauto.car.ui.glyph.width
-import io.github.octoclonius.libreauto.car.ui.icon.MaterialSymbols
+import io.github.octoclonius.libreauto.car.designsystem.glyph.GLYPH_HEIGHT
+import io.github.octoclonius.libreauto.car.designsystem.glyph.Glyph
+import io.github.octoclonius.libreauto.car.designsystem.glyph.drawGlyphs
+import io.github.octoclonius.libreauto.car.designsystem.glyph.glyphsOf
+import io.github.octoclonius.libreauto.car.designsystem.glyph.scaledGlyph
+import io.github.octoclonius.libreauto.car.designsystem.glyph.width
+import io.github.octoclonius.libreauto.car.designsystem.icon.MaterialSymbols
 import kotlin.math.ceil
 
 private const val BODY_WIDTH = 24f

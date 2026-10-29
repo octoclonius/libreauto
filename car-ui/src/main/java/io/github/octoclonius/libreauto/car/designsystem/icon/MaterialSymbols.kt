@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.icon
+package io.github.octoclonius.libreauto.car.designsystem.icon
 
 object MaterialSymbols {
     const val BOLT_FILLED =

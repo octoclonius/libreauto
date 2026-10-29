@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.glyph
+package io.github.octoclonius.libreauto.car.designsystem.glyph
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect

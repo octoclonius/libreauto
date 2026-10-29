@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
-import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarShapes
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 
 data class AppTileSize(val tile: Dp, val icon: Dp, val labelSpacing: Dp, val label: TextUnit) {
     operator fun times(scale: Float): AppTileSize =

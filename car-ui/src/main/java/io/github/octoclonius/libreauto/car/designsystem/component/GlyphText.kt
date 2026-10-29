@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.component
+package io.github.octoclonius.libreauto.car.designsystem.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import io.github.octoclonius.libreauto.car.ui.glyph.GLYPH_HEIGHT
-import io.github.octoclonius.libreauto.car.ui.glyph.drawGlyphs
-import io.github.octoclonius.libreauto.car.ui.glyph.glyphsOf
-import io.github.octoclonius.libreauto.car.ui.glyph.width
+import io.github.octoclonius.libreauto.car.designsystem.glyph.GLYPH_HEIGHT
+import io.github.octoclonius.libreauto.car.designsystem.glyph.drawGlyphs
+import io.github.octoclonius.libreauto.car.designsystem.glyph.glyphsOf
+import io.github.octoclonius.libreauto.car.designsystem.glyph.width
 
 @Composable
 fun GlyphText(

@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.theme
+package io.github.octoclonius.libreauto.car.designsystem.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme

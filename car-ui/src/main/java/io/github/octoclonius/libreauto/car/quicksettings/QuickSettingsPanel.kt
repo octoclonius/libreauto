@@ -32,9 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.octoclonius.libreauto.car.R
-import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
-import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
-import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarAlpha
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarShapes
+import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 import io.github.octoclonius.libreauto.projection.display.RailSide
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsState
 import io.github.octoclonius.libreauto.projection.settings.QuickSetting

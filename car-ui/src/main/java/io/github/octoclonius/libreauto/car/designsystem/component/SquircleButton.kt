@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.car.ui.component
+package io.github.octoclonius.libreauto.car.designsystem.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
