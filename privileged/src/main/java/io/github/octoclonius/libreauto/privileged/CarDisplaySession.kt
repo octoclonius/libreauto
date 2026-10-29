@@ -160,13 +160,15 @@ private constructor(
         synchronized(lock) {
             if (isClosed) return
             isClosed = true
-            closeAll(TAG) {
-                step("Stopping watching the app") {
-                    if (isWatchingApp) app.unlinkToDeath(appDeath, 0)
+            identityCall(TAG, "Releasing the car display $id") {
+                closeAll(TAG) {
+                    step("Stopping watching the app") {
+                        if (isWatchingApp) app.unlinkToDeath(appDeath, 0)
+                    }
+                    step("Moving the car display's tasks to the phone") { tasks.moveToPhone() }
+                    step("Stopping watching the tasks on the car display") { tasks.close() }
+                    step("Releasing the car display $id") { display.close() }
                 }
-                step("Moving the car display's tasks to the phone") { tasks.moveToPhone() }
-                step("Stopping watching the tasks on the car display") { tasks.close() }
-                step("Releasing the car display $id") { display.close() }
             }
         }
     }

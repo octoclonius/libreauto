@@ -66,7 +66,7 @@ internal class CarAudioSession(
     }
 
     override fun close() {
-        synchronized(lock) { closeLocked() }
+        synchronized(lock) { identityCall(TAG, "Stopping the car audio", ::closeLocked) }
     }
 
     private fun closeLocked() {
