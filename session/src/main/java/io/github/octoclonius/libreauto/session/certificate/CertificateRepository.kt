@@ -14,9 +14,11 @@ import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.nullable
 
@@ -63,7 +65,11 @@ class CertificateRepository(
 
     suspend fun options(): List<Option> {
         val chosen = selection.first()
-        return packageManager
+        return withContext(Dispatchers.IO) { queryOptions(chosen) }
+    }
+
+    private fun queryOptions(chosen: Choice?): List<Option> =
+        packageManager
             .queryIntentContentProviders(Intent(ACTION), 0)
             .map { it.providerInfo.applicationInfo }
             .distinctBy { it.packageName }
@@ -79,17 +85,18 @@ class CertificateRepository(
                 }
             }
             .sortedBy { it.name }
-    }
 
     suspend fun select(choice: Choice?) {
         externalScope.launch { dataStore.updateData { choice } }.join()
     }
 
-    fun fetch(choice: Choice): FetchResult =
-        try {
-            request(choice)
-        } catch (e: UnavailableException) {
-            FetchResult.Error(e.message)
+    suspend fun fetch(choice: Choice): FetchResult =
+        withContext(Dispatchers.IO) {
+            try {
+                request(choice)
+            } catch (e: UnavailableException) {
+                FetchResult.Error(e.message)
+            }
         }
 
     private fun request(choice: Choice): FetchResult {

@@ -47,7 +47,7 @@ internal class CarConnection(
     fun run(input: InputStream, output: OutputStream): Boolean {
         holder.onState(CarConnectionState.Connecting)
         try {
-            val credentials = credentials() ?: return false
+            val credentials = runBlocking { credentials() } ?: return false
             val tls = TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
             val reader = FrameReader(input, tls::decrypt, SystemClock::uptimeNanos)
             val writer = FrameWriter(output)
@@ -168,8 +168,8 @@ internal class CarConnection(
         return session
     }
 
-    private fun credentials(): FetchResult.Success? {
-        val choice = runBlocking { certificates.selection.first() }
+    private suspend fun credentials(): FetchResult.Success? {
+        val choice = certificates.selection.first()
         if (choice == null) {
             Log.w(TAG, "No certificate provider selected")
             return null

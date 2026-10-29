@@ -18,7 +18,6 @@ import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
 import io.github.octoclonius.libreauto.session.sessionContainer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class MainUiState(
     val car: CarConnectionState = CarConnectionState.Disconnected,
@@ -99,7 +97,7 @@ class MainViewModel(
         updateCertificateProvider { it.copy(picker = Picker.Loading) }
         pickerLoadJob =
             viewModelScope.launch {
-                val options = withContext(Dispatchers.IO) { certificates.options() }
+                val options = certificates.options()
                 updateCertificateProvider { it.copy(picker = Picker.Success(options)) }
             }
     }
@@ -131,7 +129,7 @@ class MainViewModel(
                     updateSelection(
                         Selection.Selected(choice, certificate ?: CertificateState.Loading)
                     )
-                    val result = withContext(Dispatchers.IO) { certificates.fetch(choice) }
+                    val result = certificates.fetch(choice)
                     val fetched =
                         when (result) {
                             is CertificateRepository.FetchResult.Success ->
