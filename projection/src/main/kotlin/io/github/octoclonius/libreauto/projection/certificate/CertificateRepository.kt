@@ -50,7 +50,7 @@ class CertificateRepository(
         override fun hashCode(): Int = 31 * packageName.hashCode() + signer.contentHashCode()
     }
 
-    class Option(val name: String, val choice: Choice, val selected: Boolean)
+    class Option(val name: String, val choice: Choice, val isSelected: Boolean)
 
     sealed interface FetchResult {
         class Success(val certificate: X509Certificate, val key: PrivateKey) : FetchResult
@@ -80,7 +80,7 @@ class CertificateRepository(
                     Option(
                         packageManager.getApplicationLabel(info).toString(),
                         Choice(info.packageName, signer),
-                        selected =
+                        isSelected =
                             chosen?.packageName == info.packageName &&
                                 isSignedWith(info.packageName, chosen.signer),
                     )

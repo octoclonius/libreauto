@@ -149,7 +149,7 @@ private fun CertificateProviderPickerDialog(
                         for (option in picker.options) {
                             PickerOption(
                                 option.name,
-                                selected = option.selected,
+                                selected = option.isSelected,
                                 enabled = !picked,
                                 onClick = { pick(option.choice) },
                             )

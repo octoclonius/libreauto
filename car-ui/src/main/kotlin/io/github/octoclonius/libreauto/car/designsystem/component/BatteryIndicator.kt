@@ -25,11 +25,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.octoclonius.libreauto.car.designsystem.glyph.GLYPH_HEIGHT
 import io.github.octoclonius.libreauto.car.designsystem.glyph.Glyph
+import io.github.octoclonius.libreauto.car.designsystem.glyph.MaterialSymbols
 import io.github.octoclonius.libreauto.car.designsystem.glyph.drawGlyphs
 import io.github.octoclonius.libreauto.car.designsystem.glyph.glyphsOf
 import io.github.octoclonius.libreauto.car.designsystem.glyph.scaledGlyph
 import io.github.octoclonius.libreauto.car.designsystem.glyph.width
-import io.github.octoclonius.libreauto.car.designsystem.icon.MaterialSymbols
 import kotlin.math.ceil
 
 private const val BODY_WIDTH = 24f

@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -26,7 +27,7 @@ class HomeDrag {
         internal set
 
     var removeCenter by mutableStateOf<Offset?>(null)
-    var removeRadius by mutableStateOf(0f)
+    var removeRadius by mutableFloatStateOf(0f)
     val cells = mutableStateMapOf<Int, Rect>()
 
     val isDragging: Boolean
