@@ -15,6 +15,7 @@ import io.github.octoclonius.libreauto.privileged.api.DisplayTask
 import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.api.NO_TASK
 import io.github.octoclonius.libreauto.privileged.closeAll
+import io.github.octoclonius.libreauto.privileged.listenerCall
 import java.io.Closeable
 
 internal class DisplayTasks(
@@ -158,10 +159,8 @@ internal class DisplayTasks(
         taskIds = tasks.mapTo(HashSet()) { it.taskId }
         if (tasks == reported) return
         reported = tasks
-        try {
+        listenerCall(TAG, "the tasks on the display $displayId") {
             listener.onTasks(tasks.toTypedArray())
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The app is gone; dropped the tasks on the display $displayId", e)
         }
     }
 }

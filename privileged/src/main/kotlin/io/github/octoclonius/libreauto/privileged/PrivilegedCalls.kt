@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.os.Binder
+import android.os.RemoteException
 import android.util.Log
 
 internal fun <T> checkedCall(tag: String, action: String, refusal: String?, call: () -> T): T? {
@@ -20,6 +21,14 @@ internal fun <T> identityCall(tag: String, action: String, call: () -> T): T? {
         null
     } finally {
         Binder.restoreCallingIdentity(identity)
+    }
+}
+
+internal fun listenerCall(tag: String, dropped: String, call: () -> Unit) {
+    try {
+        call()
+    } catch (e: RemoteException) {
+        Log.w(tag, "The app is gone; dropped $dropped", e)
     }
 }
 

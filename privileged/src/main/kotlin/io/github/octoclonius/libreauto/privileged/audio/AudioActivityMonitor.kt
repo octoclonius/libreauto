@@ -7,11 +7,10 @@ import android.media.AudioPlaybackConfiguration
 import android.media.AudioRecordingConfiguration
 import android.os.Handler
 import android.os.Looper
-import android.os.RemoteException
-import android.util.Log
 import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
 import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
 import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.listenerCall
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 
@@ -89,10 +88,8 @@ internal class AudioActivityMonitor(
             focusStack().map {
                 AudioFocusHolder(it.clientId, it.clientUid, it.attributes.usage, it.gainRequest)
             }
-        try {
+        listenerCall(TAG, "the audio activity") {
             listener.onAudioActivity(players.toTypedArray(), focusHolders.toTypedArray())
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The app is gone; dropped the audio activity", e)
         }
     }
 
@@ -102,10 +99,6 @@ internal class AudioActivityMonitor(
             audioManager.activeRecordingConfigurations.any {
                 it.clientAudioSource in CarAudioPolicy.MICROPHONE_SOURCES && !it.isClientSilenced
             }
-        try {
-            listener.onMicrophoneActivity(isRecording)
-        } catch (e: RemoteException) {
-            Log.w(TAG, "The app is gone; dropped the microphone activity", e)
-        }
+        listenerCall(TAG, "the microphone activity") { listener.onMicrophoneActivity(isRecording) }
     }
 }
