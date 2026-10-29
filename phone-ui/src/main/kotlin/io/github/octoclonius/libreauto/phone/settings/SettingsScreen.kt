@@ -9,8 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.R
-import io.github.octoclonius.libreauto.phone.ui.NavigationRow
-import io.github.octoclonius.libreauto.phone.ui.PageScaffold
+import io.github.octoclonius.libreauto.phone.designsystem.component.NavigationRow
+import io.github.octoclonius.libreauto.phone.designsystem.component.PageScaffold
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onAboutClick: () -> Unit) {

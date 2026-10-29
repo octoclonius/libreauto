@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.phone.ui
+package io.github.octoclonius.libreauto.phone.designsystem.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Icon

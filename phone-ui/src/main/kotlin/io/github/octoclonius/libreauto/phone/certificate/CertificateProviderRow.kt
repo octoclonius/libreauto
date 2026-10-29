@@ -34,7 +34,7 @@ import io.github.octoclonius.libreauto.phone.R
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
-import io.github.octoclonius.libreauto.phone.ui.StatusRow
+import io.github.octoclonius.libreauto.phone.designsystem.component.StatusRow
 import io.github.octoclonius.libreauto.projection.certificate.CertificateRepository
 import java.time.Instant
 import java.time.ZoneId

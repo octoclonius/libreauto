@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.R
-import io.github.octoclonius.libreauto.phone.ui.StatusRow
+import io.github.octoclonius.libreauto.phone.designsystem.component.StatusRow
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceState
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceState.Failed
 

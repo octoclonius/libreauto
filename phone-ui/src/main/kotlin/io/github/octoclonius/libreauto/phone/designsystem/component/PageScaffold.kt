@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.phone.ui
+package io.github.octoclonius.libreauto.phone.designsystem.component
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope

@@ -15,8 +15,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderRow
 import io.github.octoclonius.libreauto.phone.connection.CarRow
+import io.github.octoclonius.libreauto.phone.designsystem.component.PageScaffold
 import io.github.octoclonius.libreauto.phone.privileged.PrivilegedServiceRow
-import io.github.octoclonius.libreauto.phone.ui.PageScaffold
 import io.github.octoclonius.libreauto.projection.certificate.CertificateRepository
 
 @OptIn(ExperimentalMaterial3Api::class)

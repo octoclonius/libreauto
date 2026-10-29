@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mikepenz.aboutlibraries.entity.Library
 import io.github.octoclonius.libreauto.phone.R
-import io.github.octoclonius.libreauto.phone.ui.PageScaffold
+import io.github.octoclonius.libreauto.phone.designsystem.component.PageScaffold
 
 private val LICENSE_TEXT_PADDING = 16.dp
 
