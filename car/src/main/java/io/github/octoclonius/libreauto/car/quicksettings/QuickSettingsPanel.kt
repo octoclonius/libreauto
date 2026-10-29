@@ -35,9 +35,9 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
+import io.github.octoclonius.libreauto.session.display.RailSide
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsState
 import io.github.octoclonius.libreauto.session.settings.QuickSetting
-import io.github.octoclonius.libreauto.session.display.RailSide
 
 private val PANEL_MARGIN = CarSpacing.medium
 private val PANEL_PADDING = CarSpacing.large

@@ -13,9 +13,9 @@ import io.github.octoclonius.libreauto.protocol.input.parseInputBindingResponse
 import io.github.octoclonius.libreauto.protocol.input.parseInputReport
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
-import io.github.octoclonius.libreauto.session.isChannelOpened
-import io.github.octoclonius.libreauto.session.display.CarLayout
 import io.github.octoclonius.libreauto.session.display.CarDisplays
+import io.github.octoclonius.libreauto.session.display.CarLayout
+import io.github.octoclonius.libreauto.session.isChannelOpened
 
 internal class InputChannel(
     private val sender: ChannelSender,

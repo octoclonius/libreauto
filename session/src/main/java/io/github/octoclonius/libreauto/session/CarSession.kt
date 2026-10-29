@@ -18,12 +18,12 @@ import io.github.octoclonius.libreauto.session.audio.CarAudio
 import io.github.octoclonius.libreauto.session.audio.MicrophoneChannel
 import io.github.octoclonius.libreauto.session.bluetooth.BluetoothChannel
 import io.github.octoclonius.libreauto.session.calls.CallRepository
+import io.github.octoclonius.libreauto.session.display.CarDisplays
+import io.github.octoclonius.libreauto.session.display.CarHome
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
-import io.github.octoclonius.libreauto.session.display.CarDisplays
-import io.github.octoclonius.libreauto.session.display.CarHome
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
 import java.io.IOException
