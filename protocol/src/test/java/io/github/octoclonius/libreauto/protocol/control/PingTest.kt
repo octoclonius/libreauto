@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.control
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,6 +39,4 @@ class PingTest {
     fun aResponseWithoutATimestampIsEmpty() {
         assertArrayEquals(bytes(), pingResponse(null))
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

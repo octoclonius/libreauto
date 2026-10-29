@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.UiConfig
 import io.github.octoclonius.libreauto.protocol.control.UiCutout
@@ -93,6 +94,4 @@ class UiConfigUpdateTest {
             uiConfigInUse(format, config),
         )
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.Display
 import android.view.ViewGroup
@@ -13,6 +12,7 @@ import androidx.activity.ComponentDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.car.R
@@ -56,7 +56,7 @@ internal class QuickSettingsWindow(context: Context, display: Display, private v
         window?.run {
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setFormat(PixelFormat.TRANSLUCENT)
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         }
     }

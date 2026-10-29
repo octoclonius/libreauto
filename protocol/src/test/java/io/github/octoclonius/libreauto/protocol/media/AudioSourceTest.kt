@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -88,6 +89,4 @@ class AudioSourceTest {
         val body = fields.fold(ByteArray(0), ByteArray::plus)
         return byteArrayOf((number shl 3 or 2).toByte(), body.size.toByte()) + body
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

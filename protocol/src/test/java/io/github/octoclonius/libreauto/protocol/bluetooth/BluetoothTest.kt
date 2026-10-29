@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.bluetooth
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -132,8 +133,6 @@ class BluetoothTest {
         val body = value.toByteArray()
         return byteArrayOf((number shl 3 or 2).toByte(), body.size.toByte()) + body
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 
     private fun message(number: Int, vararg fields: ByteArray): ByteArray {
         val body = fields.fold(ByteArray(0), ByteArray::plus)

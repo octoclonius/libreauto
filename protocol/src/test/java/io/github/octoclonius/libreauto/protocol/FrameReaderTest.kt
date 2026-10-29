@@ -155,8 +155,6 @@ class FrameReaderTest {
         assertEquals(bodies.map { it.size }, messages.map { it.body.size })
     }
 
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
-
     private fun frame(
         channel: Int,
         flags: Int,

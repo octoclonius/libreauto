@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.media
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -46,6 +47,4 @@ class VideoFocusTest {
     fun aTruncatedNotificationIsRefused() {
         assertThrows<IOException> { parseVideoFocusNotification(bytes(0x08, 0x80)) }
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

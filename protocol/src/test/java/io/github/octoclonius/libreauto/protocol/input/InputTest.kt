@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.input
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -139,6 +140,4 @@ class InputTest {
         val body = fields.fold(ByteArray(0), ByteArray::plus)
         return byteArrayOf((number shl 3 or 2).toByte(), body.size.toByte()) + body
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }

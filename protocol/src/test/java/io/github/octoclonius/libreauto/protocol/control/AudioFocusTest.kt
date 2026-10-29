@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.protocol.control
 
+import io.github.octoclonius.libreauto.protocol.bytes
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -25,6 +26,4 @@ class AudioFocusTest {
         assertEquals(1, notification.state)
         assertEquals(null, notification.unsolicited)
     }
-
-    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 }
