@@ -9,7 +9,6 @@ import io.github.octoclonius.libreauto.privileged.NO_TASK
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
-import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenTasks
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +22,6 @@ internal class PrivilegedDisplay(
     private val surface: Surface,
     private var layout: CarLayout,
     private val privileged: PrivilegedServiceConnection,
-    private val openTasks: OpenCarTasks,
     private val carDisplay: CarDisplay,
     private val carTasks: CarTasks,
 ) : Closeable {
@@ -66,8 +64,9 @@ internal class PrivilegedDisplay(
         }
     }
 
-    private fun follow(service: IPrivilegedService?) {
+    private suspend fun follow(service: IPrivilegedService?) {
         if (service == null) Log.i(TAG, "No car display while the privileged service isn't running")
+        val remembered = carTasks.savedOpenTasks()
         synchronized(lock) {
             val change = displayChange(current, service)
             change.release?.let {
@@ -75,15 +74,14 @@ internal class PrivilegedDisplay(
                 current = null
             }
             change.createOn?.let { owner ->
-                current = create(owner)?.let { OwnedDisplay(owner, it) }
+                current = create(owner, remembered)?.let { OwnedDisplay(owner, it) }
             }
         }
     }
 
-    private fun create(service: IPrivilegedService): Int? {
+    private fun create(service: IPrivilegedService, remembered: OpenTasks): Int? {
         val home = carDisplay.home.component
-        val remembered = openTasks.load()
-        val listener = carTasks.listener(home.packageName, openTasks::save)
+        val listener = carTasks.listener(home.packageName)
         val created =
             service.call("create the car display") {
                 it.createDisplay(

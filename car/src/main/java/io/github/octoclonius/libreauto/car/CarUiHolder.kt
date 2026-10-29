@@ -4,7 +4,7 @@ import android.content.Context
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,16 +15,16 @@ class CarUiHolder(
     private val carSessionHolder: CarSessionHolder,
     private val phoneSettings: PhoneSettingsRepository,
     private val railOrder: RailOrderRepository,
+    private val externalScope: CoroutineScope,
 ) {
 
     private val context = context.applicationContext
-    private val scope = MainScope()
 
     private val _carUi = MutableStateFlow<CarUi?>(null)
     val carUi: StateFlow<CarUi?> = _carUi.asStateFlow()
 
     fun start() {
-        scope.launch {
+        externalScope.launch {
             carSessionHolder.session.collect { session ->
                 _carUi.value?.close()
                 _carUi.value =

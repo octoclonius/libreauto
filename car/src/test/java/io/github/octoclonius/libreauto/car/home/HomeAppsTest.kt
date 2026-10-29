@@ -50,28 +50,4 @@ class HomeAppsTest {
         assertEquals(apps, withMoved(apps, 7, 0))
         assertEquals(apps, withRemoved(apps, 7))
     }
-
-    @Test
-    fun theHomeSurvivesSaving() {
-        val saved =
-            listOf(
-                SavedComponent("org.videolan.vlc", "org.videolan.vlc.StartActivity"),
-                SavedComponent("org.videolan.vlc", "org.videolan.vlc.StartActivity"),
-                SavedComponent("com.example.maps", "com.example.maps.MapsActivity"),
-            )
-        assertEquals(saved, decodeHomeApps(encodeHomeApps(saved)))
-    }
-
-    @Test
-    fun somethingUnreadableMeansAnEmptyHome() {
-        assertEquals(
-            emptyList<SavedComponent>(),
-            decodeHomeApps("org.videolan.vlc/org.videolan.vlc.StartActivity"),
-        )
-    }
-
-    @Test
-    fun nothingSavedMeansAnEmptyHome() {
-        assertEquals(emptyList<SavedComponent>(), decodeHomeApps(null))
-    }
 }

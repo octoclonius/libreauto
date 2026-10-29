@@ -92,20 +92,4 @@ class RailOrderTest {
             )
         assertEquals(listOf(music, maps), order)
     }
-
-    @Test
-    fun theRailOrderSurvivesSaving() {
-        val taskIds = listOf(2, 1, 3)
-        assertEquals(taskIds, decodeRailOrder(encodeRailOrder(taskIds)))
-    }
-
-    @Test
-    fun somethingUnreadableMeansNoOrder() {
-        assertEquals(emptyList<Int>(), decodeRailOrder("2/music\n1/maps"))
-    }
-
-    @Test
-    fun nothingSavedMeansNoOrder() {
-        assertEquals(emptyList<Int>(), decodeRailOrder(null))
-    }
 }

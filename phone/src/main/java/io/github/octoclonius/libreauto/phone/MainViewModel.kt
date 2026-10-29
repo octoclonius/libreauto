@@ -23,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -110,15 +111,17 @@ class MainViewModel(
 
     fun chooseCertificateProvider(choice: CertificateRepository.Choice?) {
         closeCertificatePicker()
-        certificates.select(choice)
-        checkCertificate()
+        viewModelScope.launch {
+            certificates.select(choice)
+            checkCertificate()
+        }
     }
 
     private fun checkCertificate() {
         certificateCheckJob?.cancel()
         certificateCheckJob =
             viewModelScope.launch {
-                val choice = certificates.selection.value
+                val choice = certificates.selection.first()
                 if (choice == null) {
                     updateSelection(Selection.None)
                 } else {

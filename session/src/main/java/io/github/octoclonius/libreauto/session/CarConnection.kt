@@ -31,6 +31,8 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.ProtocolException
 import javax.net.ssl.SSLException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 internal class CarConnection(
     private val holder: CarSessionHolder,
@@ -167,7 +169,7 @@ internal class CarConnection(
     }
 
     private fun credentials(): FetchResult.Success? {
-        val choice = certificates.selection.value
+        val choice = runBlocking { certificates.selection.first() }
         if (choice == null) {
             Log.w(TAG, "No certificate provider selected")
             return null

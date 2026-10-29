@@ -31,6 +31,7 @@ internal class CarAudio(
     private val control: ChannelSender,
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
+    private val resumption: MediaResumption,
     private val scope: CoroutineScope,
 ) {
 
@@ -131,7 +132,7 @@ internal class CarAudio(
                 AudioOutput(channel.usages, config.sampleRate, config.channelCount)
             }
         if (streaming.any { it.audioType == AudioType.MEDIA }) {
-            mediaResumption = MediaResumption(context)
+            mediaResumption = resumption
         }
         privilegedAudio =
             PrivilegedAudio(

@@ -22,8 +22,10 @@ import io.github.octoclonius.libreauto.session.display.CarDisplays
 import io.github.octoclonius.libreauto.session.display.CarHome
 import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
+import io.github.octoclonius.libreauto.session.media.MediaResumption
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
+import io.github.octoclonius.libreauto.session.tasks.OpenCarTasksRepository
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
 import java.io.IOException
@@ -42,6 +44,8 @@ class CarSession internal constructor(
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
     carHome: CarHome,
+    openTasks: OpenCarTasksRepository,
+    private val mediaResumption: MediaResumption,
     private val dispatcher: CoroutineDispatcher,
 ) : Closeable {
 
@@ -52,7 +56,7 @@ class CarSession internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     val displays = CarDisplays(carHome)
-    val tasks = CarTasks(displays.car, scope)
+    val tasks = CarTasks(displays.car, scope, openTasks)
     val buttons = CarButtons(context, calls)
 
     private val inbox = SessionInbox(scope, ::handle)
@@ -150,7 +154,7 @@ class CarSession internal constructor(
         val source = audioSource(services)
         if (source == null) Log.w(TAG, "The car has no microphone")
         if (sinks.isEmpty() && source == null) return
-        val carAudio = CarAudio(context, control, calls, privileged, scope)
+        val carAudio = CarAudio(context, control, calls, privileged, mediaResumption, scope)
         audio = carAudio
         val audioChannels =
             sinks.map { (type, sink) ->

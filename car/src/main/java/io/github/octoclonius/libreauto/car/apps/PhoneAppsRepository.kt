@@ -21,9 +21,9 @@ import io.github.octoclonius.libreauto.session.CarSessionHolder
 import io.github.octoclonius.libreauto.session.display.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -55,15 +55,15 @@ class PhoneAppsRepository(
     context: Context,
     private val homeApps: HomeAppsRepository,
     private val carSessionHolder: CarSessionHolder,
+    private val externalScope: CoroutineScope,
 ) {
     private val context = context.applicationContext
-    private val scope = MainScope()
 
     private val _sections = MutableStateFlow<List<AppSection>?>(null)
     val sections: StateFlow<List<AppSection>?> = _sections.asStateFlow()
 
     fun start() {
-        scope.launch {
+        externalScope.launch {
             combine(packageChanges(context), currentCarDensities(carSessionHolder)) { _, density ->
                     density
                 }

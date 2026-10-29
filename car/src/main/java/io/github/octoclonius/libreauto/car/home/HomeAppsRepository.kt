@@ -3,53 +3,65 @@ package io.github.octoclonius.libreauto.car.home
 import android.content.ComponentName
 import android.content.Context
 import android.util.Log
-import io.github.octoclonius.libreauto.session.decodeSaved
+import io.github.octoclonius.libreauto.session.jsonDataStore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.ListSerializer
 
-class HomeAppsRepository(context: Context) {
+class HomeAppsRepository(context: Context, private val externalScope: CoroutineScope) {
 
     private companion object {
         const val TAG = "HomeAppsRepository"
-        const val PREFS = "car_home"
-        const val KEY_APPS = "apps"
+        const val NAME = "car_home"
     }
 
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val dataStore =
+        jsonDataStore(context, NAME, ListSerializer(SavedComponent.serializer()), emptyList())
 
-    private val _components =
-        MutableStateFlow(
-            decodeHomeApps(prefs.getString(KEY_APPS, null)).map {
-                ComponentName(it.packageName, it.className)
-            }
-        )
+    private val _components = MutableStateFlow<List<ComponentName>>(emptyList())
     val components: StateFlow<List<ComponentName>> = _components.asStateFlow()
 
+    private val loading =
+        externalScope.launch {
+            _components.value =
+                dataStore.data.first().map { ComponentName(it.packageName, it.className) }
+        }
+
     internal fun add(component: ComponentName, at: Int? = null) {
-        save(withAdded(_components.value, component, at ?: _components.value.size))
+        update { withAdded(it, component, at ?: it.size) }
     }
 
     internal fun move(from: Int, to: Int) {
-        save(withMoved(_components.value, from, to))
+        update { withMoved(it, from, to) }
     }
 
     internal fun remove(at: Int) {
-        save(withRemoved(_components.value, at))
+        update { withRemoved(it, at) }
     }
 
     internal fun removeAll(gone: Set<ComponentName>) {
-        if (_components.value.none { it in gone }) return
-        Log.i(TAG, "Removed the uninstalled or disabled $gone from the home")
-        save(_components.value.filter { it !in gone })
+        update { components ->
+            if (components.none { it in gone }) return@update components
+            Log.i(TAG, "Removed the uninstalled or disabled $gone from the home")
+            components.filter { it !in gone }
+        }
     }
 
-    private fun save(components: List<ComponentName>) {
-        _components.value = components
-        val saved = components.map { SavedComponent(it.packageName, it.className) }
-        prefs.edit().putString(KEY_APPS, encodeHomeApps(saved)).apply()
+    private fun update(transform: (List<ComponentName>) -> List<ComponentName>) {
+        externalScope.launch {
+            loading.join()
+            val components = transform(_components.value)
+            if (components == _components.value) return@launch
+            _components.value = components
+            dataStore.updateData {
+                components.map { SavedComponent(it.packageName, it.className) }
+            }
+        }
     }
 }
 
@@ -68,8 +80,3 @@ internal fun <T> withRemoved(list: List<T>, at: Int): List<T> =
     if (at in list.indices) list.toMutableList().apply { removeAt(at) } else list
 
 @Serializable internal data class SavedComponent(val packageName: String, val className: String)
-
-internal fun encodeHomeApps(apps: List<SavedComponent>): String = Json.encodeToString(apps)
-
-internal fun decodeHomeApps(encoded: String?): List<SavedComponent> =
-    decodeSaved<List<SavedComponent>>(encoded).orEmpty()

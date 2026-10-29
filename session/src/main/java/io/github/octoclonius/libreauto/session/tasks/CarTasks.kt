@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class CarTask(val taskId: Int, val packageName: String)
@@ -21,6 +22,7 @@ class CarTasks
 internal constructor(
     private val display: CarDisplay,
     private val scope: CoroutineScope,
+    private val openTasks: OpenCarTasksRepository,
 ) {
     private var listener: IDisplayTaskListener? = null
 
@@ -35,10 +37,9 @@ internal constructor(
         display.call("close the task ${task.taskId}") { it.closeTask(task.taskId) }
     }
 
-    internal fun listener(
-        homePackage: String,
-        onState: (CarTasksState) -> Unit,
-    ): IDisplayTaskListener {
+    internal suspend fun savedOpenTasks(): OpenTasks = openTasks.openTasks.first()
+
+    internal fun listener(homePackage: String): IDisplayTaskListener {
         val created =
             object : IDisplayTaskListener.Stub() {
                 override fun onTasks(tasks: Array<DisplayTask>) {
@@ -47,7 +48,7 @@ internal constructor(
                         if (listener !== reporting) return@launch
                         val state = carTasks(tasks.toList(), homePackage)
                         _state.value = state
-                        onState(state)
+                        openTasks.save(state)
                     }
                 }
             }

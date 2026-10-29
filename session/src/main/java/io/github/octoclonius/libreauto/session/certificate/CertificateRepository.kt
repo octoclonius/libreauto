@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import io.github.octoclonius.libreauto.session.decodeSaved
 import io.github.octoclonius.libreauto.session.describe
+import io.github.octoclonius.libreauto.session.jsonDataStore
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
@@ -13,13 +13,17 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.nullable
 
-class CertificateRepository(private val context: Context) {
+class CertificateRepository(
+    private val context: Context,
+    private val externalScope: CoroutineScope,
+) {
 
     companion object {
         const val ACTION = "io.github.octoclonius.libreauto.action.CERTIFICATE_PROVIDER"
@@ -31,8 +35,7 @@ class CertificateRepository(private val context: Context) {
 
         private const val CALL_TIMEOUT_MS = 5_000L
 
-        private const val PREFS = "certificate_provider"
-        private const val PREF_CHOICE = "choice"
+        private const val NAME = "certificate_provider"
     }
 
     @Serializable
@@ -54,14 +57,12 @@ class CertificateRepository(private val context: Context) {
     private class UnavailableException(override val message: String) : Exception(message)
 
     private val packageManager = context.packageManager
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val dataStore = jsonDataStore(context, NAME, Choice.serializer().nullable, null)
 
-    private val _selection =
-        MutableStateFlow(decodeSaved<Choice>(prefs.getString(PREF_CHOICE, null)))
-    val selection: StateFlow<Choice?> = _selection.asStateFlow()
+    val selection: Flow<Choice?> = dataStore.data
 
-    fun options(): List<Option> {
-        val chosen = selection.value
+    suspend fun options(): List<Option> {
+        val chosen = selection.first()
         return packageManager
             .queryIntentContentProviders(Intent(ACTION), 0)
             .map { it.providerInfo.applicationInfo }
@@ -80,11 +81,8 @@ class CertificateRepository(private val context: Context) {
             .sortedBy { it.name }
     }
 
-    fun select(choice: Choice?) {
-        _selection.value = choice
-        val edit = prefs.edit().clear()
-        if (choice != null) edit.putString(PREF_CHOICE, Json.encodeToString(choice))
-        edit.apply()
+    suspend fun select(choice: Choice?) {
+        externalScope.launch { dataStore.updateData { choice } }.join()
     }
 
     fun fetch(choice: Choice): FetchResult =

@@ -6,18 +6,27 @@ import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
+import kotlinx.coroutines.CoroutineScope
 
 class CarContainer(
     context: Context,
+    applicationScope: CoroutineScope,
     carSessionHolder: CarSessionHolder,
     phoneSettingsRepository: PhoneSettingsRepository,
 ) {
 
-    val homeAppsRepository = HomeAppsRepository(context)
-    val phoneAppsRepository = PhoneAppsRepository(context, homeAppsRepository, carSessionHolder)
-    val railOrderRepository = RailOrderRepository(context)
+    val homeAppsRepository = HomeAppsRepository(context, applicationScope)
+    val phoneAppsRepository =
+        PhoneAppsRepository(context, homeAppsRepository, carSessionHolder, applicationScope)
+    val railOrderRepository = RailOrderRepository(context, applicationScope)
     val carUiHolder =
-        CarUiHolder(context, carSessionHolder, phoneSettingsRepository, railOrderRepository)
+        CarUiHolder(
+            context,
+            carSessionHolder,
+            phoneSettingsRepository,
+            railOrderRepository,
+            applicationScope,
+        )
 
     interface Provider {
         val carContainer: CarContainer

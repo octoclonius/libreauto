@@ -5,43 +5,28 @@ import org.junit.jupiter.api.Test
 
 class OpenCarTasksTest {
 
-    private val none = OpenTasks(emptyList(), null)
-
     @Test
-    fun openTasksSurviveSaving() {
+    fun openTasksAreKeptAsSaved() {
         val tasks = OpenTasks(listOf(42, 7, 1300), 7)
-        assertEquals(tasks, decodeOpenTasks(encodeOpenTasks(tasks)))
+        assertEquals(tasks, tasks.sanitized())
     }
 
     @Test
-    fun theHomeInFrontSurvivesSaving() {
+    fun theHomeInFrontIsKept() {
         val tasks = OpenTasks(listOf(42, 7), null)
-        assertEquals(tasks, decodeOpenTasks(encodeOpenTasks(tasks)))
-    }
-
-    @Test
-    fun nothingSavedMeansNoTasks() {
-        assertEquals(none, decodeOpenTasks(null))
-    }
-
-    @Test
-    fun somethingUnreadableMeansNoTasks() {
-        assertEquals(none, decodeOpenTasks("42,7"))
+        assertEquals(tasks, tasks.sanitized())
     }
 
     @Test
     fun repeatedTasksAreKeptOnce() {
         assertEquals(
             OpenTasks(listOf(42, 7), 42),
-            decodeOpenTasks(encodeOpenTasks(OpenTasks(listOf(42, 7, 42), 42))),
+            OpenTasks(listOf(42, 7, 42), 42).sanitized(),
         )
     }
 
     @Test
     fun aFrontTaskOutsideTheTasksIsDropped() {
-        assertEquals(
-            OpenTasks(listOf(42), null),
-            decodeOpenTasks(encodeOpenTasks(OpenTasks(listOf(42), 9))),
-        )
+        assertEquals(OpenTasks(listOf(42), null), OpenTasks(listOf(42), 9).sanitized())
     }
 }

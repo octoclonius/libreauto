@@ -10,6 +10,7 @@ android {
 dependencies {
     implementation(project(":privileged-api"))
     implementation(project(":protocol"))
+    api(libs.androidx.datastore)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.shizuku.api)

@@ -1,32 +1,29 @@
 package io.github.octoclonius.libreauto.car.rail
 
 import android.content.Context
-import io.github.octoclonius.libreauto.session.decodeSaved
-import kotlinx.coroutines.flow.MutableStateFlow
+import io.github.octoclonius.libreauto.session.jsonDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 
-class RailOrderRepository(context: Context) {
+class RailOrderRepository(context: Context, private val externalScope: CoroutineScope) {
 
     private companion object {
-        const val PREFS = "car_rail"
-        const val KEY_ORDER = "order"
+        const val NAME = "car_rail"
     }
 
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val dataStore =
+        jsonDataStore(context, NAME, ListSerializer(Int.serializer()), emptyList())
 
-    private val _taskIds = MutableStateFlow(decodeRailOrder(prefs.getString(KEY_ORDER, null)))
-    val taskIds: StateFlow<List<Int>> = _taskIds.asStateFlow()
+    val taskIds: StateFlow<List<Int>> =
+        dataStore.data.stateIn(externalScope, SharingStarted.Eagerly, emptyList())
 
     internal fun save(taskIds: List<Int>) {
-        if (taskIds.isEmpty() || taskIds == _taskIds.value) return
-        _taskIds.value = taskIds
-        prefs.edit().putString(KEY_ORDER, encodeRailOrder(taskIds)).apply()
+        if (taskIds.isEmpty()) return
+        externalScope.launch { dataStore.updateData { taskIds } }
     }
 }
-
-internal fun encodeRailOrder(taskIds: List<Int>): String = Json.encodeToString(taskIds)
-
-internal fun decodeRailOrder(encoded: String?): List<Int> =
-    decodeSaved<List<Int>>(encoded).orEmpty()

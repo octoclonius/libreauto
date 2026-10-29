@@ -14,7 +14,6 @@ import io.github.octoclonius.libreauto.session.display.PrivilegedDisplay
 import io.github.octoclonius.libreauto.session.display.RailVirtualDisplay
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
-import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks
 import java.io.Closeable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -145,7 +144,6 @@ internal class VideoStream(
                             appsInput,
                             layout,
                             privileged,
-                            OpenCarTasks(context),
                             displays.car,
                             tasks,
                         )

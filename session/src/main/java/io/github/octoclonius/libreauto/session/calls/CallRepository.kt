@@ -24,6 +24,7 @@ data class PhoneCallState(val isRinging: Boolean, val isInCall: Boolean) {
 class CallRepository(
     context: Context,
     private val privileged: PrivilegedServiceConnection,
+    private val externalScope: CoroutineScope,
 ) {
 
     private companion object {
@@ -44,11 +45,10 @@ class CallRepository(
 
     private val telecom = context.getSystemService(TelecomManager::class.java)
     private val main = Handler(Looper.getMainLooper())
-    private val scope = CoroutineScope(Dispatchers.IO)
     private val calls = mutableListOf<Call>()
 
     fun start() {
-        scope.launch {
+        externalScope.launch(Dispatchers.IO) {
             privileged.service.collect { service ->
                 service?.call("allow the phone's calls") { it.allowCallAccess() }
             }
