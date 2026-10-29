@@ -8,6 +8,14 @@ import android.os.Parcel
 import android.os.Process
 import android.util.Log
 import android.view.Surface
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
+import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.api.ICarAudioSession
+import io.github.octoclonius.libreauto.privileged.api.ICarDisplaySession
+import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
+import io.github.octoclonius.libreauto.privileged.api.IPhoneBluetoothService
+import io.github.octoclonius.libreauto.privileged.api.IPrivilegedService
 import kotlin.system.exitProcess
 
 class PrivilegedService(context: Context) : IPrivilegedService.Stub() {

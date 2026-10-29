@@ -2,10 +2,10 @@ package io.github.octoclonius.libreauto.session.display
 
 import android.util.Log
 import android.view.Surface
-import io.github.octoclonius.libreauto.privileged.ICarDisplaySession
-import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
-import io.github.octoclonius.libreauto.privileged.IPrivilegedService
-import io.github.octoclonius.libreauto.privileged.NO_TASK
+import io.github.octoclonius.libreauto.privileged.api.ICarDisplaySession
+import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
+import io.github.octoclonius.libreauto.privileged.api.IPrivilegedService
+import io.github.octoclonius.libreauto.privileged.api.NO_TASK
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
 import io.github.octoclonius.libreauto.session.tasks.CarTasks

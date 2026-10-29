@@ -4,10 +4,10 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
-import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
-import io.github.octoclonius.libreauto.privileged.AudioInput
-import io.github.octoclonius.libreauto.privileged.AudioOutput
-import io.github.octoclonius.libreauto.privileged.AudioPlayer
+import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
+import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.audioFocusRequest

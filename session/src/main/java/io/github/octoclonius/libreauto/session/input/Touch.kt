@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.session.input
 
-import io.github.octoclonius.libreauto.privileged.MAX_POINTERS
+import io.github.octoclonius.libreauto.privileged.api.MAX_POINTERS
 import io.github.octoclonius.libreauto.protocol.input.InputReport
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat

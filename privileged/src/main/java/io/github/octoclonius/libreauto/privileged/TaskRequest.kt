@@ -1,5 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
+import io.github.octoclonius.libreauto.privileged.api.NO_TASK
+
 internal fun taskRequestError(taskId: Int, carTaskIds: Set<Int>): String? =
     if (taskId !in carTaskIds) "The task $taskId isn't on the car display" else null
 

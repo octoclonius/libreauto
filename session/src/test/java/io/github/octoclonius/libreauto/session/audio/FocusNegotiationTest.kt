@@ -1,7 +1,7 @@
 package io.github.octoclonius.libreauto.session.audio
 
-import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
-import io.github.octoclonius.libreauto.privileged.AudioPlayer
+import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
 import io.github.octoclonius.libreauto.session.audio.FocusNegotiation.Action
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

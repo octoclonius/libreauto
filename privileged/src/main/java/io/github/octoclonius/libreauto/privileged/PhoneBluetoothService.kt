@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.os.Parcel
 import android.os.Process
+import io.github.octoclonius.libreauto.privileged.api.IPhoneBluetoothService
 
 internal class PhoneBluetoothService(
     context: Context,

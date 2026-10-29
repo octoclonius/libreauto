@@ -1,6 +1,8 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.media.AudioAttributes
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
 
 private const val MAX_CHANNELS = 2
 

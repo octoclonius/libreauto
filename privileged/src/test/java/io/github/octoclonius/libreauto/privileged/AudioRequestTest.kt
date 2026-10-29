@@ -1,5 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

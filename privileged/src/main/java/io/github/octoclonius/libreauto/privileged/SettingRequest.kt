@@ -1,5 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
+import io.github.octoclonius.libreauto.privileged.api.PhoneSetting
+
 private val SETTINGS =
     setOf(
         PhoneSetting.WIFI,

@@ -1,14 +1,14 @@
-package io.github.octoclonius.libreauto.privileged;
+package io.github.octoclonius.libreauto.privileged.api;
 
 import android.content.ComponentName;
 import android.view.Surface;
-import io.github.octoclonius.libreauto.privileged.AudioInput;
-import io.github.octoclonius.libreauto.privileged.AudioOutput;
-import io.github.octoclonius.libreauto.privileged.IAudioActivityListener;
-import io.github.octoclonius.libreauto.privileged.ICarAudioSession;
-import io.github.octoclonius.libreauto.privileged.ICarDisplaySession;
-import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener;
-import io.github.octoclonius.libreauto.privileged.IPhoneBluetoothService;
+import io.github.octoclonius.libreauto.privileged.api.AudioInput;
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput;
+import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener;
+import io.github.octoclonius.libreauto.privileged.api.ICarAudioSession;
+import io.github.octoclonius.libreauto.privileged.api.ICarDisplaySession;
+import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener;
+import io.github.octoclonius.libreauto.privileged.api.IPhoneBluetoothService;
 
 interface IPrivilegedService {
     void destroy() = 16777114;

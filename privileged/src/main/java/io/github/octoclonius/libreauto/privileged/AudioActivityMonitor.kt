@@ -9,6 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import android.os.RemoteException
 import android.util.Log
+import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
+import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 

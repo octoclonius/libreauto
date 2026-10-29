@@ -16,7 +16,7 @@ import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
-import io.github.octoclonius.libreauto.privileged.PhoneSetting
+import io.github.octoclonius.libreauto.privileged.api.PhoneSetting
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow

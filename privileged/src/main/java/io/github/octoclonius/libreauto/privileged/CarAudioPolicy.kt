@@ -18,6 +18,8 @@ import android.system.Os
 import android.system.OsConstants
 import android.system.StructPollfd
 import android.util.Log
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
 import java.io.Closeable
 import java.io.FileOutputStream
 import java.io.IOException

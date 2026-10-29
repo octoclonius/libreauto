@@ -2,13 +2,13 @@ package io.github.octoclonius.libreauto.session.audio
 
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
-import io.github.octoclonius.libreauto.privileged.AudioInput
-import io.github.octoclonius.libreauto.privileged.AudioOutput
-import io.github.octoclonius.libreauto.privileged.AudioPlayer
-import io.github.octoclonius.libreauto.privileged.IAudioActivityListener
-import io.github.octoclonius.libreauto.privileged.ICarAudioSession
-import io.github.octoclonius.libreauto.privileged.IPrivilegedService
+import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
+import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
+import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.api.ICarAudioSession
+import io.github.octoclonius.libreauto.privileged.api.IPrivilegedService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
 import kotlinx.coroutines.CoroutineScope

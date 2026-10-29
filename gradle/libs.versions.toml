@@ -42,6 +42,7 @@ junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+shizuku-shared = { group = "dev.rikka.shizuku", name = "shared", version.ref = "shizuku" }
 spotless-gradlePlugin = { group = "com.diffplug.spotless", name = "spotless-plugin-gradle", version.ref = "spotless" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }

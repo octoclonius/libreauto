@@ -9,7 +9,7 @@ import android.os.IBinder
 import android.os.IInterface
 import android.os.RemoteException
 import android.util.Log
-import io.github.octoclonius.libreauto.privileged.IPrivilegedService
+import io.github.octoclonius.libreauto.privileged.api.IPrivilegedService
 import io.github.octoclonius.libreauto.session.describe
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState.Failed
 import kotlinx.coroutines.flow.MutableStateFlow

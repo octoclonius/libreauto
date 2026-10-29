@@ -3,10 +3,11 @@ package io.github.octoclonius.libreauto.privileged
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import rikka.shizuku.ShizukuApiConstants
 
 internal fun isCallerAllowed(code: Int, callingUid: Int, appUid: Int, serviceUid: Int): Boolean =
     when (code) {
-        IPrivilegedService.Stub.TRANSACTION_destroy -> callingUid == serviceUid
+        ShizukuApiConstants.USER_SERVICE_TRANSACTION_destroy -> callingUid == serviceUid
         else -> isAppCallAllowed(code, callingUid, appUid, serviceUid)
     }
 

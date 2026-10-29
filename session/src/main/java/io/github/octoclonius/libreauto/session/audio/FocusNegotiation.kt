@@ -1,8 +1,8 @@
 package io.github.octoclonius.libreauto.session.audio
 
 import android.media.AudioManager
-import io.github.octoclonius.libreauto.privileged.AudioFocusHolder
-import io.github.octoclonius.libreauto.privileged.AudioPlayer
+import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
+import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
 import io.github.octoclonius.libreauto.protocol.control.AudioFocusRequestType
 import io.github.octoclonius.libreauto.protocol.control.AudioFocusState
 import io.github.octoclonius.libreauto.protocol.media.AudioType

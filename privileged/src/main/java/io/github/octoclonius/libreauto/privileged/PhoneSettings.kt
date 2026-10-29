@@ -15,6 +15,7 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import com.android.internal.telephony.ISub
 import com.android.internal.telephony.ITelephony
+import io.github.octoclonius.libreauto.privileged.api.PhoneSetting
 
 internal class PhoneSettings(private val context: Context) {
 

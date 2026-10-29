@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.privileged
 
 import android.view.MotionEvent
+import io.github.octoclonius.libreauto.privileged.api.MAX_POINTERS
 
 private val TOUCH_ACTIONS =
     setOf(

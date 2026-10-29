@@ -8,6 +8,8 @@ import android.os.Parcel
 import android.os.Process
 import android.util.Log
 import android.view.Surface
+import io.github.octoclonius.libreauto.privileged.api.ICarDisplaySession
+import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
 import java.io.Closeable
 
 internal class CarDisplaySession

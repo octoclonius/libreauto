@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.session.bluetooth
 
-import io.github.octoclonius.libreauto.privileged.IPhoneBluetoothService
+import io.github.octoclonius.libreauto.privileged.api.IPhoneBluetoothService
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.privileged.call
 

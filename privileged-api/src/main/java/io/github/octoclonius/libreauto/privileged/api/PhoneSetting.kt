@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.privileged
+package io.github.octoclonius.libreauto.privileged.api
 
 object PhoneSetting {
     const val WIFI = 1

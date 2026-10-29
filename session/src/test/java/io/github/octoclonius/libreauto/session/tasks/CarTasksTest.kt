@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.session.tasks
 
-import io.github.octoclonius.libreauto.privileged.DisplayTask
+import io.github.octoclonius.libreauto.privileged.api.DisplayTask
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

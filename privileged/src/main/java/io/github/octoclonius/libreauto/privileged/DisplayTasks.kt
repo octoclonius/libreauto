@@ -10,6 +10,9 @@ import android.os.HandlerThread
 import android.os.RemoteException
 import android.util.Log
 import android.view.Display
+import io.github.octoclonius.libreauto.privileged.api.DisplayTask
+import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
+import io.github.octoclonius.libreauto.privileged.api.NO_TASK
 import java.io.Closeable
 
 internal class DisplayTasks(

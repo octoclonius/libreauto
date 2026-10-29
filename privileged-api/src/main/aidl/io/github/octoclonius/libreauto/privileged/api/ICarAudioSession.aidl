@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.privileged;
+package io.github.octoclonius.libreauto.privileged.api;
 
 import android.os.ParcelFileDescriptor;
 

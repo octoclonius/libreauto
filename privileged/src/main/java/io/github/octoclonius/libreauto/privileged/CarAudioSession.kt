@@ -7,6 +7,10 @@ import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
+import io.github.octoclonius.libreauto.privileged.api.AudioInput
+import io.github.octoclonius.libreauto.privileged.api.AudioOutput
+import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.api.ICarAudioSession
 import java.io.Closeable
 
 internal class CarAudioSession(
