@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session
+package io.github.octoclonius.libreauto.session.media
 
 import android.media.AudioManager
 import android.os.SystemClock

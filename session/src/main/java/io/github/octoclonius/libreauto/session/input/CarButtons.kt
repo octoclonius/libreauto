@@ -6,7 +6,7 @@ import android.util.Log
 import android.view.KeyEvent
 import io.github.octoclonius.libreauto.protocol.input.CarButton
 import io.github.octoclonius.libreauto.session.calls.CallRepository
-import io.github.octoclonius.libreauto.session.pressMediaKey
+import io.github.octoclonius.libreauto.session.media.pressMediaKey
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
