@@ -18,7 +18,7 @@ import android.telephony.ServiceState
 import android.telephony.SignalStrength
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
-import io.github.octoclonius.libreauto.session.settings.isAirplaneModeOn
+import io.github.octoclonius.libreauto.projection.settings.isAirplaneModeOn
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

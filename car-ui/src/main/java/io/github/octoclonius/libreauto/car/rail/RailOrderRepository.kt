@@ -1,7 +1,7 @@
 package io.github.octoclonius.libreauto.car.rail
 
 import android.content.Context
-import io.github.octoclonius.libreauto.session.jsonDataStore
+import io.github.octoclonius.libreauto.projection.jsonDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

@@ -26,5 +26,5 @@ dependencies {
     implementation(project(":car-ui"))
     implementation(project(":phone-ui"))
     implementation(project(":privileged"))
-    implementation(project(":session"))
+    implementation(project(":projection"))
 }

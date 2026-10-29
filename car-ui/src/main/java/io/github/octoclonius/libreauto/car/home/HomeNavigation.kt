@@ -3,8 +3,8 @@ package io.github.octoclonius.libreauto.car.home
 import android.view.KeyEvent
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailState
-import io.github.octoclonius.libreauto.session.CarSession
-import io.github.octoclonius.libreauto.session.tasks.CarTask
+import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.tasks.CarTask
 
 internal class HomeNavigation(
     private val session: CarSession,

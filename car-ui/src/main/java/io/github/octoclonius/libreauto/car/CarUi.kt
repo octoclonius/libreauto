@@ -8,9 +8,9 @@ import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.car.rail.RailState
-import io.github.octoclonius.libreauto.session.CarSession
-import io.github.octoclonius.libreauto.session.input.NavigationButton
-import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
+import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.input.NavigationButton
+import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel

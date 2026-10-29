@@ -5,7 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.R
 import io.github.octoclonius.libreauto.phone.ui.StatusRow
-import io.github.octoclonius.libreauto.session.CarConnectionState
+import io.github.octoclonius.libreauto.projection.CarConnectionState
 
 @Composable
 fun CarRow(state: CarConnectionState, modifier: Modifier = Modifier) {

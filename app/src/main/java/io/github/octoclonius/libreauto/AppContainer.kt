@@ -5,7 +5,7 @@ import android.content.Context
 import io.github.octoclonius.libreauto.car.CarContainer
 import io.github.octoclonius.libreauto.car.CarHomeActivity
 import io.github.octoclonius.libreauto.privileged.PrivilegedService
-import io.github.octoclonius.libreauto.session.SessionContainer
+import io.github.octoclonius.libreauto.projection.ProjectionContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,8 +13,8 @@ import kotlinx.coroutines.SupervisorJob
 class AppContainer(context: Context) {
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val sessionContainer =
-        SessionContainer(
+    val projectionContainer =
+        ProjectionContainer(
             context,
             applicationScope,
             privilegedService = ComponentName(context, PrivilegedService::class.java),
@@ -24,7 +24,7 @@ class AppContainer(context: Context) {
         CarContainer(
             context,
             applicationScope,
-            sessionContainer.carSessionHolder,
-            sessionContainer.phoneSettingsRepository,
+            projectionContainer.carSessionHolder,
+            projectionContainer.phoneSettingsRepository,
         )
 }

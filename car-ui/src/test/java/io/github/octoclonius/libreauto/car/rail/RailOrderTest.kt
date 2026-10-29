@@ -1,7 +1,7 @@
 package io.github.octoclonius.libreauto.car.rail
 
-import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.tasks.CarTasksState
+import io.github.octoclonius.libreauto.projection.tasks.CarTask
+import io.github.octoclonius.libreauto.projection.tasks.CarTasksState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

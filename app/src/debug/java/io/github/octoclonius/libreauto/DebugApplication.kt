@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto
 
-import io.github.octoclonius.libreauto.session.DebugCarService
+import io.github.octoclonius.libreauto.projection.DebugCarService
 
 class DebugApplication : LibreAutoApplication() {
     override fun onCreate() {

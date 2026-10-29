@@ -4,8 +4,8 @@ import android.content.Context
 import io.github.octoclonius.libreauto.car.apps.PhoneAppsRepository
 import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
-import io.github.octoclonius.libreauto.session.CarSessionHolder
-import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
+import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 
 class CarContainer(

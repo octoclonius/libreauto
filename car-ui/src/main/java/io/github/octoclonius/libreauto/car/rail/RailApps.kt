@@ -6,8 +6,8 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.apps.loadCarIcon
-import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.tasks.CarTasksState
+import io.github.octoclonius.libreauto.projection.tasks.CarTask
+import io.github.octoclonius.libreauto.projection.tasks.CarTasksState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

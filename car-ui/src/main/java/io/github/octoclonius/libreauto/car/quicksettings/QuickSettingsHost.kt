@@ -5,7 +5,7 @@ import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
 import io.github.octoclonius.libreauto.car.CarUi
-import io.github.octoclonius.libreauto.session.display.OverlayDisplayState
+import io.github.octoclonius.libreauto.projection.display.OverlayDisplayState
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

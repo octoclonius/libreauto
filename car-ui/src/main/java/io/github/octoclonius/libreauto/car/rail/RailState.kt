@@ -1,6 +1,6 @@
 package io.github.octoclonius.libreauto.car.rail
 
-import io.github.octoclonius.libreauto.session.tasks.CarTasksState
+import io.github.octoclonius.libreauto.projection.tasks.CarTasksState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

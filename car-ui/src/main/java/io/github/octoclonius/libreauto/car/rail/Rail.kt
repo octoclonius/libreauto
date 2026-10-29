@@ -59,9 +59,9 @@ import io.github.octoclonius.libreauto.car.ui.component.GlyphText
 import io.github.octoclonius.libreauto.car.ui.component.SquircleButton
 import io.github.octoclonius.libreauto.car.ui.theme.CarShapes
 import io.github.octoclonius.libreauto.car.ui.theme.CarSpacing
-import io.github.octoclonius.libreauto.session.CarStatusBar
-import io.github.octoclonius.libreauto.session.display.RAIL_THICKNESS_DP
-import io.github.octoclonius.libreauto.session.display.RailSide
+import io.github.octoclonius.libreauto.projection.CarStatusBar
+import io.github.octoclonius.libreauto.projection.display.RAIL_THICKNESS_DP
+import io.github.octoclonius.libreauto.projection.display.RailSide
 
 internal val RAIL_ICON_SIZE = 48.dp
 private val RAIL_THICKNESS = RAIL_THICKNESS_DP.dp

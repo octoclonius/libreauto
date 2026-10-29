@@ -5,8 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.octoclonius.libreauto.phone.R
 import io.github.octoclonius.libreauto.phone.ui.StatusRow
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState.Failed
+import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceState
+import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceState.Failed
 
 @Composable
 fun PrivilegedServiceRow(

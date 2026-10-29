@@ -37,7 +37,7 @@ include(
     ":app",
     ":phone-ui",
     ":car-ui",
-    ":session",
+    ":projection",
     ":privileged",
     ":privileged-api",
     ":hidden-api",

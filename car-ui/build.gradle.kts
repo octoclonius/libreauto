@@ -9,7 +9,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":session"))
+    implementation(project(":projection"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

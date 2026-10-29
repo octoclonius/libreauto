@@ -13,11 +13,11 @@ import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiSt
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.CertificateState
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Picker
 import io.github.octoclonius.libreauto.phone.certificate.CertificateProviderUiState.Selection
-import io.github.octoclonius.libreauto.session.CarConnectionState
-import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
-import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceState
-import io.github.octoclonius.libreauto.session.sessionContainer
+import io.github.octoclonius.libreauto.projection.CarConnectionState
+import io.github.octoclonius.libreauto.projection.certificate.CertificateRepository
+import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
+import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceState
+import io.github.octoclonius.libreauto.projection.projectionContainer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,9 +44,9 @@ class MainViewModel(
             initializer {
                 val application = checkNotNull(this[APPLICATION_KEY])
                 MainViewModel(
-                    application.sessionContainer.certificateRepository,
-                    application.sessionContainer.carSessionHolder.state,
-                    application.sessionContainer.privilegedServiceConnection,
+                    application.projectionContainer.certificateRepository,
+                    application.projectionContainer.carSessionHolder.state,
+                    application.projectionContainer.privilegedServiceConnection,
                 )
             }
         }

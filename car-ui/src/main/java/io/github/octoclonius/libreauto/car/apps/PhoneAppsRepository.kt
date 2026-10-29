@@ -15,8 +15,8 @@ import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
-import io.github.octoclonius.libreauto.session.CarSessionHolder
-import io.github.octoclonius.libreauto.session.display.CarDisplay
+import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.display.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
 import kotlinx.coroutines.CoroutineScope

@@ -2,8 +2,8 @@ package io.github.octoclonius.libreauto.car
 
 import android.content.Context
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
-import io.github.octoclonius.libreauto.session.CarSessionHolder
-import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
+import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
