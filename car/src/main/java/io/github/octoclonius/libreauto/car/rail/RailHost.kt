@@ -6,7 +6,7 @@ import android.util.Log
 import android.view.WindowManager
 import io.github.octoclonius.libreauto.car.CarUi
 import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.video.RailDisplayState
+import io.github.octoclonius.libreauto.session.display.RailDisplayState
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session.video
+package io.github.octoclonius.libreauto.session.display
 
 import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.protocol.media.CarRect

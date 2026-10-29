@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
 import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
-import io.github.octoclonius.libreauto.session.video.CarDisplay
+import io.github.octoclonius.libreauto.session.display.CarDisplay
 import java.util.Locale
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers

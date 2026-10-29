@@ -21,7 +21,7 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.ui.theme.CarTheme
 import io.github.octoclonius.libreauto.session.tasks.CarTask
-import io.github.octoclonius.libreauto.session.video.RailDisplayState
+import io.github.octoclonius.libreauto.session.display.RailDisplayState
 import kotlinx.coroutines.flow.StateFlow
 
 internal class RailWindow(

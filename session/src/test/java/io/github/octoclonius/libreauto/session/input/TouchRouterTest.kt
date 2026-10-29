@@ -2,8 +2,8 @@ package io.github.octoclonius.libreauto.session.input
 
 import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
-import io.github.octoclonius.libreauto.session.video.RAIL_THICKNESS_DP
-import io.github.octoclonius.libreauto.session.video.carLayout
+import io.github.octoclonius.libreauto.session.display.RAIL_THICKNESS_DP
+import io.github.octoclonius.libreauto.session.display.carLayout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

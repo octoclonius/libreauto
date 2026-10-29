@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session.video
+package io.github.octoclonius.libreauto.session.display
 
 import android.graphics.Insets
 import android.view.MotionEvent

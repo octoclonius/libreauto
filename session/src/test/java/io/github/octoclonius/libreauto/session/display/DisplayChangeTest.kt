@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session.video
+package io.github.octoclonius.libreauto.session.display
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

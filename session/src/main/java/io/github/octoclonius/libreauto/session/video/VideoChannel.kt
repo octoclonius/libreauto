@@ -27,6 +27,9 @@ import io.github.octoclonius.libreauto.protocol.media.videoSetupRequest
 import io.github.octoclonius.libreauto.protocol.media.withUiConfig
 import io.github.octoclonius.libreauto.session.CarChannel
 import io.github.octoclonius.libreauto.session.ChannelSender
+import io.github.octoclonius.libreauto.session.display.CarDisplays
+import io.github.octoclonius.libreauto.session.display.CarLayout
+import io.github.octoclonius.libreauto.session.display.carLayout
 import io.github.octoclonius.libreauto.session.isChannelOpened
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks

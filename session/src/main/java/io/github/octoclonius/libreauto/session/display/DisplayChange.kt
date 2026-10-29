@@ -1,4 +1,4 @@
-package io.github.octoclonius.libreauto.session.video
+package io.github.octoclonius.libreauto.session.display
 
 internal data class OwnedDisplay<S : Any>(val service: S, val id: Int)
 

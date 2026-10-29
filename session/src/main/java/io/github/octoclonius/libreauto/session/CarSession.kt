@@ -22,8 +22,8 @@ import io.github.octoclonius.libreauto.session.input.CarButtons
 import io.github.octoclonius.libreauto.session.input.InputChannel
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
-import io.github.octoclonius.libreauto.session.video.CarDisplays
-import io.github.octoclonius.libreauto.session.video.CarHome
+import io.github.octoclonius.libreauto.session.display.CarDisplays
+import io.github.octoclonius.libreauto.session.display.CarHome
 import io.github.octoclonius.libreauto.session.video.VideoChannel
 import java.io.Closeable
 import java.io.IOException

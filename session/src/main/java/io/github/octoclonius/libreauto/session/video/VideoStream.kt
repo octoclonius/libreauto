@@ -6,6 +6,12 @@ import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import io.github.octoclonius.libreauto.session.closeAll
+import io.github.octoclonius.libreauto.session.display.Area
+import io.github.octoclonius.libreauto.session.display.CarDisplays
+import io.github.octoclonius.libreauto.session.display.CarLayout
+import io.github.octoclonius.libreauto.session.display.OverlayVirtualDisplay
+import io.github.octoclonius.libreauto.session.display.PrivilegedDisplay
+import io.github.octoclonius.libreauto.session.display.RailVirtualDisplay
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.tasks.CarTasks
 import io.github.octoclonius.libreauto.session.tasks.OpenCarTasks

@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
+import io.github.octoclonius.libreauto.session.display.Area
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

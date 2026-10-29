@@ -2,7 +2,7 @@ package io.github.octoclonius.libreauto.session.tasks
 
 import io.github.octoclonius.libreauto.privileged.DisplayTask
 import io.github.octoclonius.libreauto.privileged.IDisplayTaskListener
-import io.github.octoclonius.libreauto.session.video.CarDisplay
+import io.github.octoclonius.libreauto.session.display.CarDisplay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

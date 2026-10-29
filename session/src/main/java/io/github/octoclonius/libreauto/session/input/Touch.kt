@@ -4,7 +4,7 @@ import io.github.octoclonius.libreauto.privileged.MAX_POINTERS
 import io.github.octoclonius.libreauto.protocol.input.InputReport
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
-import io.github.octoclonius.libreauto.session.video.Area
+import io.github.octoclonius.libreauto.session.display.Area
 
 private val KNOWN_ACTIONS =
     setOf(

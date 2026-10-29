@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.mediaData
+import io.github.octoclonius.libreauto.session.display.CarLayout
 import java.io.Closeable
 import java.io.IOException
 import java.util.concurrent.TimeUnit

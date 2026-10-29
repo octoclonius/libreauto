@@ -6,7 +6,7 @@ import io.github.octoclonius.libreauto.session.calls.CallRepository
 import io.github.octoclonius.libreauto.session.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.session.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.session.settings.PhoneSettingsRepository
-import io.github.octoclonius.libreauto.session.video.CarHome
+import io.github.octoclonius.libreauto.session.display.CarHome
 import kotlinx.coroutines.Dispatchers
 
 class SessionContainer(

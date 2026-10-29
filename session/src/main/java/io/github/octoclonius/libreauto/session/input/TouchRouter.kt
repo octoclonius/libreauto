@@ -1,7 +1,7 @@
 package io.github.octoclonius.libreauto.session.input
 
 import io.github.octoclonius.libreauto.protocol.input.TouchAction
-import io.github.octoclonius.libreauto.session.video.CarLayout
+import io.github.octoclonius.libreauto.session.display.CarLayout
 
 internal enum class TouchTarget {
     Apps,
