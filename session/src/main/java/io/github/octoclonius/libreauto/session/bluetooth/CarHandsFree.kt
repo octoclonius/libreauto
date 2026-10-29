@@ -10,6 +10,7 @@ import java.io.Closeable
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.job
@@ -37,8 +38,8 @@ internal class CarHandsFree(
     }
 
     private val machine = HandsFreeMachine()
-    private val timeouts = Job(scope.coroutineContext.job)
-    private val scheduled = Job(scope.coroutineContext.job)
+    private val timeouts = childScope()
+    private val scheduled = childScope()
     private var isClosed = false
     private var isPairingRequestSent = false
     private var pairingVariant: Int? = null
@@ -155,12 +156,15 @@ internal class CarHandsFree(
     }
 
     private fun cancelScheduled() {
-        scheduled.cancelChildren()
-        timeouts.cancelChildren()
+        scheduled.coroutineContext.cancelChildren()
+        timeouts.coroutineContext.cancelChildren()
     }
 
-    private fun schedule(group: Job, delayMillis: Long, block: () -> Unit) {
-        scope.launch(group) {
+    private fun childScope(): CoroutineScope =
+        CoroutineScope(scope.coroutineContext + Job(scope.coroutineContext.job))
+
+    private fun schedule(group: CoroutineScope, delayMillis: Long, block: () -> Unit) {
+        group.launch {
             delay(delayMillis)
             block()
         }
@@ -168,7 +172,7 @@ internal class CarHandsFree(
 
     private fun enter(state: HandsFreeState) {
         if (isClosed) return
-        timeouts.cancelChildren()
+        timeouts.coroutineContext.cancelChildren()
         if (state.timeoutMillis > 0) {
             schedule(timeouts, state.timeoutMillis) { onEvent(HandsFreeEvent.Timeout) }
         }
