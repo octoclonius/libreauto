@@ -16,6 +16,16 @@ import io.github.octoclonius.libreauto.privileged.api.ICarDisplaySession
 import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.api.IPhoneBluetoothService
 import io.github.octoclonius.libreauto.privileged.api.IPrivilegedService
+import io.github.octoclonius.libreauto.privileged.audio.CarAudioSession
+import io.github.octoclonius.libreauto.privileged.audio.audioRequestError
+import io.github.octoclonius.libreauto.privileged.bluetooth.PhoneBluetoothService
+import io.github.octoclonius.libreauto.privileged.calls.CallAccess
+import io.github.octoclonius.libreauto.privileged.display.CarDisplaySession
+import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
+import io.github.octoclonius.libreauto.privileged.display.displayRequestError
+import io.github.octoclonius.libreauto.privileged.input.DisplayKeys
+import io.github.octoclonius.libreauto.privileged.settings.PhoneSettings
+import io.github.octoclonius.libreauto.privileged.settings.settingRequestError
 import kotlin.system.exitProcess
 
 class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
