@@ -33,6 +33,7 @@ data class AppTileSize(val tile: Dp, val icon: Dp, val labelSpacing: Dp, val lab
 }
 
 val DRAWER_TILE = AppTileSize(112.dp, 60.dp, 8.dp, 16.sp)
+val HOME_TILE = AppTileSize(160.dp, 88.dp, 10.dp, 18.sp)
 
 val TILE_GAP = CarSpacing.large
 private val TILE_PADDING = CarSpacing.extraSmall

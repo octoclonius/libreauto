@@ -2,23 +2,36 @@ package io.github.octoclonius.libreauto.car.home
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
+import io.github.octoclonius.libreauto.car.apps.AppSection
+import io.github.octoclonius.libreauto.car.apps.PhoneAppsRepository
 import io.github.octoclonius.libreauto.session.jsonDataStore
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 
-class HomeAppsRepository(context: Context, private val externalScope: CoroutineScope) {
+class HomeAppsRepository(
+    context: Context,
+    phoneApps: PhoneAppsRepository,
+    private val externalScope: CoroutineScope,
+) {
 
     private companion object {
         const val TAG = "HomeAppsRepository"
         const val NAME = "car_home"
     }
+
+    private val context = context.applicationContext
 
     private val dataStore =
         jsonDataStore(context, NAME, ListSerializer(SavedComponent.serializer()), emptyList())
@@ -29,6 +42,10 @@ class HomeAppsRepository(context: Context, private val externalScope: CoroutineS
     private val loading = externalScope.launch {
         _components.value =
             dataStore.data.first().map { ComponentName(it.packageName, it.className) }
+    }
+
+    init {
+        externalScope.launch { removeGoneApps(phoneApps) }
     }
 
     internal fun add(component: ComponentName, at: Int? = null) {
@@ -43,7 +60,16 @@ class HomeAppsRepository(context: Context, private val externalScope: CoroutineS
         update { withRemoved(it, at) }
     }
 
-    internal fun removeAll(gone: Set<ComponentName>) {
+    private suspend fun removeGoneApps(phoneApps: PhoneAppsRepository) {
+        loading.join()
+        phoneApps.sections
+            .filterNotNull()
+            .map { goneComponents(context, _components.value, it) }
+            .flowOn(Dispatchers.IO)
+            .collect(::removeAll)
+    }
+
+    private fun removeAll(gone: Set<ComponentName>) {
         update { components ->
             if (components.none { it in gone }) return@update components
             Log.i(TAG, "Removed the uninstalled or disabled $gone from the home")
@@ -62,6 +88,24 @@ class HomeAppsRepository(context: Context, private val externalScope: CoroutineS
             }
         }
     }
+}
+
+private fun goneComponents(
+    context: Context,
+    components: List<ComponentName>,
+    sections: List<AppSection>,
+): Set<ComponentName> {
+    val shown = sections.flatMapTo(HashSet()) { section -> section.apps.map { it.component } }
+    return components
+        .filter { it !in shown }
+        .filterTo(HashSet()) {
+            try {
+                context.packageManager.getActivityInfo(it, PackageManager.ComponentInfoFlags.of(0))
+                false
+            } catch (e: PackageManager.NameNotFoundException) {
+                true
+            }
+        }
 }
 
 internal fun <T> withAdded(list: List<T>, item: T, at: Int): List<T> =

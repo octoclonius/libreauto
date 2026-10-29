@@ -15,8 +15,6 @@ import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
 import androidx.compose.ui.unit.Dp
-import io.github.octoclonius.libreauto.car.home.HOME_ICON_SIZE
-import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.session.CarSessionHolder
 import io.github.octoclonius.libreauto.session.display.CarDisplay
 import java.util.Locale
@@ -49,11 +47,8 @@ class PhoneApp(val component: ComponentName, val label: String, val icon: Drawab
 
 class AppSection(val label: String, val apps: List<PhoneApp>)
 
-private class LoadedApps(val sections: List<AppSection>, val gone: Set<ComponentName>)
-
 class PhoneAppsRepository(
     context: Context,
-    private val homeApps: HomeAppsRepository,
     private val carSessionHolder: CarSessionHolder,
     private val externalScope: CoroutineScope,
 ) {
@@ -68,18 +63,9 @@ class PhoneAppsRepository(
                     density
                 }
                 .buffer(Channel.CONFLATED)
-                .map { carDensity ->
-                    val sections = launcherApps(context, carDensity)
-                    LoadedApps(
-                        sections,
-                        goneComponents(context, homeApps.components.value, sections),
-                    )
-                }
+                .map { carDensity -> launcherApps(context, carDensity) }
                 .flowOn(Dispatchers.IO)
-                .collect {
-                    _sections.value = it.sections
-                    homeApps.removeAll(it.gone)
-                }
+                .collect { _sections.value = it }
         }
     }
 }
@@ -93,24 +79,6 @@ private fun currentCarDensities(carSessionHolder: CarSessionHolder): Flow<Int> =
         .flatMapLatest { it?.displays?.car?.carDensity ?: flowOf(null) }
         .filterNotNull()
         .distinctUntilChanged()
-
-private fun goneComponents(
-    context: Context,
-    components: List<ComponentName>,
-    sections: List<AppSection>,
-): Set<ComponentName> {
-    val shown = sections.flatMapTo(HashSet()) { section -> section.apps.map { it.component } }
-    return components
-        .filter { it !in shown }
-        .filterTo(HashSet()) {
-            try {
-                context.packageManager.getActivityInfo(it, PackageManager.ComponentInfoFlags.of(0))
-                false
-            } catch (e: PackageManager.NameNotFoundException) {
-                true
-            }
-        }
-}
 
 private fun packageChanges(context: Context): Flow<Unit> = callbackFlow {
     val receiver =
@@ -145,7 +113,7 @@ private fun launcherApps(context: Context, carDensity: Int): List<AppSection> {
                 PhoneApp(
                     component = ComponentName(it.activityInfo.packageName, it.activityInfo.name),
                     label = it.loadLabel(packageManager).toString(),
-                    icon = it.loadCarIcon(packageManager, carDensity, HOME_ICON_SIZE),
+                    icon = it.loadCarIcon(packageManager, carDensity, HOME_TILE.icon),
                 )
             index.addRecord(app.label, app)
         }

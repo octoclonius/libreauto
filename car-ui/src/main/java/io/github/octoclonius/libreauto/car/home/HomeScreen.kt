@@ -50,12 +50,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.AppIcon
 import io.github.octoclonius.libreauto.car.apps.AppSection
 import io.github.octoclonius.libreauto.car.apps.AppTile
 import io.github.octoclonius.libreauto.car.apps.AppTileSize
+import io.github.octoclonius.libreauto.car.apps.HOME_TILE
 import io.github.octoclonius.libreauto.car.apps.PhoneApp
 import io.github.octoclonius.libreauto.car.apps.TILE_GAP
 import io.github.octoclonius.libreauto.car.ui.theme.CarAlpha
@@ -67,8 +67,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-internal val HOME_ICON_SIZE = 88.dp
-private val HOME_TILE = AppTileSize(160.dp, HOME_ICON_SIZE, 10.dp, 18.sp)
 private const val MIN_ROWS = 2
 private val INDICATOR_HEIGHT = 36.dp
 private val DOT_TARGET = 30.dp
@@ -184,7 +182,7 @@ fun HomeScreen(
 fun HomeDragGhost(drag: HomeDrag) {
     val app = drag.app ?: return
     val center = drag.removeCenter?.takeIf { drag.isOverRemove() }
-    val iconSize = if (center != null) REMOVE_CIRCLE * REMOVED_ICON_FRACTION else HOME_ICON_SIZE
+    val iconSize = if (center != null) REMOVE_CIRCLE * REMOVED_ICON_FRACTION else HOME_TILE.icon
     val at = center ?: drag.position
     val half = with(LocalDensity.current) { iconSize.roundToPx() / 2 }
     AppIcon(

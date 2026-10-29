@@ -15,9 +15,8 @@ class CarContainer(
     phoneSettingsRepository: PhoneSettingsRepository,
 ) {
 
-    val homeAppsRepository = HomeAppsRepository(context, applicationScope)
-    val phoneAppsRepository =
-        PhoneAppsRepository(context, homeAppsRepository, carSessionHolder, applicationScope)
+    val phoneAppsRepository = PhoneAppsRepository(context, carSessionHolder, applicationScope)
+    val homeAppsRepository = HomeAppsRepository(context, phoneAppsRepository, applicationScope)
     val railOrderRepository = RailOrderRepository(context, applicationScope)
     val carUiHolder =
         CarUiHolder(
