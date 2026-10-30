@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.privileged.SystemServices
 import io.github.octoclonius.libreauto.privileged.closeAll
+import io.github.octoclonius.libreauto.privileged.identityCall
 import io.github.octoclonius.libreauto.privileged.input.TouchPointer
 import io.github.octoclonius.libreauto.privileged.input.VirtualCarTouchscreen
 import java.io.Closeable
@@ -22,6 +23,7 @@ internal class VirtualCarDisplay
 private constructor(
     private val association: CompanionAssociation,
     private val associationId: Int,
+    private val ambientDisplay: AmbientDisplay,
     private val device: AutoCloseable,
     private val display: VirtualDisplay,
     private var touchscreen: VirtualCarTouchscreen?,
@@ -34,6 +36,7 @@ private constructor(
         fun create(
             context: Context,
             association: CompanionAssociation,
+            ambientDisplay: AmbientDisplay,
             surface: Surface,
             width: Int,
             height: Int,
@@ -65,12 +68,22 @@ private constructor(
                     association.release(associationId)
                     throw e
                 }
+            identityCall(TAG, "Suppressing the phone's ambient display") {
+                ambientDisplay.suppress()
+            }
             Log.i(
                 TAG,
                 "Created the display ${display.display.displayId} with a touchscreen: " +
                     "${width}x$height at $densityDpi dpi, home $home",
             )
-            return VirtualCarDisplay(association, associationId, device, display, touchscreen)
+            return VirtualCarDisplay(
+                association,
+                associationId,
+                ambientDisplay,
+                device,
+                display,
+                touchscreen,
+            )
         }
 
         private fun createDevice(
@@ -168,6 +181,7 @@ private constructor(
         closeAll(TAG) {
             step("Closing the touchscreen of the display $id") { touchscreen?.close() }
             step("Releasing the display $id") { display.release() }
+            step("Allowing the phone's ambient display again") { ambientDisplay.allow() }
             step("Closing the virtual device of the display $id") { device.close() }
             step("Releasing the companion association $associationId") {
                 association.release(associationId)

@@ -41,6 +41,7 @@ private constructor(
         fun create(
             context: Context,
             association: CompanionAssociation,
+            ambientDisplay: AmbientDisplay,
             keys: DisplayKeys,
             appUid: Int,
             surface: Surface,
@@ -55,6 +56,7 @@ private constructor(
                     VirtualCarDisplay.create(
                         context,
                         association,
+                        ambientDisplay,
                         surface,
                         width,
                         height,

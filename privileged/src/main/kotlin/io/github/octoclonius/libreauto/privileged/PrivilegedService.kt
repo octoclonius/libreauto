@@ -20,6 +20,7 @@ import io.github.octoclonius.libreauto.privileged.audio.CarAudioSession
 import io.github.octoclonius.libreauto.privileged.audio.audioRequestError
 import io.github.octoclonius.libreauto.privileged.bluetooth.PhoneBluetoothService
 import io.github.octoclonius.libreauto.privileged.calls.CallAccess
+import io.github.octoclonius.libreauto.privileged.display.AmbientDisplay
 import io.github.octoclonius.libreauto.privileged.display.CarDisplaySession
 import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
 import io.github.octoclonius.libreauto.privileged.display.displayRequestError
@@ -38,6 +39,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val appPackage = context.packageName
     private val shellContext = ShellContext(context)
     private val association = CompanionAssociation(shellContext)
+    private val ambientDisplay = AmbientDisplay(shellContext)
     private val keys = DisplayKeys(shellContext)
     private val settings = PhoneSettings(shellContext)
     private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
@@ -50,6 +52,9 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     init {
         MainlineModules.initialize()
+        identityCall(TAG, "Allowing the ambient display an earlier service suppressed") {
+            ambientDisplay.allow()
+        }
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
@@ -81,6 +86,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
                 CarDisplaySession.create(
                     shellContext,
                     association,
+                    ambientDisplay,
                     keys,
                     appUid,
                     surface,
