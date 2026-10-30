@@ -37,6 +37,11 @@ gradlePlugin {
             implementationClass =
                 "io.github.octoclonius.libreauto.buildlogic.AndroidAidlConventionPlugin"
         }
+        register("androidProfiling") {
+            id = "libreauto.android.profiling"
+            implementationClass =
+                "io.github.octoclonius.libreauto.buildlogic.AndroidProfilingConventionPlugin"
+        }
         register("androidCompose") {
             id = "libreauto.android.compose"
             implementationClass =

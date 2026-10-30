@@ -1,5 +1,6 @@
 plugins {
     id("libreauto.android.library")
+    id("libreauto.android.profiling")
     alias(libs.plugins.kotlin.serialization)
 }
 

@@ -16,6 +16,7 @@ class UsbAccessoryActivity : Activity() {
         super.onCreate(savedInstanceState)
         val accessory =
             intent?.getParcelableExtra(UsbManager.EXTRA_ACCESSORY, UsbAccessory::class.java)
+                ?: attachedAccessory(this)
         if (accessory == null) {
             Log.w(TAG, "Launched without an accessory")
         } else {

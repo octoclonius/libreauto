@@ -20,6 +20,7 @@ import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceCo
 import io.github.octoclonius.libreauto.projection.tasks.CarTasks
 import io.github.octoclonius.libreauto.projection.tasks.OpenCarTasksRepository
 import io.github.octoclonius.libreauto.projection.video.VideoChannel
+import io.github.octoclonius.libreauto.projection.video.VideoProfiler
 import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.bluetooth.carBluetooth
@@ -51,6 +52,7 @@ internal constructor(
     carHome: CarHome,
     openTasks: OpenCarTasksRepository,
     private val mediaResumption: MediaResumption,
+    private val videoProfiler: VideoProfiler,
     private val dispatcher: CoroutineDispatcher,
 ) : Closeable {
 
@@ -132,6 +134,7 @@ internal constructor(
                 displays,
                 tasks,
                 privileged,
+                videoProfiler,
             )
         open(video)
         val source = inputSource(services, sink.displayId)

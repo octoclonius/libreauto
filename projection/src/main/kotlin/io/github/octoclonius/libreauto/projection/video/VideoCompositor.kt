@@ -26,6 +26,7 @@ internal class VideoCompositor(
     private val format: VideoFormat,
     private val areas: List<Area>,
     private val decoderDepth: Int,
+    private val profiler: VideoProfiler,
     private val onFailed: () -> Unit,
 ) : Closeable {
 
@@ -375,6 +376,7 @@ internal class VideoCompositor(
             GLES20.glUniformMatrix4fv(matrix, 1, false, layer.matrix, 0)
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         }
+        profiler.onDrawn(presentationNanos)
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationNanos)
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
         lastFrameNanos = presentationNanos

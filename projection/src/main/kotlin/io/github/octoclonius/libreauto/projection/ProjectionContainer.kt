@@ -9,6 +9,7 @@ import io.github.octoclonius.libreauto.projection.media.MediaResumption
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import io.github.octoclonius.libreauto.projection.tasks.OpenCarTasksRepository
+import io.github.octoclonius.libreauto.projection.video.videoProfiler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
@@ -27,6 +28,7 @@ class ProjectionContainer(
     private val carHome = CarHome(context, carHome)
     private val openCarTasksRepository = OpenCarTasksRepository(context, applicationScope)
     private val mediaResumption = MediaResumption(context, applicationScope)
+    private val videoProfiler = videoProfiler(context)
 
     internal fun carConnection(): CarConnection =
         CarConnection(carSessionHolder, certificateRepository) { link, control, version, car ->
@@ -41,6 +43,7 @@ class ProjectionContainer(
                 carHome,
                 openCarTasksRepository,
                 mediaResumption,
+                videoProfiler,
                 Dispatchers.IO.limitedParallelism(1),
             )
         }

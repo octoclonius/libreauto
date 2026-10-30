@@ -28,6 +28,7 @@ internal class VideoStream(
     private val displays: CarDisplays,
     private val tasks: CarTasks,
     private val privileged: PrivilegedServiceConnection,
+    private val profiler: VideoProfiler,
 ) : Closeable {
 
     companion object {
@@ -53,7 +54,7 @@ internal class VideoStream(
     }
 
     fun resume() {
-        val started = VideoEncoder(layout, maxUnacked, session, send)
+        val started = VideoEncoder(layout, maxUnacked, session, send, profiler)
         encoder = started
         executor.execute {
             val current = compositor
@@ -130,7 +131,7 @@ internal class VideoStream(
         synchronized(displaysLock) {
             try {
                 val created =
-                    VideoCompositor(layout.format, areas(layout), decoderDepth) {
+                    VideoCompositor(layout.format, areas(layout), decoderDepth, profiler) {
                         encoder?.close()
                     }
                 compositor = created

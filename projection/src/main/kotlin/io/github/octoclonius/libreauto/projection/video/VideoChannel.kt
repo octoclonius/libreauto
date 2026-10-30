@@ -45,6 +45,7 @@ internal class VideoChannel(
     private val displays: CarDisplays,
     private val tasks: CarTasks,
     private val privileged: PrivilegedServiceConnection,
+    private val profiler: VideoProfiler,
 ) : CarChannel {
 
     companion object {
@@ -285,6 +286,7 @@ internal class VideoChannel(
                 displays,
                 tasks,
                 privileged,
+                profiler,
             )
         stream.start()
         return VideoChannelState.Started(layout, ready.uiConfig, stream, isProjected = true)

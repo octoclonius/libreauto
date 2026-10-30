@@ -18,6 +18,7 @@ internal class VideoEncoder(
     private val maxUnacked: Int,
     val session: Int,
     private val send: (type: Int, body: ByteArray) -> Boolean,
+    private val profiler: VideoProfiler,
 ) : Closeable {
 
     companion object {
@@ -37,6 +38,7 @@ internal class VideoEncoder(
             unacked -= minOf(count, unacked)
             permitFreed.signalAll()
         }
+        profiler.onAcknowledged(session, count)
     }
 
     override fun close() {
@@ -99,6 +101,7 @@ internal class VideoEncoder(
                     "${format.density} dpi: apps in ${layout.apps} at ${layout.appsDensity} dpi, " +
                     "rail in ${layout.rail}",
             )
+            profiler.onStart(session, layout, name, bitRate)
             compositor.attach(input)
             drain(encoder)
         } catch (e: IllegalStateException) {
@@ -107,6 +110,7 @@ internal class VideoEncoder(
             Log.w(TAG, "The H.264 encoder refused the format", e)
         } finally {
             close()
+            profiler.onStop(session)
             codec = null
             try {
                 compositor.detach()
@@ -130,10 +134,15 @@ internal class VideoEncoder(
             when {
                 info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 ->
                     if (!send(MediaMessageType.CODEC_CONFIG, data)) return
-                data.isNotEmpty() && takePermit() -> {
+                data.isNotEmpty() -> {
+                    val isKeyFrame = info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
+                    profiler.onEncoded(info.presentationTimeUs, data.size, isKeyFrame)
+                    if (!takePermit()) continue
+                    profiler.onPermitted(info.presentationTimeUs)
                     if (!send(MediaMessageType.DATA, mediaData(info.presentationTimeUs, data))) {
                         return
                     }
+                    profiler.onSent(info.presentationTimeUs)
                     sentActions.onFrameSent(info.presentationTimeUs)
                 }
             }
