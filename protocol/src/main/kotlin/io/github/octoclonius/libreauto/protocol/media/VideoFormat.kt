@@ -132,7 +132,7 @@ data class VideoMode(
 
 private val BEST_FIRST: Comparator<VideoMode> =
     compareByDescending<VideoMode> { it.width.toLong() * it.height }
-        .thenByDescending { it.codec }
+        .thenByDescending { efficiency(it.codec) }
         .thenByDescending { it.framesPerSecond }
 
 fun videoMode(config: VideoConfig): VideoMode? {

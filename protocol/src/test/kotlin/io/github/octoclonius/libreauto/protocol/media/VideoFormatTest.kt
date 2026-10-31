@@ -573,7 +573,7 @@ class VideoFormatTest {
     @Test
     fun aConfigWithAnUnknownCodecIsNeverUsed() {
         val configs =
-            listOf(VideoConfig(resolution = 4, video_codec_type = 5), VideoConfig(resolution = 2))
+            listOf(VideoConfig(resolution = 4, video_codec_type = 99), VideoConfig(resolution = 2))
         assertNull(videoMode(configs[0]))
         assertEquals(VideoCodec.H264, preferredVideoCodec(configs, ::any))
         assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264, ::any))
@@ -597,6 +597,35 @@ class VideoFormatTest {
                 VideoConfig(resolution = 3, frame_rate = 2, video_codec_type = 7),
             )
         assertEquals(VideoCodec.H265, preferredVideoCodec(configs, ::any))
+    }
+
+    @Test
+    fun codec5IsVp9() {
+        assertEquals(
+            VideoCodec.VP9,
+            videoMode(VideoConfig(resolution = 3, video_codec_type = 5))?.codec,
+        )
+    }
+
+    @Test
+    fun vp9WinsOverH264AtTheSameResolution() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1, video_codec_type = 3),
+                VideoConfig(resolution = 3, frame_rate = 2, video_codec_type = 5),
+            )
+        assertEquals(VideoCodec.VP9, preferredVideoCodec(configs, ::any))
+    }
+
+    @Test
+    fun h265WinsOverVp9AtTheSameResolution() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1, video_codec_type = 5),
+                VideoConfig(resolution = 3, frame_rate = 2, video_codec_type = 7),
+            )
+        assertEquals(VideoCodec.H265, preferredVideoCodec(configs, ::any))
+        assertEquals(VideoCodec.H265, preferredVideoCodec(configs.reversed(), ::any))
     }
 
     @Test
