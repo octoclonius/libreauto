@@ -523,32 +523,128 @@ class VideoFormatTest {
                 VideoConfig(resolution = 3),
                 VideoConfig(resolution = 2),
             )
-        assertEquals(1, preferredConfigIndex(configs, listOf(0, 2, 1), ::anySize))
-        assertEquals(2, preferredConfigIndex(configs, listOf(0, 2), ::anySize))
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 2, 1), VideoCodec.H264, ::any))
+        assertEquals(2, preferredConfigIndex(configs, listOf(0, 2), VideoCodec.H264, ::any))
     }
 
     @Test
     fun anUnknownResolutionCountsAs800x480() {
         val configs = listOf(VideoConfig(resolution = 10), VideoConfig(resolution = 2))
-        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), ::anySize))
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264, ::any))
     }
 
     @Test
-    fun equalResolutionsKeepTheCarsOrder() {
+    fun aHigherFrameRateWinsAtTheSameResolution() {
         val configs =
             listOf(
-                VideoConfig(resolution = 3, frame_rate = 1),
                 VideoConfig(resolution = 3, frame_rate = 2),
-                VideoConfig(resolution = 7),
+                VideoConfig(resolution = 3, frame_rate = 1),
             )
-        assertEquals(1, preferredConfigIndex(configs, listOf(1, 0), ::anySize))
-        assertEquals(2, preferredConfigIndex(configs, listOf(2, 0, 1), ::anySize))
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264, ::any))
+    }
+
+    @Test
+    fun equalConfigsKeepTheCarsOrder() {
+        val configs = listOf(VideoConfig(resolution = 3), VideoConfig(resolution = 7))
+        assertEquals(0, preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264, ::any))
+        assertEquals(1, preferredConfigIndex(configs, listOf(1, 0), VideoCodec.H264, ::any))
+    }
+
+    @Test
+    fun theCodecIsField10() {
+        assertEquals(
+            VideoMode(VideoCodec.H265, 1920, 1080, 60),
+            config(varint(1, 3), varint(5, 160), varint(10, 7))?.let(::videoMode),
+        )
+    }
+
+    @Test
+    fun aConfigWithoutACodecIsH264() {
+        assertEquals(
+            VideoMode(VideoCodec.H264, 1920, 1080, 60),
+            config(varint(1, 3), varint(5, 160))?.let(::videoMode),
+        )
+        assertEquals(
+            VideoCodec.H264,
+            videoMode(VideoConfig(resolution = 3, video_codec_type = 3))?.codec,
+        )
+    }
+
+    @Test
+    fun aConfigWithAnUnknownCodecIsNeverUsed() {
+        val configs =
+            listOf(VideoConfig(resolution = 4, video_codec_type = 5), VideoConfig(resolution = 2))
+        assertNull(videoMode(configs[0]))
+        assertEquals(VideoCodec.H264, preferredVideoCodec(configs, ::any))
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264, ::any))
+    }
+
+    @Test
+    fun theResolutionWinsOverTheCodecAndTheFrameRate() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1, video_codec_type = 7),
+                VideoConfig(resolution = 4, frame_rate = 2, video_codec_type = 3),
+            )
+        assertEquals(VideoCodec.H264, preferredVideoCodec(configs, ::any))
+    }
+
+    @Test
+    fun h265WinsOverH264AndTheFrameRateAtTheSameResolution() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1, video_codec_type = 3),
+                VideoConfig(resolution = 3, frame_rate = 2, video_codec_type = 7),
+            )
+        assertEquals(VideoCodec.H265, preferredVideoCodec(configs, ::any))
+    }
+
+    @Test
+    fun theCodecOfAConfigThatCantBeEncodedIsNotChosen() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 4, video_codec_type = 7),
+                VideoConfig(resolution = 3, video_codec_type = 3),
+            )
+        assertEquals(
+            VideoCodec.H264,
+            preferredVideoCodec(configs) { it.codec == VideoCodec.H264 },
+        )
+    }
+
+    @Test
+    fun noEncodableConfigHasNoCodec() {
+        assertNull(preferredVideoCodec(listOf(VideoConfig(resolution = 1))) { false })
+    }
+
+    @Test
+    fun onlyConfigsWithTheChosenCodecAreUsed() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 4, video_codec_type = 3),
+                VideoConfig(resolution = 3, video_codec_type = 7),
+                VideoConfig(resolution = 2, video_codec_type = 3),
+            )
+        assertEquals(1, preferredConfigIndex(configs, listOf(0, 1, 2), VideoCodec.H265, ::any))
+        assertEquals(0, preferredConfigIndex(configs, listOf(0, 1, 2), VideoCodec.H264, ::any))
+    }
+
+    @Test
+    fun noAcceptedConfigWithTheChosenCodecIsNull() {
+        val configs =
+            listOf(VideoConfig(resolution = 3, video_codec_type = 7), VideoConfig(resolution = 2))
+        assertNull(preferredConfigIndex(configs, listOf(1), VideoCodec.H265, ::any))
     }
 
     @Test
     fun noAcceptedConfigIsAProtocolError() {
         assertThrows(ProtocolException::class.java) {
-            preferredConfigIndex(listOf(VideoConfig(resolution = 1)), emptyList(), ::anySize)
+            preferredConfigIndex(
+                listOf(VideoConfig(resolution = 1)),
+                emptyList(),
+                VideoCodec.H264,
+                ::any,
+            )
         }
     }
 
@@ -557,7 +653,7 @@ class VideoFormatTest {
         val configs = listOf(VideoConfig(resolution = 1), VideoConfig(resolution = 3))
         for (indexes in listOf(listOf(2), listOf(1, 2), listOf(-1, 0))) {
             assertThrows(ProtocolException::class.java) {
-                preferredConfigIndex(configs, indexes, ::anySize)
+                preferredConfigIndex(configs, indexes, VideoCodec.H264, ::any)
             }
         }
     }
@@ -572,8 +668,8 @@ class VideoFormatTest {
             )
         assertEquals(
             2,
-            preferredConfigIndex(configs, listOf(0, 1, 2)) { width, height, _ ->
-                width <= 1920 && height <= 1080
+            preferredConfigIndex(configs, listOf(0, 1, 2), VideoCodec.H264) {
+                it.width <= 1920 && it.height <= 1080
             },
         )
     }
@@ -587,8 +683,8 @@ class VideoFormatTest {
             )
         assertEquals(
             1,
-            preferredConfigIndex(configs, listOf(0, 1)) { _, _, framesPerSecond ->
-                framesPerSecond == 30
+            preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264) {
+                it.framesPerSecond == 30
             },
         )
     }
@@ -596,7 +692,7 @@ class VideoFormatTest {
     @Test
     fun noEncodableConfigIsNull() {
         assertNull(
-            preferredConfigIndex(listOf(VideoConfig(resolution = 1)), listOf(0)) { _, _, _ ->
+            preferredConfigIndex(listOf(VideoConfig(resolution = 1)), listOf(0), VideoCodec.H264) {
                 false
             }
         )
@@ -625,7 +721,7 @@ class VideoFormatTest {
         assertEquals(0, depth(ProtocolVersion(6, 1), varint(1, 1)))
     }
 
-    private fun anySize(width: Int, height: Int, framesPerSecond: Int): Boolean = true
+    private fun any(mode: VideoMode): Boolean = true
 
     private fun format(vararg fields: ByteArray): VideoFormat? = config(*fields)?.let(::videoFormat)
 

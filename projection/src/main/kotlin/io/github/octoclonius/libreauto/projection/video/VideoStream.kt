@@ -12,6 +12,7 @@ import io.github.octoclonius.libreauto.projection.display.RailVirtualDisplay
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.tasks.CarTasks
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
+import io.github.octoclonius.libreauto.protocol.media.VideoCodec
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.mediaStart
 import java.io.Closeable
@@ -22,6 +23,7 @@ internal class VideoStream(
     private val context: Context,
     @Volatile private var layout: CarLayout,
     private val configIndex: Int,
+    private val codec: VideoCodec,
     private val decoderDepth: Int,
     private val maxUnacked: Int,
     private val send: (type: Int, body: ByteArray) -> Boolean,
@@ -54,7 +56,7 @@ internal class VideoStream(
     }
 
     fun resume() {
-        val started = VideoEncoder(layout, maxUnacked, session, send, profiler)
+        val started = VideoEncoder(layout, codec, maxUnacked, session, send, profiler)
         encoder = started
         executor.execute {
             val current = compositor
@@ -160,7 +162,7 @@ internal class VideoStream(
     private fun areas(layout: CarLayout): List<Area> = listOf(layout.apps, layout.rail, layout.apps)
 
     private fun bitRate(format: VideoFormat): Int =
-        H264Encoder.bitRate(format.pixelsOutsideCutouts, format.framesPerSecond)
+        EncoderSettings.bitRate(codec, format.pixelsOutsideCutouts, format.framesPerSecond)
 
     private fun release() {
         synchronized(displaysLock) {

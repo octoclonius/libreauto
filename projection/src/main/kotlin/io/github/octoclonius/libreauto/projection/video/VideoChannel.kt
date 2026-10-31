@@ -17,6 +17,7 @@ import io.github.octoclonius.libreauto.protocol.control.UiConfig
 import io.github.octoclonius.libreauto.protocol.control.VideoConfig
 import io.github.octoclonius.libreauto.protocol.media.CarInsets
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
+import io.github.octoclonius.libreauto.protocol.media.VideoCodec
 import io.github.octoclonius.libreauto.protocol.media.VideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import io.github.octoclonius.libreauto.protocol.media.decoderDepth
@@ -26,6 +27,7 @@ import io.github.octoclonius.libreauto.protocol.media.parseMediaSetupResponse
 import io.github.octoclonius.libreauto.protocol.media.parseUiConfigUpdate
 import io.github.octoclonius.libreauto.protocol.media.parseVideoFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.preferredConfigIndex
+import io.github.octoclonius.libreauto.protocol.media.preferredVideoCodec
 import io.github.octoclonius.libreauto.protocol.media.projectedVideoFocusRequest
 import io.github.octoclonius.libreauto.protocol.media.uiConfigInUse
 import io.github.octoclonius.libreauto.protocol.media.uiConfigUpdateReply
@@ -72,12 +74,7 @@ internal class VideoChannel(
                 message.type == MessageType.CHANNEL_OPEN_RESPONSE ->
                 state =
                     if (isChannelOpened(TAG, message, "video")) {
-                        sender.send(MediaMessageType.SETUP_REQUEST, videoSetupRequest())
-                        VideoChannelState.SettingUp(
-                            current.configs,
-                            pendingFocus = null,
-                            pendingUiConfigs = emptyList(),
-                        )
+                        setUp(current.configs)
                     } else {
                         null
                     }
@@ -106,6 +103,23 @@ internal class VideoChannel(
         displays.car.onCarDensity(null)
     }
 
+    private fun setUp(configs: List<VideoConfig>): VideoChannelState.SettingUp {
+        val codec =
+            preferredVideoCodec(configs, EncoderSettings::isEncodable)
+                ?: throw IOException(
+                    "The phone can't encode any of the video configs $configs " +
+                        "the car offered on channel $channel"
+                )
+        sender.send(MediaMessageType.SETUP_REQUEST, videoSetupRequest(codec))
+        Log.i(TAG, "Requested the video setup on channel $channel in $codec")
+        return VideoChannelState.SettingUp(
+            configs,
+            codec,
+            pendingFocus = null,
+            pendingUiConfigs = emptyList(),
+        )
+    }
+
     private fun onSetupResponse(
         current: VideoChannelState.SettingUp,
         message: ChannelMessage,
@@ -125,10 +139,16 @@ internal class VideoChannel(
             )
         }
         val configIndex =
-            preferredConfigIndex(current.configs, response.config_indexes, H264Encoder::supports)
+            preferredConfigIndex(
+                current.configs,
+                response.config_indexes,
+                current.codec,
+                EncoderSettings::isEncodable,
+            )
                 ?: throw IOException(
-                    "No H.264 encoder can encode the video configs " +
-                        "${response.config_indexes} the car accepted on channel $channel"
+                    "The phone can't encode any of the video configs " +
+                        "${response.config_indexes} the car accepted on channel $channel " +
+                        "with ${current.codec}"
                 )
         val config = current.configs[configIndex]
         val decoderDepth = decoderDepth(config, car)
@@ -146,7 +166,15 @@ internal class VideoChannel(
             uiConfig = updatedUiConfig
             reply(format, uiConfig)
         }
-        val ready = VideoChannelState.Ready(configIndex, format, uiConfig, decoderDepth, maxUnacked)
+        val ready =
+            VideoChannelState.Ready(
+                configIndex,
+                current.codec,
+                format,
+                uiConfig,
+                decoderDepth,
+                maxUnacked,
+            )
         if (current.pendingFocus?.isProjected == true) return start(ready)
         sender.send(MediaMessageType.VIDEO_FOCUS_REQUEST, projectedVideoFocusRequest())
         Log.i(TAG, "Requested projected video focus on channel $channel")
@@ -273,13 +301,17 @@ internal class VideoChannel(
     }
 
     private fun start(ready: VideoChannelState.Ready): VideoChannelState.Started {
-        Log.i(TAG, "Starting video on channel $channel with config ${ready.configIndex}")
+        Log.i(
+            TAG,
+            "Starting video on channel $channel with config ${ready.configIndex} in ${ready.codec}",
+        )
         val layout = carLayout(ready.format, isDriverOnRight)
         val stream =
             VideoStream(
                 context,
                 layout,
                 ready.configIndex,
+                ready.codec,
                 ready.decoderDepth,
                 ready.maxUnacked,
                 sender::send,
@@ -299,12 +331,14 @@ private sealed interface VideoChannelState {
 
     data class SettingUp(
         val configs: List<VideoConfig>,
+        val codec: VideoCodec,
         val pendingFocus: VideoFocusNotification?,
         val pendingUiConfigs: List<UiConfig>,
     ) : VideoChannelState
 
     data class Ready(
         val configIndex: Int,
+        val codec: VideoCodec,
         val format: VideoFormat,
         val uiConfig: UiConfig,
         val decoderDepth: Int,

@@ -123,22 +123,47 @@ data class VideoFormat(
         (displayY.toDouble() * visibleHeight / displayHeight).roundToInt()
 }
 
+data class VideoMode(
+    val codec: VideoCodec,
+    val width: Int,
+    val height: Int,
+    val framesPerSecond: Int,
+)
+
+private val BEST_FIRST: Comparator<VideoMode> =
+    compareByDescending<VideoMode> { it.width.toLong() * it.height }
+        .thenByDescending { it.codec }
+        .thenByDescending { it.framesPerSecond }
+
+fun videoMode(config: VideoConfig): VideoMode? {
+    val codec = videoCodec(config.video_codec_type) ?: return null
+    val (width, height) = frameSize(config)
+    return VideoMode(codec, width, height, framesPerSecond(config))
+}
+
+fun preferredVideoCodec(
+    configs: List<VideoConfig>,
+    isEncodable: (VideoMode) -> Boolean,
+): VideoCodec? =
+    configs.mapNotNull(::videoMode).filter(isEncodable).sortedWith(BEST_FIRST).firstOrNull()?.codec
+
 @Throws(ProtocolException::class)
 fun preferredConfigIndex(
     configs: List<VideoConfig>,
     accepted: List<Int>,
-    isEncodable: (width: Int, height: Int, framesPerSecond: Int) -> Boolean,
+    codec: VideoCodec,
+    isEncodable: (VideoMode) -> Boolean,
 ): Int? {
     if (accepted.isEmpty()) throw ProtocolException("The car accepted no video config")
     accepted
         .firstOrNull { it !in configs.indices }
         ?.let { throw ProtocolException("The car accepted video config $it of ${configs.size}") }
     return accepted
-        .sortedByDescending { index -> frameSize(configs[index]).let { (w, h) -> w * h } }
-        .firstOrNull { index ->
-            val (width, height) = frameSize(configs[index])
-            isEncodable(width, height, framesPerSecond(configs[index]))
-        }
+        .mapNotNull { index -> videoMode(configs[index])?.let { index to it } }
+        .filter { (_, mode) -> mode.codec == codec && isEncodable(mode) }
+        .sortedWith(compareBy(BEST_FIRST) { (_, mode) -> mode })
+        .firstOrNull()
+        ?.first
 }
 
 @Throws(ProtocolException::class)

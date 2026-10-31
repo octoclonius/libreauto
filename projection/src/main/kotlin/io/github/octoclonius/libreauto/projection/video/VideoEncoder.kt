@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.projection.display.CarLayout
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
+import io.github.octoclonius.libreauto.protocol.media.VideoCodec
+import io.github.octoclonius.libreauto.protocol.media.VideoMode
 import io.github.octoclonius.libreauto.protocol.media.mediaData
 import java.io.Closeable
 import java.io.IOException
@@ -15,6 +17,7 @@ import kotlin.concurrent.withLock
 
 internal class VideoEncoder(
     private val layout: CarLayout,
+    private val codec: VideoCodec,
     private val maxUnacked: Int,
     val session: Int,
     private val send: (type: Int, body: ByteArray) -> Boolean,
@@ -31,7 +34,7 @@ internal class VideoEncoder(
     private var unacked = 0
     private val sentActions = FrameSentActions()
     @Volatile private var isClosed = false
-    @Volatile private var codec: MediaCodec? = null
+    @Volatile private var mediaCodec: MediaCodec? = null
 
     fun acknowledge(count: Int) {
         lock.withLock {
@@ -54,7 +57,7 @@ internal class VideoEncoder(
     }
 
     fun setBitRate(bitRate: Int) {
-        val current = codec ?: return
+        val current = mediaCodec ?: return
         try {
             current.setParameters(
                 Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, bitRate) }
@@ -70,18 +73,19 @@ internal class VideoEncoder(
         val width = format.frameWidth
         val height = format.frameHeight
         val framesPerSecond = format.framesPerSecond
-        val bitRate = H264Encoder.bitRate(format.pixelsOutsideCutouts, framesPerSecond)
-        val encoderFormat = H264Encoder.format(width, height, framesPerSecond, bitRate)
-        val name = H264Encoder.name(encoderFormat)
+        val bitRate = EncoderSettings.bitRate(codec, format.pixelsOutsideCutouts, framesPerSecond)
+        val encoderFormat =
+            EncoderSettings.format(VideoMode(codec, width, height, framesPerSecond), bitRate)
+        val name = EncoderSettings.name(encoderFormat)
         if (name == null) {
-            Log.w(TAG, "No H.264 encoder for ${width}x$height at $framesPerSecond fps")
+            Log.w(TAG, "No $codec encoder for ${width}x$height at $framesPerSecond fps")
             return
         }
         val encoder =
             try {
                 MediaCodec.createByCodecName(name)
             } catch (e: IOException) {
-                Log.w(TAG, "Can't create the H.264 encoder $name", e)
+                Log.w(TAG, "Can't create the $codec encoder $name", e)
                 return
             }
         var surface: Surface? = null
@@ -90,10 +94,10 @@ internal class VideoEncoder(
             val input = encoder.createInputSurface()
             surface = input
             encoder.start()
-            codec = encoder
+            mediaCodec = encoder
             Log.i(
                 TAG,
-                "Encoding session $session: ${width}x$height at $framesPerSecond fps and " +
+                "Encoding session $session in $codec: ${width}x$height at $framesPerSecond fps and " +
                     "$bitRate bit/s with $name, showing " +
                     "${format.visibleWidth}x${format.visibleHeight} inside " +
                     "margins ${format.margins} from a " +
@@ -105,13 +109,13 @@ internal class VideoEncoder(
             compositor.attach(input)
             drain(encoder, compositor)
         } catch (e: IllegalStateException) {
-            Log.w(TAG, "The H.264 encoder or the compositor failed", e)
+            Log.w(TAG, "The $codec encoder or the compositor failed", e)
         } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "The H.264 encoder refused the format", e)
+            Log.w(TAG, "The $codec encoder refused the format", e)
         } finally {
             close()
             profiler.onStop(session)
-            codec = null
+            mediaCodec = null
             try {
                 compositor.detach()
             } catch (e: IllegalStateException) {

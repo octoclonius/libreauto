@@ -10,8 +10,9 @@ import org.junit.jupiter.api.assertThrows
 class MediaSetupTest {
 
     @Test
-    fun theRequestHasH264BaselineAsField1() {
-        assertArrayEquals(bytes(0x08, 0x03), videoSetupRequest())
+    fun theRequestHasTheCodecAsField1() {
+        assertArrayEquals(bytes(0x08, 0x03), videoSetupRequest(VideoCodec.H264))
+        assertArrayEquals(bytes(0x08, 0x07), videoSetupRequest(VideoCodec.H265))
     }
 
     @Test
