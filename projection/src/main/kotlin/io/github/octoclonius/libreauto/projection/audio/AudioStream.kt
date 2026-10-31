@@ -115,8 +115,9 @@ internal class AudioStream(
         val encoder =
             when (codec) {
                 AudioCodec.PCM -> null
-                AudioCodec.AAC_LC ->
-                    AacEncoder.create(config)
+                AudioCodec.AAC_LC,
+                AudioCodec.AAC_LC_ADTS ->
+                    AacEncoder.create(config, isAdts = codec == AudioCodec.AAC_LC_ADTS)
                         ?: run {
                             input.close()
                             return

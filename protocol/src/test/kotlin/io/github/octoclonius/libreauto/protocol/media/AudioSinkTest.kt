@@ -52,6 +52,18 @@ class AudioSinkTest {
     }
 
     @Test
+    fun codec4IsAacLcAdts() {
+        assertEquals(
+            AudioCodec.AAC_LC_ADTS,
+            audioSink(
+                    discovery(sink(5, varint(1, 4), varint(2, media), config(48000, 16, 2))),
+                    media,
+                )
+                ?.codec,
+        )
+    }
+
+    @Test
     fun aMissingCodecIsPcm() {
         assertEquals(
             AudioCodec.PCM,
@@ -129,6 +141,7 @@ class AudioSinkTest {
     fun theSetupRequestHasTheCodecAsField1() {
         assertEquals(listOf<Byte>(0x08, 0x01), audioSetupRequest(AudioCodec.PCM).toList())
         assertEquals(listOf<Byte>(0x08, 0x02), audioSetupRequest(AudioCodec.AAC_LC).toList())
+        assertEquals(listOf<Byte>(0x08, 0x04), audioSetupRequest(AudioCodec.AAC_LC_ADTS).toList())
     }
 
     private fun discovery(vararg services: ByteArray) =

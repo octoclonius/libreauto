@@ -18,19 +18,62 @@ internal class AacEncoder
 private constructor(
     private val mediaCodec: MediaCodec,
     private val config: PcmConfig,
+    private val isAdts: Boolean,
 ) : Closeable {
 
     companion object {
         private const val TAG = "AacEncoder"
         internal const val FRAME_SAMPLES = 1024
         internal const val MAX_BIT_RATE = 512_000
+        private const val ADTS_HEADER_BYTES = 7
+        private const val ADTS_SYNC = 0xFFF
+        private const val ADTS_MPEG_2 = 1
+        private const val ADTS_NO_CRC = 1
+        private const val AAC_LC_OBJECT_TYPE = 2
+        private const val ADTS_VARIABLE_BIT_RATE_FULLNESS = 0x7FF
+        private val ADTS_SAMPLE_RATES =
+            intArrayOf(
+                96000,
+                88200,
+                64000,
+                48000,
+                44100,
+                32000,
+                24000,
+                22050,
+                16000,
+                12000,
+                11025,
+                8000,
+                7350,
+            )
 
         fun bitRate(config: PcmConfig): Int =
             minOf(pcmFrameBytes(config, config.sampleRate) * Byte.SIZE_BITS / 2, MAX_BIT_RATE)
 
         fun isEncodable(config: PcmConfig): Boolean = encoderName(format(config)) != null
 
-        fun create(config: PcmConfig): AacEncoder? {
+        fun isAdtsEncodable(config: PcmConfig): Boolean =
+            config.sampleRate in ADTS_SAMPLE_RATES && isEncodable(config)
+
+        fun adtsHeader(config: PcmConfig, frameBytes: Int): ByteArray {
+            val rateIndex = ADTS_SAMPLE_RATES.indexOf(config.sampleRate)
+            require(rateIndex >= 0) { "ADTS has no index for ${config.sampleRate} Hz" }
+            val length = ADTS_HEADER_BYTES + frameBytes
+            val channels = config.channelCount
+            val fullness = ADTS_VARIABLE_BIT_RATE_FULLNESS
+            return byteArrayOf(
+                (ADTS_SYNC shr 4).toByte(),
+                ((ADTS_SYNC and 0xF) shl 4 or (ADTS_MPEG_2 shl 3) or ADTS_NO_CRC).toByte(),
+                ((AAC_LC_OBJECT_TYPE - 1) shl 6 or (rateIndex shl 2) or (channels shr 2)).toByte(),
+                ((channels and 0x3) shl 6 or (length shr 11)).toByte(),
+                (length shr 3).toByte(),
+                ((length and 0x7) shl 5 or (fullness shr 6)).toByte(),
+                ((fullness and 0x3F) shl 2).toByte(),
+            )
+        }
+
+        fun create(config: PcmConfig, isAdts: Boolean): AacEncoder? {
             val name = encoderName(format(config))
             if (name == null) {
                 Log.w(TAG, "No AAC encoder for ${config.sampleRate} Hz, ${config.channelCount} ch")
@@ -64,9 +107,9 @@ private constructor(
             Log.i(
                 TAG,
                 "Encoding ${config.sampleRate} Hz, ${config.channelCount} ch at " +
-                    "$bitRate bit/s with $name",
+                    "$bitRate bit/s with $name${if (isAdts) " in ADTS" else ""}",
             )
-            return AacEncoder(mediaCodec, config)
+            return AacEncoder(mediaCodec, config, isAdts)
         }
 
         private fun format(config: PcmConfig): MediaFormat =
@@ -134,7 +177,12 @@ private constructor(
             mediaCodec.releaseOutputBuffer(index, false)
             when {
                 info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 -> codecConfig = data
-                data.isNotEmpty() -> frames += AacFrame(info.presentationTimeUs, data)
+                data.isNotEmpty() ->
+                    frames +=
+                        AacFrame(
+                            info.presentationTimeUs,
+                            if (isAdts) adtsHeader(config, data.size) + data else data,
+                        )
             }
         }
     }
@@ -144,4 +192,5 @@ internal fun isEncodable(codec: AudioCodec, config: PcmConfig): Boolean =
     when (codec) {
         AudioCodec.PCM -> true
         AudioCodec.AAC_LC -> AacEncoder.isEncodable(config)
+        AudioCodec.AAC_LC_ADTS -> AacEncoder.isAdtsEncodable(config)
     }
