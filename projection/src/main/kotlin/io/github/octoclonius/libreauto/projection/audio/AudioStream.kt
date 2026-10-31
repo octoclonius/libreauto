@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.projection.audio
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import io.github.octoclonius.libreauto.projection.closeAll
+import io.github.octoclonius.libreauto.protocol.media.AudioCodec
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.mediaData
@@ -18,6 +19,7 @@ import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
 internal class AudioStream(
+    private val codec: AudioCodec,
     private val config: PcmConfig,
     private val frameSamples: Int,
     private val maxUnacked: Int,
@@ -38,6 +40,7 @@ internal class AudioStream(
     private var isAllowed = false
     private var isStarted = false
     private var session = 0
+    private var isCodecConfigSent = false
     private var unacked = 0
     private var carQueueEndNanos = 0L
     private val drainTimer = Executors.newSingleThreadScheduledExecutor {
@@ -109,19 +112,33 @@ internal class AudioStream(
 
     private fun readFrames(input: InputStream) {
         val frameBytes = pcmFrameBytes(config, frameSamples)
+        val encoder =
+            when (codec) {
+                AudioCodec.PCM -> null
+                AudioCodec.AAC_LC ->
+                    AacEncoder.create(config)
+                        ?: run {
+                            input.close()
+                            return
+                        }
+            }
         try {
             while (!isClosed) {
                 val frame = ByteArray(frameBytes)
                 if (input.readNBytes(frame, 0, frameBytes) < frameBytes) break
-                onFrame(frame, System.nanoTime())
+                onFrame(frame, System.nanoTime(), encoder)
             }
         } catch (e: IOException) {
             if (!isClosed) Log.w(TAG, "Reading the diverted audio failed", e)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Encoding the diverted audio failed", e)
+        } finally {
+            encoder?.close()
         }
         endTail()
     }
 
-    private fun onFrame(frame: ByteArray, capturedNanos: Long) {
+    private fun onFrame(frame: ByteArray, capturedNanos: Long, encoder: AacEncoder?) {
         if (isTailingWith(frame)) {
             endTail()
             return
@@ -129,11 +146,26 @@ internal class AudioStream(
         val started = lock.withLock {
             if (!isAllowed || (!isActive && !isTailing)) return
             val starting = !isStarted
-            if (starting) startLocked()
-            sendLocked(frame, capturedNanos)
+            if (starting) {
+                startLocked()
+                encoder?.flush()
+            }
+            val timeUs = TimeUnit.NANOSECONDS.toMicros(capturedNanos)
+            if (encoder == null) sendLocked(timeUs, frame, frameNanos)
+            else encodeLocked(encoder, timeUs, frame)
             starting
         }
         if (started) onStartedOrStopped()
+    }
+
+    private fun encodeLocked(encoder: AacEncoder, timeUs: Long, pcm: ByteArray) {
+        val frames = encoder.encode(pcm, timeUs)
+        val codecConfig = encoder.codecConfig
+        if (!isCodecConfigSent && codecConfig != null) {
+            send(MediaMessageType.CODEC_CONFIG, codecConfig)
+            isCodecConfigSent = true
+        }
+        frames.forEach { sendLocked(it.timeUs, it.data, encoder.frameNanos) }
     }
 
     private fun isTailingWith(frame: ByteArray): Boolean =
@@ -171,6 +203,7 @@ internal class AudioStream(
     private fun startLocked() {
         isStarted = true
         session++
+        isCodecConfigSent = false
         unacked = 0
         carQueueEndNanos = 0L
         send(MediaMessageType.START, mediaStart(session, config.index))
@@ -184,15 +217,15 @@ internal class AudioStream(
         Log.i(TAG, "Stopped the stream, session $session")
     }
 
-    private fun sendLocked(pcm: ByteArray, capturedNanos: Long) {
-        var remainingNanos = frameNanos
+    private fun sendLocked(timeUs: Long, data: ByteArray, durationNanos: Long) {
+        var remainingNanos = durationNanos
         while (unacked >= maxUnacked && isStarted && !isClosed) {
             if (remainingNanos <= 0) return
             remainingNanos = acked.awaitNanos(remainingNanos)
         }
         if (!isStarted || isClosed) return
         unacked++
-        send(MediaMessageType.DATA, mediaData(TimeUnit.NANOSECONDS.toMicros(capturedNanos), pcm))
-        carQueueEndNanos = maxOf(carQueueEndNanos, System.nanoTime()) + frameNanos
+        send(MediaMessageType.DATA, mediaData(timeUs, data))
+        carQueueEndNanos = maxOf(carQueueEndNanos, System.nanoTime()) + durationNanos
     }
 }

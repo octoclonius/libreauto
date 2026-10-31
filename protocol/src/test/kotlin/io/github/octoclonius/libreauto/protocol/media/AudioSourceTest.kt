@@ -15,7 +15,6 @@ class AudioSourceTest {
     fun theAudioSourceIsTheMediaSourceServiceWithItsConfig() {
         val source = audioSource(discovery(source(7, varint(1, pcm), config(16000, 16, 1))))
         assertEquals(7, source?.channel)
-        assertEquals(AudioCodec.PCM, source?.codec)
         assertEquals(0, source?.config?.index)
         assertEquals(16000, source?.config?.sampleRate)
         assertEquals(1, source?.config?.channelCount)
@@ -28,14 +27,12 @@ class AudioSourceTest {
 
     @Test
     fun aMissingCodecIsPcm() {
-        assertEquals(
-            AudioCodec.PCM,
-            audioSource(discovery(source(7, config(16000, 16, 1))))?.codec,
-        )
+        assertEquals(7, audioSource(discovery(source(7, config(16000, 16, 1))))?.channel)
     }
 
     @Test
-    fun anUnknownCodecIsSkipped() {
+    fun anotherCodecIsSkipped() {
+        assertNull(audioSource(discovery(source(7, varint(1, 2), config(16000, 16, 1)))))
         assertNull(audioSource(discovery(source(7, varint(1, 99), config(16000, 16, 1)))))
     }
 

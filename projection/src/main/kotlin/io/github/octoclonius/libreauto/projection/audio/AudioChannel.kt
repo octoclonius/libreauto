@@ -98,13 +98,14 @@ internal class AudioChannel(
         }
         val config =
             response.config_indexes.firstNotNullOfOrNull { index ->
-                configs.firstOrNull { it.index == index }
+                configs.firstOrNull { it.index == index && isEncodable(codec, it) }
             }
         if (config == null) {
             Log.w(
                 TAG,
-                "The car accepted none of the audio configs LibreAuto plays on channel $channel: " +
-                    "accepted ${response.config_indexes}, playable ${configs.map { it.index }}",
+                "The car accepted none of the audio configs LibreAuto can send in $codec on " +
+                    "channel $channel: accepted ${response.config_indexes}, offered " +
+                    "${configs.map { it.index }}",
             )
             settleUnusable()
             return
@@ -113,6 +114,7 @@ internal class AudioChannel(
             AudioChannelState.Ready(
                 config,
                 AudioStream(
+                    codec,
                     config,
                     frameSamples,
                     maxUnacked,

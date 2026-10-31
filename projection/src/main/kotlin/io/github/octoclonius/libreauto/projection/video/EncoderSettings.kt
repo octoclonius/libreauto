@@ -2,8 +2,8 @@ package io.github.octoclonius.libreauto.projection.video
 
 import android.media.MediaCodecInfo.CodecCapabilities
 import android.media.MediaCodecInfo.CodecProfileLevel
-import android.media.MediaCodecList
 import android.media.MediaFormat
+import io.github.octoclonius.libreauto.projection.media.encoderName
 import io.github.octoclonius.libreauto.protocol.media.VideoCodec
 import io.github.octoclonius.libreauto.protocol.media.VideoMode
 
@@ -25,12 +25,9 @@ internal object EncoderSettings {
         return maxOf(scaled, MIN_BIT_RATE) * framesPerSecond / REFERENCE_FRAMES_PER_SECOND
     }
 
-    fun name(format: MediaFormat): String? =
-        MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(format)
-
     fun isEncodable(mode: VideoMode): Boolean {
         val bitRate = bitRate(mode.codec, mode.width * mode.height, mode.framesPerSecond)
-        return name(format(mode, bitRate)) != null
+        return encoderName(format(mode, bitRate)) != null
     }
 
     fun format(mode: VideoMode, bitRate: Int): MediaFormat =

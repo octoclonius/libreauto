@@ -3,15 +3,15 @@ package io.github.octoclonius.libreauto.protocol.media
 import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 import java.io.IOException
 
-class AudioSource(val channel: Int, val codec: AudioCodec, val config: PcmConfig)
+class AudioSource(val channel: Int, val config: PcmConfig)
 
 fun audioSource(response: ServiceDiscoveryResponse): AudioSource? {
     for (service in response.services) {
         val source = service.media_source_service ?: continue
         val channel = service.id ?: continue
-        val codec = audioCodec(source.codec) ?: continue
+        if (audioCodec(source.codec) != AudioCodec.PCM) continue
         val config = source.audio_config?.let { pcmConfig(0, it) } ?: continue
-        return AudioSource(channel, codec, config)
+        return AudioSource(channel, config)
     }
     return null
 }
