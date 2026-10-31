@@ -28,13 +28,40 @@ class AudioSinkTest {
     }
 
     @Test
-    fun aMissingCodecIsPcm() {
-        assertEquals(5, pick(media, sink(5, varint(2, media), config(48000, 16, 2))))
+    fun theCodecIsField1() {
+        assertEquals(
+            AudioCodec.PCM,
+            audioSink(
+                    discovery(sink(5, varint(1, pcm), varint(2, media), config(48000, 16, 2))),
+                    media,
+                )
+                ?.codec,
+        )
     }
 
     @Test
-    fun anotherCodecIsSkipped() {
-        assertNull(pick(media, sink(5, varint(1, 2), varint(2, media), config(48000, 16, 2))))
+    fun aMissingCodecIsPcm() {
+        assertEquals(
+            AudioCodec.PCM,
+            audioSink(discovery(sink(5, varint(2, media), config(48000, 16, 2))), media)?.codec,
+        )
+    }
+
+    @Test
+    fun anUnknownCodecIsSkipped() {
+        assertNull(pick(media, sink(5, varint(1, 99), varint(2, media), config(48000, 16, 2))))
+    }
+
+    @Test
+    fun aSinkWithAnUnknownCodecIsSkippedForTheNextOfItsType() {
+        assertEquals(
+            6,
+            pick(
+                media,
+                sink(5, varint(1, 99), varint(2, media), config(48000, 16, 2)),
+                sink(6, varint(1, pcm), varint(2, media), config(48000, 16, 2)),
+            ),
+        )
     }
 
     @Test
@@ -87,8 +114,8 @@ class AudioSinkTest {
     }
 
     @Test
-    fun theSetupRequestHasPcmAsCodecField1() {
-        assertEquals(listOf<Byte>(0x08, 0x01), audioSetupRequest().toList())
+    fun theSetupRequestHasTheCodecAsField1() {
+        assertEquals(listOf<Byte>(0x08, 0x01), audioSetupRequest(AudioCodec.PCM).toList())
     }
 
     private fun discovery(vararg services: ByteArray) =

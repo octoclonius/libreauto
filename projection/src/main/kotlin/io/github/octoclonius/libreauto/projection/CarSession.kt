@@ -168,6 +168,7 @@ internal constructor(
             AudioChannel(
                 type,
                 ChannelSender(link, sink.channel),
+                sink.codec,
                 sink.configs,
                 carAudio::onChannelSettled,
                 carAudio::onStreamStartedOrStopped,

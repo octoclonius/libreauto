@@ -3,7 +3,6 @@ package io.github.octoclonius.libreauto.protocol.media
 import io.github.octoclonius.libreauto.protocol.control.AudioConfig
 import io.github.octoclonius.libreauto.protocol.control.ServiceDiscoveryResponse
 
-internal const val CODEC_PCM = 1
 private const val BIT_DEPTH_16 = 16
 private const val MAX_CHANNELS = 2
 
@@ -15,16 +14,17 @@ object AudioType {
 
 class PcmConfig(val index: Int, val sampleRate: Int, val channelCount: Int)
 
-class AudioSink(val channel: Int, val configs: List<PcmConfig>)
+class AudioSink(val channel: Int, val codec: AudioCodec, val configs: List<PcmConfig>)
 
 fun audioSink(response: ServiceDiscoveryResponse, type: Int): AudioSink? {
     for (service in response.services) {
         val sink = service.media_sink_service ?: continue
         val channel = service.id ?: continue
-        if (sink.audio_type != type || (sink.codec ?: CODEC_PCM) != CODEC_PCM) continue
+        if (sink.audio_type != type) continue
+        val codec = audioCodec(sink.codec) ?: continue
         val configs =
             sink.audio_configs.mapIndexedNotNull { index, config -> pcmConfig(index, config) }
-        if (configs.isNotEmpty()) return AudioSink(channel, configs)
+        if (configs.isNotEmpty()) return AudioSink(channel, codec, configs)
     }
     return null
 }
@@ -36,8 +36,6 @@ internal fun pcmConfig(index: Int, config: AudioConfig): PcmConfig? {
     if (channelCount !in 1..MAX_CHANNELS) return null
     return PcmConfig(index, sampleRate, channelCount)
 }
-
-fun audioSetupRequest(): ByteArray = MediaSetupRequest(codec = CODEC_PCM).encode()
 
 fun pcmFrameBytes(config: PcmConfig, frameSamples: Int): Int =
     frameSamples * config.channelCount * BIT_DEPTH_16 / 8

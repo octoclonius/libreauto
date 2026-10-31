@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.projection.channel.ChannelSender
 import io.github.octoclonius.libreauto.projection.channel.isChannelOpened
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.control.MessageType
+import io.github.octoclonius.libreauto.protocol.media.AudioCodec
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.audioSetupRequest
@@ -16,6 +17,7 @@ import java.net.ProtocolException
 internal class AudioChannel(
     val audioType: Int,
     private val sender: ChannelSender,
+    private val codec: AudioCodec,
     private val configs: List<PcmConfig>,
     private val onSettled: () -> Unit,
     private val onStreamStartedOrStopped: () -> Unit,
@@ -44,7 +46,7 @@ internal class AudioChannel(
         get() = state == null || state is AudioChannelState.Ready
 
     override fun open() {
-        Log.i(TAG, "Opening the audio channel $channel for audio type $audioType")
+        Log.i(TAG, "Opening the audio channel $channel for audio type $audioType in $codec")
         sender.sendOpenRequest()
     }
 
@@ -54,7 +56,7 @@ internal class AudioChannel(
             current == AudioChannelState.Opening &&
                 message.type == MessageType.CHANNEL_OPEN_RESPONSE ->
                 if (isChannelOpened(TAG, message, "audio")) {
-                    sender.send(MediaMessageType.SETUP_REQUEST, audioSetupRequest())
+                    sender.send(MediaMessageType.SETUP_REQUEST, audioSetupRequest(codec))
                     state = AudioChannelState.SettingUp
                 } else {
                     settleUnusable()
