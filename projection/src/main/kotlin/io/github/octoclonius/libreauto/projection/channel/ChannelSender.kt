@@ -8,6 +8,9 @@ internal class ChannelSender(private val link: CarLink, val channel: Int) {
     fun send(type: Int, body: ByteArray): Boolean =
         link.send(channel, isControl = false, type, body)
 
+    fun sendLast(type: Int, body: ByteArray): Boolean =
+        link.sendLast(channel, isControl = false, type, body)
+
     fun sendOpenRequest(): Boolean =
         link.send(
             channel,

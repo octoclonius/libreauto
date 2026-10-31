@@ -57,7 +57,7 @@ internal class CarConnection(
             val writer = FrameWriter(output)
             val version = Handshake(reader, writer, tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")
-            val link = CarLink(writer, tls)
+            val link = CarLink(writer, tls::encrypt)
             val control = ChannelSender(link, CONTROL_CHANNEL)
             control.send(
                 MessageType.SERVICE_DISCOVERY_REQUEST,
@@ -130,7 +130,7 @@ internal class CarConnection(
                     MessageType.BYE_BYE_REQUEST -> {
                         val reason = parseByeByeRequest(message.body)
                         Log.i(TAG, "The car says bye-bye with reason $reason")
-                        control.send(MessageType.BYE_BYE_RESPONSE, byeByeResponse())
+                        control.sendLast(MessageType.BYE_BYE_RESPONSE, byeByeResponse())
                         return
                     }
                     else -> logUnhandled(TAG, message)
