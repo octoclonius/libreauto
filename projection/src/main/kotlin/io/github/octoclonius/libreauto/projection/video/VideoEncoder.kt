@@ -103,7 +103,7 @@ internal class VideoEncoder(
             )
             profiler.onStart(session, layout, name, bitRate)
             compositor.attach(input)
-            drain(encoder)
+            drain(encoder, compositor)
         } catch (e: IllegalStateException) {
             Log.w(TAG, "The H.264 encoder or the compositor failed", e)
         } catch (e: IllegalArgumentException) {
@@ -123,7 +123,7 @@ internal class VideoEncoder(
         }
     }
 
-    private fun drain(encoder: MediaCodec) {
+    private fun drain(encoder: MediaCodec, compositor: VideoCompositor) {
         val info = MediaCodec.BufferInfo()
         while (!isClosed) {
             val index = encoder.dequeueOutputBuffer(info, DEQUEUE_TIMEOUT_US)
@@ -144,7 +144,9 @@ internal class VideoEncoder(
                     }
                     profiler.onSent(info.presentationTimeUs)
                     sentActions.onFrameSent(info.presentationTimeUs)
+                    compositor.onFrameSent(info.presentationTimeUs)
                 }
+                else -> compositor.onFrameSent(info.presentationTimeUs)
             }
         }
     }

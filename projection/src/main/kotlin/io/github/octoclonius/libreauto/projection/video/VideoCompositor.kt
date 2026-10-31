@@ -60,6 +60,7 @@ internal class VideoCompositor(
         private val TEXTURE_QUAD = floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)
 
         private const val FRAME_TIME_DEVIATION = 0.2
+        internal const val MAX_PENDING_FRAMES = 3
     }
 
     private class Layer(
@@ -89,6 +90,7 @@ internal class VideoCompositor(
     private var eglSurface = EGL14.EGL_NO_SURFACE
     private var program = 0
     private var layers: List<Layer> = emptyList()
+    private val pendingFrames = PendingFrames(MAX_PENDING_FRAMES)
     private var dueNanos = 0L
     private var lastFrameNanos: Long? = null
     private var hasNewPicture = false
@@ -157,6 +159,7 @@ internal class VideoCompositor(
             )
             dueNanos = 0L
             lastFrameNanos = null
+            pendingFrames.clear()
             hasNewPicture = true
             schedule()
         }
@@ -164,6 +167,13 @@ internal class VideoCompositor(
 
     fun detach() {
         onThread(::detachOutput)
+    }
+
+    fun onFrameSent(presentationMicros: Long) {
+        handler.post {
+            pendingFrames.onSent(presentationMicros)
+            if (eglSurface != EGL14.EGL_NO_SURFACE && (hasNewPicture || repeats > 0)) schedule()
+        }
     }
 
     override fun close() {
@@ -331,6 +341,7 @@ internal class VideoCompositor(
         isScheduled = false
         if (isReleased || isFailed || eglSurface == EGL14.EGL_NO_SURFACE) return
         if (!hasNewPicture && repeats == 0) return
+        if (!pendingFrames.hasRoom) return
         if (vsyncNanos < dueNanos - deviationNanos) {
             schedule()
             return
@@ -379,6 +390,7 @@ internal class VideoCompositor(
         profiler.onDrawn(presentationNanos)
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationNanos)
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+        pendingFrames.onDrawn(TimeUnit.NANOSECONDS.toMicros(presentationNanos))
         lastFrameNanos = presentationNanos
     }
 
