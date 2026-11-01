@@ -13,6 +13,7 @@ class MediaSetupTest {
     fun theRequestHasTheCodecAsField1() {
         assertArrayEquals(bytes(0x08, 0x03), videoSetupRequest(VideoCodec.H264))
         assertArrayEquals(bytes(0x08, 0x05), videoSetupRequest(VideoCodec.VP9))
+        assertArrayEquals(bytes(0x08, 0x06), videoSetupRequest(VideoCodec.AV1))
         assertArrayEquals(bytes(0x08, 0x07), videoSetupRequest(VideoCodec.H265))
     }
 

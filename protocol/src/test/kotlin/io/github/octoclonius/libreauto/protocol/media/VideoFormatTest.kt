@@ -629,6 +629,25 @@ class VideoFormatTest {
     }
 
     @Test
+    fun codec6IsAv1() {
+        assertEquals(
+            VideoCodec.AV1,
+            videoMode(VideoConfig(resolution = 3, video_codec_type = 6))?.codec,
+        )
+    }
+
+    @Test
+    fun av1WinsOverH265AtTheSameResolution() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, frame_rate = 1, video_codec_type = 7),
+                VideoConfig(resolution = 3, frame_rate = 2, video_codec_type = 6),
+            )
+        assertEquals(VideoCodec.AV1, preferredVideoCodec(configs, ::any))
+        assertEquals(VideoCodec.AV1, preferredVideoCodec(configs.reversed(), ::any))
+    }
+
+    @Test
     fun theCodecOfAConfigThatCantBeEncodedIsNotChosen() {
         val configs =
             listOf(

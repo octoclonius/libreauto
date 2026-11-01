@@ -21,7 +21,8 @@ internal object EncoderSettings {
             when (codec) {
                 VideoCodec.H264 -> visiblePixels * H264_BITS_PER_PIXEL_SECOND + H264_BASE_BIT_RATE
                 VideoCodec.VP9,
-                VideoCodec.H265 -> visiblePixels * H265_BITS_PER_PIXEL_SECOND + H265_BASE_BIT_RATE
+                VideoCodec.H265,
+                VideoCodec.AV1 -> visiblePixels * H265_BITS_PER_PIXEL_SECOND + H265_BASE_BIT_RATE
             }.toInt()
         return maxOf(scaled, MIN_BIT_RATE) * framesPerSecond / REFERENCE_FRAMES_PER_SECOND
     }
@@ -50,6 +51,16 @@ internal object EncoderSettings {
                     )
                     .apply {
                         setInteger(MediaFormat.KEY_PROFILE, CodecProfileLevel.VP9Profile0)
+                        setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+                    }
+            VideoCodec.AV1 ->
+                MediaFormat.createVideoFormat(
+                        MediaFormat.MIMETYPE_VIDEO_AV1,
+                        mode.width,
+                        mode.height,
+                    )
+                    .apply {
+                        setInteger(MediaFormat.KEY_PROFILE, CodecProfileLevel.AV1ProfileMain8)
                         setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
                     }
             VideoCodec.H265 ->
