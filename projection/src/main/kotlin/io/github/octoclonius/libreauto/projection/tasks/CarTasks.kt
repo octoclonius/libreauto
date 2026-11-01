@@ -59,6 +59,12 @@ internal constructor(
         return created
     }
 
+    internal fun moveToPhone() {
+        listener = null
+        _state.value = CarTasksState.NONE
+        display.call("move the car's tasks to the phone") { it.moveTasksToPhone() }
+    }
+
     internal fun onReleased(released: IDisplayTaskListener) {
         scope.launch {
             if (listener !== released) return@launch

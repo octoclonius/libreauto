@@ -20,4 +20,6 @@ interface ICarDisplaySession {
     oneway void restoreTasks(in int[] taskIds, int frontTaskId) = 8;
 
     void release() = 9;
+
+    void moveTasksToPhone() = 10;
 }

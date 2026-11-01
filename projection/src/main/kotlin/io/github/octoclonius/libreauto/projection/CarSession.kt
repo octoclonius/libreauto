@@ -96,6 +96,7 @@ internal constructor(
 
     private suspend fun closeChannels() {
         closeAll(TAG) {
+            step("Moving the car's tasks to the phone") { tasks.moveToPhone() }
             step("Closing the car audio") { audio?.close() }
             for (channel in channels.values) {
                 step("Closing the channel ${channel.channel}") { channel.close() }

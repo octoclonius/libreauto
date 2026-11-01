@@ -168,6 +168,10 @@ private constructor(
         }
     }
 
+    override fun moveTasksToPhone() {
+        call("Moving the car display $id's tasks to the phone", { null }) { tasks.moveToPhone() }
+    }
+
     override fun release() {
         close()
     }
