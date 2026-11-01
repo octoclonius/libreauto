@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,10 +30,12 @@ import io.github.octoclonius.libreauto.car.home.HomeDragGhost
 import io.github.octoclonius.libreauto.car.home.HomeScreen
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.home.HomeTile
+import io.github.octoclonius.libreauto.car.home.dropIndex
 import io.github.octoclonius.libreauto.car.home.homeDrag
 import io.github.octoclonius.libreauto.car.home.homeTiles
 import io.github.octoclonius.libreauto.car.touch.TouchIndicator
 import io.github.octoclonius.libreauto.car.touch.TouchIndicatorState
+import kotlinx.coroutines.Dispatchers
 
 class CarHomeActivity : ComponentActivity() {
 
@@ -72,8 +75,8 @@ class CarHomeActivity : ComponentActivity() {
         val home = carUi.home
         val loadedApps by carContainer.phoneAppsRepository.sections.collectAsStateWithLifecycle()
         val apps = loadedApps.orEmpty()
-        val isDrawerOpen by home.isDrawerOpen.collectAsState()
-        val homeComponents by homeApps.components.collectAsState()
+        val isDrawerOpen by home.isDrawerOpen.collectAsState(Dispatchers.Main.immediate)
+        val homeComponents by homeApps.components.collectAsState(Dispatchers.Main.immediate)
         val carDisplay by carUi.session.displays.car.state.collectAsStateWithLifecycle()
         val shownDisplay = carDisplay?.takeIf { it.id == display.displayId }
         ProvideCarDensity(shownDisplay?.carDensity) {
@@ -84,12 +87,13 @@ class CarHomeActivity : ComponentActivity() {
                 }
                 val drag = remember { HomeDrag() }
                 val tiles = remember(apps, homeComponents) { homeTiles(apps, homeComponents) }
+                val currentTiles by rememberUpdatedState(tiles)
                 Box(
                     Modifier.fillMaxSize()
                         .homeDrag(
                             drag,
-                            onDrop = { app, from, cell, isRemoved ->
-                                drop(home, app, from, cell, isRemoved, tiles)
+                            onDrop = { app, from, cell ->
+                                drop(home, app, from, cell, currentTiles)
                             },
                         )
                 ) {
@@ -122,18 +126,14 @@ class CarHomeActivity : ComponentActivity() {
         app: PhoneApp,
         from: Int?,
         cell: Int?,
-        isRemoved: Boolean,
         tiles: List<HomeTile>,
     ) {
         home.closeDrawer()
-        when {
-            isRemoved && from != null -> homeApps.remove(from)
-            cell == null -> {}
-            else -> {
-                val to = tiles.getOrNull(cell)?.index ?: homeApps.components.value.size
-                if (from != null) homeApps.move(from, to) else homeApps.add(app.component, to)
-            }
-        }
+        homeApps.drop(
+            app.component,
+            from,
+            cell?.let { dropIndex(tiles.map { it.index }, from, it) },
+        )
     }
 
     private fun launch(app: PhoneApp) {

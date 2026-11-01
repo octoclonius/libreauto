@@ -38,7 +38,13 @@ class HomeDrag {
         this.from = from
     }
 
-    internal fun targetCell(): Int? = cells.entries.firstOrNull { it.value.contains(position) }?.key
+    internal fun targetCell(): Int? {
+        if (!isDragging || isOverRemove()) return null
+        return cells.entries
+            .filter { !it.value.isEmpty }
+            .minByOrNull { distanceSquared(it.value, position) }
+            ?.key
+    }
 
     internal fun isOverRemove(): Boolean {
         val center = removeCenter ?: return false
@@ -51,9 +57,20 @@ class HomeDrag {
     }
 }
 
+internal fun dropIndex(indices: List<Int>, from: Int?, hole: Int): Int {
+    val rest = indices.filter { it != from }.map { if (from != null && it > from) it - 1 else it }
+    return rest.getOrNull(hole) ?: rest.lastOrNull()?.plus(1) ?: 0
+}
+
+private fun distanceSquared(rect: Rect, point: Offset): Float {
+    val dx = maxOf(rect.left - point.x, 0f, point.x - rect.right)
+    val dy = maxOf(rect.top - point.y, 0f, point.y - rect.bottom)
+    return dx * dx + dy * dy
+}
+
 fun Modifier.homeDrag(
     drag: HomeDrag,
-    onDrop: (app: PhoneApp, from: Int?, cell: Int?, isRemoved: Boolean) -> Unit,
+    onDrop: (app: PhoneApp, from: Int?, cell: Int?) -> Unit,
 ): Modifier =
     pointerInput(drag) {
         awaitEachGesture {
@@ -68,7 +85,7 @@ fun Modifier.homeDrag(
                 val app = drag.app
                 if (app != null) change.consume()
                 if (!change.pressed) {
-                    if (app != null) onDrop(app, drag.from, drag.targetCell(), drag.isOverRemove())
+                    if (app != null) onDrop(app, drag.from, drag.targetCell())
                     break
                 }
             }

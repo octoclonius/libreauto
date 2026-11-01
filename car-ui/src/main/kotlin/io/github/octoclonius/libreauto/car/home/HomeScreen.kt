@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -81,7 +80,6 @@ private const val REMOVE_SCRIM_FRACTION = 0.5f
 private val EDGE_WIDTH = 40.dp
 private val TARGET_BORDER = 2.dp
 private const val EDGE_FLIP_MILLIS = 550L
-private const val LIFTED_ALPHA = 0.3f
 private const val INACTIVE_DOT_ALPHA = 0.38f
 private const val GHOST_SCALE = 1.1f
 private const val LABEL_SHADOW_BLUR = 6f
@@ -117,16 +115,11 @@ fun HomeScreen(
             )
         val size = HOME_TILE * fit
         val perPage = columns * rows
-        val hole by
-            remember(drag) {
-                derivedStateOf {
-                    if (drag.isDragging && !drag.isOverRemove()) drag.targetCell() else null
-                }
-            }
-        val isRemoving by remember(drag) { derivedStateOf { drag.isOverRemove() } }
-        val entries =
-            remember(tiles, hole, isRemoving) { preview(tiles, drag.from, hole, isRemoving) }
-        val slots = tiles.size + if (drag.isDragging) 1 else 0
+        val target by remember(drag) { derivedStateOf { drag.targetCell() } }
+        val rest = remember(tiles, drag.from) { tiles.filter { it.index != drag.from } }
+        val hole = target?.coerceAtMost(rest.size)
+        val entries = remember(rest, hole) { preview(rest, hole) }
+        val slots = rest.size + if (drag.isDragging) 1 else 0
         val pageCount = ceil(slots.toFloat() / perPage).toInt().coerceAtLeast(1)
         val pager = rememberPagerState { pageCount }
         var bounds by remember { mutableStateOf(Rect.Zero) }
@@ -153,7 +146,7 @@ fun HomeScreen(
                 HomePage(entries, hole, page * perPage, columns, rows, size, drag, onAppClick)
             }
             when {
-                drag.isDragging && drag.from != null -> {
+                drag.isDragging -> {
                     Box(
                         Modifier.fillMaxWidth()
                             .fillMaxHeight(REMOVE_SCRIM_FRACTION)
@@ -171,8 +164,7 @@ fun HomeScreen(
                     )
                     RemoveTarget(drag, Modifier.align(Alignment.BottomCenter))
                 }
-                !drag.isDragging && pageCount > 1 ->
-                    PageDots(pager, pageCount, Modifier.align(Alignment.BottomCenter))
+                pageCount > 1 -> PageDots(pager, pageCount, Modifier.align(Alignment.BottomCenter))
             }
         }
     }
@@ -193,17 +185,8 @@ fun HomeDragGhost(drag: HomeDrag) {
     )
 }
 
-private fun preview(
-    tiles: List<HomeTile>,
-    from: Int?,
-    hole: Int?,
-    isRemoving: Boolean,
-): List<HomeTile?> {
-    if (hole == null && !isRemoving) return tiles
-    val rest = tiles.filter { it.index != from }
-    if (hole == null) return rest
-    return rest.toMutableList<HomeTile?>().apply { add(hole.coerceAtMost(size), null) }
-}
+private fun preview(rest: List<HomeTile>, hole: Int?): List<HomeTile?> =
+    if (hole == null) rest else rest.toMutableList<HomeTile?>().apply { add(hole, null) }
 
 private fun edgeDirection(position: Offset, bounds: Rect, edge: Float): Int =
     when {
@@ -272,7 +255,6 @@ private fun HomeCell(
                 size,
                 onClick = { onAppClick(tile.app) },
                 onLongClick = { drag.lift(tile.app, tile.index) },
-                modifier = Modifier.alpha(if (drag.from == tile.index) LIFTED_ALPHA else 1f),
                 labelStyle =
                     MaterialTheme.typography.bodyLarge.copy(
                         color = Color.White,

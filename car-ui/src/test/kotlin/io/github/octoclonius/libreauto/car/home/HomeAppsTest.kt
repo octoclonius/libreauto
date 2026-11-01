@@ -11,43 +11,78 @@ class HomeAppsTest {
     fun anAddedAppGoesWhereItWasDropped() {
         assertEquals(
             listOf("maps", "phone", "music", "podcasts", "messages"),
-            withAdded(apps, "phone", 1),
+            withDropped(apps, "phone", null, 1),
         )
     }
 
     @Test
     fun anAddedAppPastTheEndIsAppended() {
-        assertEquals(apps + "phone", withAdded(apps, "phone", 9))
+        assertEquals(apps + "phone", withDropped(apps, "phone", null, 9))
     }
 
     @Test
     fun theSameAppCanBeAddedTwice() {
-        assertEquals(apps + "maps", withAdded(apps, "maps", 4))
+        assertEquals(apps + "maps", withDropped(apps, "maps", null, 4))
+    }
+
+    @Test
+    fun anAppFromTheDrawerDroppedOnRemoveChangesNothing() {
+        assertEquals(apps, withDropped(apps, "phone", null, null))
     }
 
     @Test
     fun anAppMovedForwardLandsOnTheTargetCell() {
-        assertEquals(listOf("music", "podcasts", "maps", "messages"), withMoved(apps, 0, 2))
+        assertEquals(
+            listOf("music", "podcasts", "maps", "messages"),
+            withDropped(apps, "maps", 0, 2),
+        )
     }
 
     @Test
     fun anAppMovedBackLandsOnTheTargetCell() {
-        assertEquals(listOf("maps", "messages", "music", "podcasts"), withMoved(apps, 3, 1))
+        assertEquals(
+            listOf("maps", "messages", "music", "podcasts"),
+            withDropped(apps, "messages", 3, 1),
+        )
     }
 
     @Test
     fun anAppMovedPastTheEndGoesLast() {
-        assertEquals(listOf("music", "podcasts", "messages", "maps"), withMoved(apps, 0, 4))
+        assertEquals(
+            listOf("music", "podcasts", "messages", "maps"),
+            withDropped(apps, "maps", 0, 4),
+        )
     }
 
     @Test
     fun aRemovedAppLeavesNoGap() {
-        assertEquals(listOf("maps", "podcasts", "messages"), withRemoved(apps, 1))
+        assertEquals(listOf("maps", "podcasts", "messages"), withDropped(apps, "music", 1, null))
     }
 
     @Test
     fun movingOrRemovingAMissingIndexChangesNothing() {
-        assertEquals(apps, withMoved(apps, 7, 0))
-        assertEquals(apps, withRemoved(apps, 7))
+        assertEquals(apps, withDropped(apps, "maps", 7, 0))
+        assertEquals(apps, withDropped(apps, "maps", 7, null))
+    }
+
+    @Test
+    fun aDropOnACellGoesBeforeTheAppShownThere() {
+        assertEquals(1, dropIndex(listOf(0, 1, 2, 3), null, 1))
+        assertEquals(2, dropIndex(listOf(0, 1, 2, 3), 0, 2))
+        assertEquals(1, dropIndex(listOf(0, 1, 2, 3), 3, 1))
+    }
+
+    @Test
+    fun aDropPastTheLastAppGoesRightAfterIt() {
+        assertEquals(4, dropIndex(listOf(0, 1, 2, 3), null, 9))
+        assertEquals(3, dropIndex(listOf(0, 1, 2, 3), 0, 9))
+        assertEquals(0, dropIndex(emptyList(), null, 0))
+    }
+
+    @Test
+    fun aDropSkipsAppsTheHomeDoesNotShow() {
+        assertEquals(2, dropIndex(listOf(0, 2, 3), null, 1))
+        assertEquals(2, dropIndex(listOf(0, 2, 3), 0, 1))
+        assertEquals(3, dropIndex(listOf(0, 2, 3), 0, 9))
     }
 }

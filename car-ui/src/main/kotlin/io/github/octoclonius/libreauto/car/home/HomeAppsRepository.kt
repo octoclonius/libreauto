@@ -48,16 +48,8 @@ class HomeAppsRepository(
         externalScope.launch { removeGoneApps(phoneApps) }
     }
 
-    internal fun add(component: ComponentName, at: Int? = null) {
-        update { withAdded(it, component, at ?: it.size) }
-    }
-
-    internal fun move(from: Int, to: Int) {
-        update { withMoved(it, from, to) }
-    }
-
-    internal fun remove(at: Int) {
-        update { withRemoved(it, at) }
+    internal fun drop(component: ComponentName, from: Int?, to: Int?) {
+        update { withDropped(it, component, from, to) }
     }
 
     private suspend fun removeGoneApps(phoneApps: PhoneAppsRepository) {
@@ -108,18 +100,12 @@ private fun goneComponents(
         }
 }
 
-internal fun <T> withAdded(list: List<T>, item: T, at: Int): List<T> =
-    list.toMutableList().apply { add(at.coerceIn(0, size), item) }
-
-internal fun <T> withMoved(list: List<T>, from: Int, to: Int): List<T> {
-    if (from !in list.indices) return list
+internal fun <T> withDropped(list: List<T>, item: T, from: Int?, to: Int?): List<T> {
+    if (from != null && from !in list.indices) return list
     return list.toMutableList().apply {
-        val item = removeAt(from)
-        add(to.coerceIn(0, size), item)
+        if (from != null) removeAt(from)
+        if (to != null) add(to.coerceIn(0, size), item)
     }
 }
-
-internal fun <T> withRemoved(list: List<T>, at: Int): List<T> =
-    if (at in list.indices) list.toMutableList().apply { removeAt(at) } else list
 
 @Serializable internal data class SavedComponent(val packageName: String, val className: String)
