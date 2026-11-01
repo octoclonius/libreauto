@@ -130,10 +130,27 @@ data class VideoMode(
     val framesPerSecond: Int,
 )
 
-private val BEST_FIRST: Comparator<VideoMode> =
-    compareByDescending<VideoMode> { it.width.toLong() * it.height }
-        .thenByDescending { efficiency(it.codec) }
-        .thenByDescending { it.framesPerSecond }
+enum class EncoderKind {
+    SOFTWARE,
+    HARDWARE,
+}
+
+private class Candidate(val index: Int, val mode: VideoMode, val encoder: EncoderKind)
+
+private val BEST_FIRST: Comparator<Candidate> =
+    compareByDescending<Candidate> { it.encoder == EncoderKind.HARDWARE }
+        .thenByDescending { it.mode.width.toLong() * it.mode.height }
+        .thenByDescending { efficiency(it.mode.codec) }
+        .thenByDescending { it.mode.framesPerSecond }
+
+private fun candidate(
+    index: Int,
+    config: VideoConfig,
+    encoderKind: (VideoMode) -> EncoderKind?,
+): Candidate? {
+    val mode = videoMode(config) ?: return null
+    return encoderKind(mode)?.let { Candidate(index, mode, it) }
+}
 
 fun videoMode(config: VideoConfig): VideoMode? {
     val codec = videoCodec(config.video_codec_type) ?: return null
@@ -143,27 +160,32 @@ fun videoMode(config: VideoConfig): VideoMode? {
 
 fun preferredVideoCodec(
     configs: List<VideoConfig>,
-    isEncodable: (VideoMode) -> Boolean,
+    encoderKind: (VideoMode) -> EncoderKind?,
 ): VideoCodec? =
-    configs.mapNotNull(::videoMode).filter(isEncodable).sortedWith(BEST_FIRST).firstOrNull()?.codec
+    configs
+        .mapIndexedNotNull { index, config -> candidate(index, config, encoderKind) }
+        .sortedWith(BEST_FIRST)
+        .firstOrNull()
+        ?.mode
+        ?.codec
 
 @Throws(ProtocolException::class)
 fun preferredConfigIndex(
     configs: List<VideoConfig>,
     accepted: List<Int>,
     codec: VideoCodec,
-    isEncodable: (VideoMode) -> Boolean,
+    encoderKind: (VideoMode) -> EncoderKind?,
 ): Int? {
     if (accepted.isEmpty()) throw ProtocolException("The car accepted no video config")
     accepted
         .firstOrNull { it !in configs.indices }
         ?.let { throw ProtocolException("The car accepted video config $it of ${configs.size}") }
     return accepted
-        .mapNotNull { index -> videoMode(configs[index])?.let { index to it } }
-        .filter { (_, mode) -> mode.codec == codec && isEncodable(mode) }
-        .sortedWith(compareBy(BEST_FIRST) { (_, mode) -> mode })
+        .mapNotNull { index -> candidate(index, configs[index], encoderKind) }
+        .filter { it.mode.codec == codec }
+        .sortedWith(BEST_FIRST)
         .firstOrNull()
-        ?.first
+        ?.index
 }
 
 @Throws(ProtocolException::class)

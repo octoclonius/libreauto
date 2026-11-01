@@ -648,6 +648,43 @@ class VideoFormatTest {
     }
 
     @Test
+    fun hardwareH264WinsOverSoftwareAv1AtTheSameResolution() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 3, video_codec_type = 6),
+                VideoConfig(resolution = 3, video_codec_type = 3),
+            )
+        assertEquals(VideoCodec.H264, preferredVideoCodec(configs, ::softwareAv1))
+    }
+
+    @Test
+    fun hardwareWinsOverALargerSoftwareConfig() {
+        val configs =
+            listOf(
+                VideoConfig(resolution = 4, video_codec_type = 6),
+                VideoConfig(resolution = 3, video_codec_type = 3),
+            )
+        assertEquals(VideoCodec.H264, preferredVideoCodec(configs, ::softwareAv1))
+    }
+
+    @Test
+    fun softwareIsUsedWhenNothingElseCanEncode() {
+        val configs = listOf(VideoConfig(resolution = 3, video_codec_type = 6))
+        assertEquals(VideoCodec.AV1, preferredVideoCodec(configs, ::softwareAv1))
+    }
+
+    @Test
+    fun aHardwareConfigWinsOverALargerSoftwareOneOfTheSameCodec() {
+        val configs = listOf(VideoConfig(resolution = 4), VideoConfig(resolution = 3))
+        assertEquals(
+            1,
+            preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264) {
+                if (it.width > 1920) EncoderKind.SOFTWARE else EncoderKind.HARDWARE
+            },
+        )
+    }
+
+    @Test
     fun theCodecOfAConfigThatCantBeEncodedIsNotChosen() {
         val configs =
             listOf(
@@ -656,13 +693,13 @@ class VideoFormatTest {
             )
         assertEquals(
             VideoCodec.H264,
-            preferredVideoCodec(configs) { it.codec == VideoCodec.H264 },
+            preferredVideoCodec(configs, hardwareIf { it.codec == VideoCodec.H264 }),
         )
     }
 
     @Test
     fun noEncodableConfigHasNoCodec() {
-        assertNull(preferredVideoCodec(listOf(VideoConfig(resolution = 1))) { false })
+        assertNull(preferredVideoCodec(listOf(VideoConfig(resolution = 1))) { null })
     }
 
     @Test
@@ -716,9 +753,12 @@ class VideoFormatTest {
             )
         assertEquals(
             2,
-            preferredConfigIndex(configs, listOf(0, 1, 2), VideoCodec.H264) {
-                it.width <= 1920 && it.height <= 1080
-            },
+            preferredConfigIndex(
+                configs,
+                listOf(0, 1, 2),
+                VideoCodec.H264,
+                hardwareIf { it.width <= 1920 && it.height <= 1080 },
+            ),
         )
     }
 
@@ -731,9 +771,12 @@ class VideoFormatTest {
             )
         assertEquals(
             1,
-            preferredConfigIndex(configs, listOf(0, 1), VideoCodec.H264) {
-                it.framesPerSecond == 30
-            },
+            preferredConfigIndex(
+                configs,
+                listOf(0, 1),
+                VideoCodec.H264,
+                hardwareIf { it.framesPerSecond == 30 },
+            ),
         )
     }
 
@@ -741,7 +784,7 @@ class VideoFormatTest {
     fun noEncodableConfigIsNull() {
         assertNull(
             preferredConfigIndex(listOf(VideoConfig(resolution = 1)), listOf(0), VideoCodec.H264) {
-                false
+                null
             }
         )
     }
@@ -769,7 +812,14 @@ class VideoFormatTest {
         assertEquals(0, depth(ProtocolVersion(6, 1), varint(1, 1)))
     }
 
-    private fun any(mode: VideoMode): Boolean = true
+    private fun any(mode: VideoMode): EncoderKind = EncoderKind.HARDWARE
+
+    private fun softwareAv1(mode: VideoMode): EncoderKind =
+        if (mode.codec == VideoCodec.AV1) EncoderKind.SOFTWARE else EncoderKind.HARDWARE
+
+    private fun hardwareIf(isEncodable: (VideoMode) -> Boolean): (VideoMode) -> EncoderKind? = {
+        if (isEncodable(it)) EncoderKind.HARDWARE else null
+    }
 
     private fun format(vararg fields: ByteArray): VideoFormat? = config(*fields)?.let(::videoFormat)
 

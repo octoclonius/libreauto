@@ -4,7 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo.CodecProfileLevel
 import android.media.MediaFormat
 import android.util.Log
-import io.github.octoclonius.libreauto.projection.media.encoderName
+import io.github.octoclonius.libreauto.projection.media.findEncoder
 import io.github.octoclonius.libreauto.protocol.media.AudioCodec
 import io.github.octoclonius.libreauto.protocol.media.PcmConfig
 import io.github.octoclonius.libreauto.protocol.media.pcmFrameBytes
@@ -51,7 +51,7 @@ private constructor(
         fun bitRate(config: PcmConfig): Int =
             minOf(pcmFrameBytes(config, config.sampleRate) * Byte.SIZE_BITS / 2, MAX_BIT_RATE)
 
-        fun isEncodable(config: PcmConfig): Boolean = encoderName(format(config)) != null
+        fun isEncodable(config: PcmConfig): Boolean = findEncoder(format(config)) != null
 
         fun isAdtsEncodable(config: PcmConfig): Boolean =
             config.sampleRate in ADTS_SAMPLE_RATES && isEncodable(config)
@@ -74,7 +74,7 @@ private constructor(
         }
 
         fun create(config: PcmConfig, isAdts: Boolean): AacEncoder? {
-            val name = encoderName(format(config))
+            val name = findEncoder(format(config))?.name
             if (name == null) {
                 Log.w(TAG, "No AAC encoder for ${config.sampleRate} Hz, ${config.channelCount} ch")
                 return null

@@ -105,7 +105,7 @@ internal class VideoChannel(
 
     private fun setUp(configs: List<VideoConfig>): VideoChannelState.SettingUp {
         val codec =
-            preferredVideoCodec(configs, EncoderSettings::isEncodable)
+            preferredVideoCodec(configs, EncoderSettings::encoderKind)
                 ?: throw IOException(
                     "The phone can't encode any of the video configs $configs " +
                         "the car offered on channel $channel"
@@ -143,7 +143,7 @@ internal class VideoChannel(
                 current.configs,
                 response.config_indexes,
                 current.codec,
-                EncoderSettings::isEncodable,
+                EncoderSettings::encoderKind,
             )
                 ?: throw IOException(
                     "The phone can't encode any of the video configs " +

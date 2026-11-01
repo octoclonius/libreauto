@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.projection.display.CarLayout
-import io.github.octoclonius.libreauto.projection.media.encoderName
+import io.github.octoclonius.libreauto.projection.media.findEncoder
 import io.github.octoclonius.libreauto.protocol.media.MediaMessageType
 import io.github.octoclonius.libreauto.protocol.media.VideoCodec
 import io.github.octoclonius.libreauto.protocol.media.VideoMode
@@ -77,7 +77,7 @@ internal class VideoEncoder(
         val bitRate = EncoderSettings.bitRate(codec, format.pixelsOutsideCutouts, framesPerSecond)
         val encoderFormat =
             EncoderSettings.format(VideoMode(codec, width, height, framesPerSecond), bitRate)
-        val name = encoderName(encoderFormat)
+        val name = findEncoder(encoderFormat)?.name
         if (name == null) {
             Log.w(TAG, "No $codec encoder for ${width}x$height at $framesPerSecond fps")
             return
