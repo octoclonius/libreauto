@@ -79,26 +79,32 @@ private constructor(
             )
             val policy = builder.build()
             val audioManager = context.getSystemService(AudioManager::class.java)
-            val success = AudioManager::class.java.getField("SUCCESS").getInt(null)
-            val status =
-                AudioManager::class
-                    .java
-                    .getMethod("registerAudioPolicy", AudioPolicy::class.java)
-                    .invoke(audioManager, policy) as Int
-            check(status == success) { "Registering the audio policy failed: $status" }
             val sinks = mutableListOf<MixSink>()
+            val placeholders = mutableListOf<AudioTrack>()
+            var isRegistered = false
             val source =
                 try {
+                    outputs.mapTo(placeholders) { placeholder(context, it) }
+                    val success = AudioManager::class.java.getField("SUCCESS").getInt(null)
+                    val status =
+                        AudioManager::class
+                            .java
+                            .getMethod("registerAudioPolicy", AudioPolicy::class.java)
+                            .invoke(audioManager, policy) as Int
+                    check(status == success) { "Registering the audio policy failed: $status" }
+                    isRegistered = true
                     for ((mix, output) in mixes.zip(outputs)) {
                         sinks += MixSink(record(context, policy, mix, output))
                     }
                     inputMix?.let { (input, mix) -> MixSource(inject(context, policy, mix, input)) }
                 } catch (e: Exception) {
                     sinks.forEach(MixSink::close)
-                    unregister(audioManager, policy)
+                    if (isRegistered) unregister(audioManager, policy)
+                    placeholders.forEach(AudioTrack::release)
                     throw e
                 }
             sinks.forEach(MixSink::start)
+            placeholders.forEach(AudioTrack::release)
             source?.start()
             if (outputs.isNotEmpty()) {
                 Log.i(
@@ -182,6 +188,23 @@ private constructor(
             return policy.createAudioRecordSink(mix, builder)
                 ?: error("The audio policy made no recorder for usages ${output.usages.toList()}")
         }
+
+        private fun placeholder(context: Context, output: AudioOutput): AudioTrack =
+            AudioTrack.Builder()
+                .setContext(context)
+                .setAudioAttributes(
+                    AudioAttributes.Builder().setUsage(output.usages.first()).build()
+                )
+                .setAudioFormat(format(output.sampleRate, output.channelCount))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .setBufferSizeInBytes(
+                    AudioTrack.getMinBufferSize(
+                        output.sampleRate,
+                        outChannelMask(output.channelCount),
+                        AudioFormat.ENCODING_PCM_16BIT,
+                    )
+                )
+                .build()
 
         private fun inject(
             context: Context,
