@@ -12,6 +12,7 @@ import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
+import io.github.octoclonius.libreauto.protocol.SendPriority
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.control.Handshake
 import io.github.octoclonius.libreauto.protocol.control.MessageType
@@ -54,16 +55,17 @@ internal class CarConnection(
             val tls =
                 TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
             val reader = FrameReader(input, tls::decrypt, SystemClock::uptimeNanos)
-            val writer = FrameWriter(output)
-            val version = Handshake(reader, writer, tls).run()
+            val version = Handshake(reader, FrameWriter(output), tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")
-            val link = CarLink(writer, tls::encrypt)
-            val control = ChannelSender(link, CONTROL_CHANNEL)
-            control.send(
-                MessageType.SERVICE_DISCOVERY_REQUEST,
-                serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
-            )
-            serve(reader, link, control, version)
+            CarLink(FrameWriter(output, tls::encrypt)).use { link ->
+                link.start()
+                val control = link.sender(CONTROL_CHANNEL, SendPriority.DEFAULT)
+                control.send(
+                    MessageType.SERVICE_DISCOVERY_REQUEST,
+                    serviceDiscoveryRequest("${Build.MANUFACTURER} ${Build.MODEL}"),
+                )
+                serve(reader, link, control, version)
+            }
             return false
         } catch (_: EOFException) {
             Log.i(TAG, "The car closed the connection")

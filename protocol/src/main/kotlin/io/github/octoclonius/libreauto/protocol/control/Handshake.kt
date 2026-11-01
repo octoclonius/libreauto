@@ -4,6 +4,7 @@ import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
 import io.github.octoclonius.libreauto.protocol.MessageStatus
+import io.github.octoclonius.libreauto.protocol.OutgoingMessage
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import java.io.IOException
 import java.net.ProtocolException
@@ -42,7 +43,7 @@ class Handshake(
     }
 
     private fun send(type: Int, body: ByteArray) =
-        writer.write(CONTROL_CHANNEL, isControl = false, type, body)
+        writer.write(OutgoingMessage(CONTROL_CHANNEL, isControl = false, type, body))
 }
 
 private fun Int.toHex() = "0x%04x".format(this)

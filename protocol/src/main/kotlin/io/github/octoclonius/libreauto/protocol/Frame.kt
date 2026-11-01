@@ -11,6 +11,6 @@ internal const val FRAME_HEADER_SIZE = 4
 
 internal const val TOTAL_SIZE_FIELD_SIZE = 4
 
-const val MAX_FRAME_DATA_SIZE = 0xFFFF
+internal const val MAX_FRAME_SIZE = 16128
 
 const val MAX_RECORD_PLAINTEXT_SIZE = 16384

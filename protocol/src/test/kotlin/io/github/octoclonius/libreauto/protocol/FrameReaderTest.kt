@@ -23,8 +23,8 @@ class FrameReaderTest {
             )
         for (encrypt in listOf(null, TestCipher::encrypt)) {
             val output = ByteArrayOutputStream()
-            val writer = FrameWriter(output)
-            for (body in bodies) writer.write(5, isControl = false, 0x8001, body, encrypt)
+            val writer = FrameWriter(output, encrypt)
+            for (body in bodies) writer.write(OutgoingMessage(5, isControl = false, 0x8001, body))
             val messages = readAll(output.toByteArray())
             assertEquals(bodies.map { it.toList() }, messages.map { it.body.toList() })
             assertTrue(
@@ -140,7 +140,7 @@ class FrameReaderTest {
                 ByteArray(MAX_FRAME_DATA + 1),
                 byteArrayOf(8),
             )
-        for (body in bodies) writer.write(5, isControl = false, 0x8001, body)
+        for (body in bodies) writer.write(OutgoingMessage(5, isControl = false, 0x8001, body))
         val input =
             object : FilterInputStream(output.toByteArray().inputStream()) {
                 override fun read(): Int = throw AssertionError("Read of 1 byte")

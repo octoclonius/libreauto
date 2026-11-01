@@ -2,7 +2,6 @@ package io.github.octoclonius.libreauto.protocol
 
 import java.io.OutputStream
 import java.nio.ByteBuffer
-import kotlin.concurrent.thread
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -21,59 +20,37 @@ class FrameWriterTest {
     }
 
     @Test
-    fun theFirstOfSeveralFramesCarriesTheTotalSizeWithTheType() {
-        val body = ByteArray(MAX_FRAME_DATA + 10)
-        val frames = write(1, isControl = false, type = 1, body = body)
-        assertEquals(2, frames.size)
+    fun aMessageThatFillsAFrameIsOneFrame() {
+        val body = ByteArray(MAX_FRAME_SIZE - HEADER_BYTES - TYPE_BYTES)
+        val frame = write(1, isControl = false, type = 1, body = body).single()
+        assertEquals(MAX_FRAME_SIZE, frame.size)
+        assertEquals(FIRST or LAST, frame[1].toInt())
+    }
+
+    @Test
+    fun aLongerMessageSplitsIntoFramesOfTheFrameSizeAndTheFirstCarriesTheTotalSize() {
+        val body = ByteArray(MAX_FRAME_SIZE - HEADER_BYTES - TYPE_BYTES + 1)
+        val frames = write(1, isControl = false, type = 0x8001, body = body)
+        assertEquals(
+            listOf(MAX_FRAME_SIZE, HEADER_BYTES + TOTAL_SIZE_BYTES + 1),
+            frames.map { it.size },
+        )
         val first = ByteBuffer.wrap(frames[0])
         assertEquals(FIRST, first.get(1).toInt())
         assertEquals(TYPE_BYTES + body.size, first.getInt(HEADER_BYTES))
-        assertEquals(1, first.getShort(HEADER_BYTES + TOTAL_SIZE_BYTES).toInt())
+        assertEquals(0x8001, first.getShort(HEADER_BYTES + TOTAL_SIZE_BYTES).toInt() and 0xFFFF)
         assertEquals(LAST, frames[1][1].toInt())
     }
 
     @Test
-    fun encryptedFramesHoldOneRecordEachAndCountPlaintextInTheTotal() {
-        val body = ByteArray(MAX_RECORD_PLAINTEXT * 2 + 1)
+    fun encryptedFramesAreSplitBeforeEncryptionAndCountPlaintextInTheTotal() {
+        val body = ByteArray(MAX_FRAME_SIZE * 2)
         val frames =
             write(2, isControl = false, type = 1, body = body, encrypt = TestCipher::encrypt)
         assertEquals(3, frames.size)
-        assertEquals(
-            TYPE_BYTES + body.size,
-            ByteBuffer.wrap(frames[0]).getInt(HEADER_BYTES),
-        )
+        assertEquals(TYPE_BYTES + body.size, ByteBuffer.wrap(frames[0]).getInt(HEADER_BYTES))
+        assertTrue(frames.all { it.size <= MAX_FRAME_SIZE + CIPHER_OVERHEAD_BYTES })
         assertTrue(frames.all { it[1].toInt() and ENCRYPTED != 0 })
-    }
-
-    @Test
-    fun concurrentWritesKeepMessagesWholeAndRecordsInOrder() {
-        val frames = mutableListOf<ByteArray>()
-        val writer = FrameWriter(recording(frames))
-        var nextRecord = 0
-        val encrypt = { plaintext: ByteArray -> byteArrayOf(nextRecord++.toByte()) + plaintext }
-        val framesPerMessage = 3
-        val body = ByteArray(MAX_RECORD_PLAINTEXT * (framesPerMessage - 1) + 1)
-        val threads = 4
-        val messagesPerThread = 20
-        (0 until threads)
-            .map { channel ->
-                thread {
-                    repeat(messagesPerThread) {
-                        writer.write(channel, isControl = false, 1, body, encrypt)
-                    }
-                }
-            }
-            .forEach { it.join() }
-
-        val messages = frames.chunked(framesPerMessage)
-        assertTrue(messages.all { message -> message.map { it[0] }.distinct().size == 1 })
-        val records = messages.flatMap { message ->
-            message.mapIndexed { index, frame ->
-                val dataOffset = if (index == 0) HEADER_BYTES + TOTAL_SIZE_BYTES else HEADER_BYTES
-                frame[dataOffset]
-            }
-        }
-        assertEquals(List(frames.size) { it.toByte() }, records)
     }
 
     private fun write(
@@ -84,7 +61,8 @@ class FrameWriterTest {
         encrypt: ((ByteArray) -> ByteArray)? = null,
     ): List<ByteArray> {
         val writes = mutableListOf<ByteArray>()
-        FrameWriter(recording(writes)).write(channel, isControl, type, body, encrypt)
+        FrameWriter(recording(writes), encrypt)
+            .write(OutgoingMessage(channel, isControl, type, body))
         return writes
     }
 
@@ -105,7 +83,6 @@ class FrameWriterTest {
         const val HEADER_BYTES = 4
         const val TOTAL_SIZE_BYTES = 4
         const val TYPE_BYTES = 2
-        const val MAX_FRAME_DATA = 0xFFFF
-        const val MAX_RECORD_PLAINTEXT = 16384
+        const val CIPHER_OVERHEAD_BYTES = 1
     }
 }

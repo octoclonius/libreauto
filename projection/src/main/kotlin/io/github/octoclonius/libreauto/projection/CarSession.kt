@@ -23,6 +23,7 @@ import io.github.octoclonius.libreauto.projection.video.VideoChannel
 import io.github.octoclonius.libreauto.projection.video.VideoProfiler
 import io.github.octoclonius.libreauto.protocol.CONTROL_CHANNEL
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
+import io.github.octoclonius.libreauto.protocol.SendPriority
 import io.github.octoclonius.libreauto.protocol.bluetooth.carBluetooth
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
@@ -127,7 +128,7 @@ internal constructor(
         val video =
             VideoChannel(
                 context,
-                ChannelSender(link, sink.channel),
+                link.sender(sink.channel, SendPriority.VIDEO),
                 sink.configs,
                 version,
                 car.isDriverOnRight,
@@ -144,7 +145,7 @@ internal constructor(
         }
         open(
             InputChannel(
-                ChannelSender(link, source.channel),
+                link.sender(source.channel, SendPriority.DEFAULT),
                 source.keycodes,
                 video::layout,
                 buttons,
@@ -167,7 +168,7 @@ internal constructor(
         val audioChannels = sinks.map { (type, sink) ->
             AudioChannel(
                 type,
-                ChannelSender(link, sink.channel),
+                link.sender(sink.channel, SendPriority.AUDIO),
                 sink.codec,
                 sink.configs,
                 carAudio::onChannelSettled,
@@ -176,7 +177,7 @@ internal constructor(
         }
         val microphone = source?.let {
             MicrophoneChannel(
-                ChannelSender(link, it.channel),
+                link.sender(it.channel, SendPriority.DEFAULT),
                 it.config,
                 carAudio::onChannelSettled,
             )
@@ -196,7 +197,7 @@ internal constructor(
         open(
             BluetoothChannel(
                 context,
-                ChannelSender(link, bluetooth.channel),
+                link.sender(bluetooth.channel, SendPriority.DEFAULT),
                 bluetooth,
                 version,
                 privileged,

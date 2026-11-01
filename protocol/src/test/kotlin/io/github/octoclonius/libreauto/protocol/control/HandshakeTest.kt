@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.protocol.control
 
 import io.github.octoclonius.libreauto.protocol.FrameReader
 import io.github.octoclonius.libreauto.protocol.FrameWriter
+import io.github.octoclonius.libreauto.protocol.OutgoingMessage
 import io.github.octoclonius.libreauto.protocol.TestCar
 import io.github.octoclonius.libreauto.protocol.TlsServer
 import io.github.octoclonius.libreauto.protocol.phoneTlsServer
@@ -103,7 +104,7 @@ class HandshakeTest {
         }
 
         private fun FrameWriter.send(type: Int, body: ByteArray) =
-            write(0, isControl = false, type, body)
+            write(OutgoingMessage(0, isControl = false, type, body))
     }
 
     private companion object {
