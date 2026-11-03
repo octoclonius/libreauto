@@ -53,7 +53,7 @@ class AndroidProfilingConventionPlugin : Plugin<Project> {
                 }
                 sourceSets {
                     for (name in listOf("debug", BENCHMARK)) {
-                        getByName(name).kotlin.srcDir("src/profiling/kotlin")
+                        getByName(name).kotlin.directories += "src/profiling/kotlin"
                     }
                 }
             }

@@ -28,7 +28,6 @@ import io.github.octoclonius.libreauto.protocol.control.parsePingRequest
 import io.github.octoclonius.libreauto.protocol.control.parseServiceDiscoveryResponse
 import io.github.octoclonius.libreauto.protocol.control.pingResponse
 import io.github.octoclonius.libreauto.protocol.control.serviceDiscoveryRequest
-import io.github.octoclonius.libreauto.protocol.googleAutomotiveLinkRoot
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -52,8 +51,7 @@ internal class CarConnection(
         holder.onState(CarConnectionState.Connecting)
         try {
             val credentials = runBlocking { credentials() } ?: return false
-            val tls =
-                TlsServer(credentials.certificate, credentials.key, googleAutomotiveLinkRoot())
+            val tls = TlsServer(credentials.certificate, credentials.key)
             val reader = FrameReader(input, tls::decrypt, SystemClock::uptimeNanos)
             val version = Handshake(reader, FrameWriter(output), tls).run()
             Log.i(TAG, "Handshake done with a car on protocol $version")

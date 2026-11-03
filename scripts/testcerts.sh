@@ -40,23 +40,8 @@ cert ca "/O=LibreAuto tests/CN=FAKE root, not a real key" 1 \
 rsa_key phone DEADBEEF F00DBEEF
 cert phone "/O=LibreAuto tests/CN=FAKE phone, not a real key" 2 \
     -CA "$out/ca.crt" -CAkey "$out/ca.key"
-rsa_key car C0DECAFE F00DCAFE
-cert car "/O=LibreAuto tests/CN=FAKE car, not a real key" 4 \
-    -CA "$out/ca.crt" -CAkey "$out/ca.key"
-rsa_key other-ca BADDCAFE F00DBADD
-cert other-ca "/O=LibreAuto tests/CN=FAKE other root, not a real key" 5 \
-    -addext basicConstraints=critical,CA:true -addext keyUsage=critical,keyCertSign
-rsa_key other-car DEADC0DE F00DC0DE
-cert other-car "/O=LibreAuto tests/CN=FAKE other car, not a real key" 6 \
-    -CA "$out/other-ca.crt" -CAkey "$out/other-ca.key"
 ec_key ec F00D
 cert ec "/O=LibreAuto tests/CN=FAKE EC, not a real key" 3 -sigopt nonce-type:1
 
-verify() {
-    openssl verify -CAfile <(openssl x509 -inform DER -in "$out/$1.crt") \
-        <(openssl x509 -inform DER -in "$out/$2.crt") > /dev/null
-}
-
-verify ca phone
-verify ca car
-verify other-ca other-car
+openssl verify -CAfile <(openssl x509 -inform DER -in "$out/ca.crt") \
+    <(openssl x509 -inform DER -in "$out/phone.crt") > /dev/null

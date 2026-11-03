@@ -1,11 +1,9 @@
 package io.github.octoclonius.libreauto.protocol
 
 import java.io.ByteArrayOutputStream
-import java.net.Socket
 import java.nio.ByteBuffer
 import java.security.KeyFactory
 import java.security.KeyStore
-import java.security.Principal
 import java.security.PrivateKey
 import java.security.SecureRandom
 import java.security.cert.CertificateFactory
@@ -15,17 +13,12 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLEngineResult.HandshakeStatus
 import javax.net.ssl.TrustManagerFactory
-import javax.net.ssl.X509ExtendedKeyManager
 
-class TestCar(name: String) {
+class TestCar {
     private val engine: SSLEngine =
         SSLContext.getInstance("TLS")
             .apply {
-                init(
-                    arrayOf(AlwaysPresenting(certificate(name), key(name))),
-                    trusting(certificate("ca")),
-                    SecureRandom(),
-                )
+                init(null, trusting(certificate("ca")), SecureRandom())
             }
             .createSSLEngine()
             .apply {
@@ -77,48 +70,9 @@ class TestCar(name: String) {
         }
         return toServer.toByteArray()
     }
-
-    private class AlwaysPresenting(
-        private val certificate: X509Certificate,
-        private val key: PrivateKey,
-    ) : X509ExtendedKeyManager() {
-        override fun chooseEngineClientAlias(
-            keyType: Array<out String>?,
-            issuers: Array<out Principal>?,
-            engine: SSLEngine?,
-        ) = ALIAS
-
-        override fun chooseClientAlias(
-            keyType: Array<out String>?,
-            issuers: Array<out Principal>?,
-            socket: Socket?,
-        ) = ALIAS
-
-        override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?) =
-            arrayOf(ALIAS)
-
-        override fun chooseServerAlias(
-            keyType: String?,
-            issuers: Array<out Principal>?,
-            socket: Socket?,
-        ): String? = null
-
-        override fun getServerAliases(
-            keyType: String?,
-            issuers: Array<out Principal>?,
-        ): Array<String>? = null
-
-        override fun getCertificateChain(alias: String?) = arrayOf(certificate)
-
-        override fun getPrivateKey(alias: String?) = key
-
-        private companion object {
-            const val ALIAS = "car"
-        }
-    }
 }
 
-fun phoneTlsServer() = TlsServer(certificate("phone"), key("phone"), certificate("ca"))
+fun phoneTlsServer() = TlsServer(certificate("phone"), key("phone"))
 
 private fun trusting(root: X509Certificate) =
     TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())

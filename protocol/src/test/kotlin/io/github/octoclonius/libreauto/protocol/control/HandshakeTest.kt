@@ -27,7 +27,7 @@ class HandshakeTest {
     @Test
     fun aCarFromTheRootGetsThroughVersionTlsAndAuthComplete() {
         val tls = phoneTlsServer()
-        val car = CarSide(TestCar("car"), authStatus = 0)
+        val car = CarSide(TestCar(), authStatus = 0)
         val version = car.connect { input, output -> handshake(input, output, tls).run() }
         assertEquals(CAR_VERSION, version)
         assertArrayEquals(
@@ -41,7 +41,7 @@ class HandshakeTest {
     @Test
     fun aFailedAuthCompleteIsRefused() {
         val tls = phoneTlsServer()
-        val car = CarSide(TestCar("car"), authStatus = 1)
+        val car = CarSide(TestCar(), authStatus = 1)
         val refusal =
             assertThrows<ProtocolException> {
                 car.connect { input, output -> handshake(input, output, tls).run() }

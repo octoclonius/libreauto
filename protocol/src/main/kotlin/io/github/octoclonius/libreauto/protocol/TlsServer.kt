@@ -12,12 +12,11 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLEngineResult.HandshakeStatus
 import javax.net.ssl.SSLEngineResult.Status
 import javax.net.ssl.SSLException
-import javax.net.ssl.TrustManagerFactory
 
 private const val TLS_VERSION = "TLSv1.2"
 
-class TlsServer(certificate: X509Certificate, key: PrivateKey, root: X509Certificate) {
-    private val engine = serverEngine(certificate, key, root)
+class TlsServer(certificate: X509Certificate, key: PrivateKey) {
+    private val engine = serverEngine(certificate, key)
     private val packetSize = engine.session.packetBufferSize
     private val applicationSize = engine.session.applicationBufferSize
     private var pending = ByteArray(0)
@@ -96,11 +95,7 @@ class TlsServer(certificate: X509Certificate, key: PrivateKey, root: X509Certifi
     }
 }
 
-private fun serverEngine(
-    certificate: X509Certificate,
-    key: PrivateKey,
-    root: X509Certificate,
-): SSLEngine {
+private fun serverEngine(certificate: X509Certificate, key: PrivateKey): SSLEngine {
     val keys =
         KeyStore.getInstance(KeyStore.getDefaultType()).apply {
             load(null, null)
@@ -110,21 +105,11 @@ private fun serverEngine(
         KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
             .apply { init(keys, CharArray(0)) }
             .keyManagers
-    val roots =
-        KeyStore.getInstance(KeyStore.getDefaultType()).apply {
-            load(null, null)
-            setCertificateEntry("root", root)
-        }
-    val trustManagers =
-        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-            .apply { init(roots) }
-            .trustManagers
     return SSLContext.getInstance(TLS_VERSION)
-        .apply { init(keyManagers, trustManagers, SecureRandom()) }
+        .apply { init(keyManagers, null, SecureRandom()) }
         .createSSLEngine()
         .apply {
             useClientMode = false
-            needClientAuth = true
             enabledProtocols = arrayOf(TLS_VERSION)
             beginHandshake()
         }
