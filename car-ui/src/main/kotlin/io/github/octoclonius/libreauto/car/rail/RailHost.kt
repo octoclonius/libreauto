@@ -36,8 +36,10 @@ internal class RailHost(
         val carTasks = session.tasks
         scope.launch { display.state.collect(::show) }
         scope.launch { display.touches.collect { window?.dispatchTouchEvent(it) } }
-        scope.launch { display.outsideTouches.collect { state.cancelClosing() } }
-        scope.launch { state.closingTaskId.collect { display.captureOutsideTouches(it != null) } }
+        scope.launch { display.outsideTouches.captured.collect { state.cancelClosing() } }
+        scope.launch {
+            state.closingTaskId.collect { display.outsideTouches.setCapturing(it != null) }
+        }
         scope.launch { carTasks.state.collect(state::onTasks) }
         scope.launch {
             combine(carTasks.state, state.closedTaskIds, shownCount) { tasks, closed, shown ->

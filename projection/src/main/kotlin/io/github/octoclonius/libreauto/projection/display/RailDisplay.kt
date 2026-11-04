@@ -22,14 +22,7 @@ class RailDisplay internal constructor() {
     private val _touches = MutableSharedFlow<MotionEvent>(extraBufferCapacity = TOUCH_BUFFER)
     val touches: SharedFlow<MotionEvent> = _touches.asSharedFlow()
 
-    private val _outsideTouches = MutableSharedFlow<Unit>(extraBufferCapacity = TOUCH_BUFFER)
-    val outsideTouches: SharedFlow<Unit> = _outsideTouches.asSharedFlow()
-
-    @Volatile private var isCapturingOutsideTouches = false
-
-    fun captureOutsideTouches(isCapturing: Boolean) {
-        isCapturingOutsideTouches = isCapturing
-    }
+    val outsideTouches = TouchCapture()
 
     internal fun onCreated(id: Int, side: RailSide, contentInsets: CarInsets) {
         _state.value = RailDisplayState(id, side, contentInsets.toInsets())
@@ -40,10 +33,4 @@ class RailDisplay internal constructor() {
     }
 
     internal fun onTouch(event: MotionEvent): Boolean = _touches.tryEmit(event)
-
-    internal fun captureOutsideTouch(): Boolean {
-        if (!isCapturingOutsideTouches) return false
-        _outsideTouches.tryEmit(Unit)
-        return true
-    }
 }

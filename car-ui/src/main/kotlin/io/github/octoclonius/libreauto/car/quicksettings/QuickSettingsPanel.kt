@@ -7,9 +7,9 @@ import android.provider.Settings
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.designsystem.component.dismissOnTouchDown
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarAlpha
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarShapes
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
@@ -70,15 +71,12 @@ internal fun QuickSettingsPanel(
             RailSide.Bottom -> if (isDriverOnRight) Alignment.BottomStart else Alignment.BottomEnd
             else -> Alignment.TopStart
         }
-    BoxWithConstraints(
-        Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = CarAlpha.SCRIM))
-            .clickable(
-                interactionSource = null,
-                indication = null,
-                onClick = onClose,
-            )
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = CarAlpha.SCRIM))
+                .dismissOnTouchDown(onClose)
+        )
         val columns =
             ((maxWidth - PANEL_MARGIN * 2 - PANEL_PADDING * 2 + TILE_SPACING) /
                     (TILE_SIZE.width + TILE_SPACING))

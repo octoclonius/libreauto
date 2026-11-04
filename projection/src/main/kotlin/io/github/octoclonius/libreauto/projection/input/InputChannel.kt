@@ -35,6 +35,7 @@ internal class InputChannel(
     private val railTouches = WindowTouches("rail", displays.rail::onTouch)
     private val overlayTouches = WindowTouches("overlay", displays.overlay::onTouch)
     private var appsGesture = AppsGesture.App
+    private var isRailGestureCaptured = false
 
     override val channel: Int
         get() = sender.channel
@@ -108,7 +109,7 @@ internal class InputChannel(
                 if (routed.touch.action == TouchAction.DOWN) {
                     appsGesture =
                         when {
-                            displays.rail.captureOutsideTouch() -> AppsGesture.Captured
+                            displays.rail.outsideTouches.capture() -> AppsGesture.Captured
                             displays.overlay.isShown -> AppsGesture.Overlay
                             else -> AppsGesture.App
                         }
@@ -119,7 +120,12 @@ internal class InputChannel(
                     AppsGesture.Captured -> {}
                 }
             }
-            TouchTarget.Rail -> railTouches.send(eventTimeNanos, routed.touch)
+            TouchTarget.Rail -> {
+                if (routed.touch.action == TouchAction.DOWN) {
+                    isRailGestureCaptured = displays.overlay.outsideTouches.capture()
+                }
+                if (!isRailGestureCaptured) railTouches.send(eventTimeNanos, routed.touch)
+            }
         }
     }
 

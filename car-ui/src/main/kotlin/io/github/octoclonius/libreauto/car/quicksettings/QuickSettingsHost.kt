@@ -29,6 +29,8 @@ internal class QuickSettingsHost(
         val overlay = session.displays.overlay
         scope.launch { overlay.state.collect(::show) }
         scope.launch { overlay.touches.collect { window?.dispatchTouchEvent(it) } }
+        scope.launch { overlay.outsideTouches.captured.collect { state.close() } }
+        scope.launch { state.isOpen.collect(overlay.outsideTouches::setCapturing) }
         scope.launch { state.isOpen.collect(overlay::show) }
     }
 

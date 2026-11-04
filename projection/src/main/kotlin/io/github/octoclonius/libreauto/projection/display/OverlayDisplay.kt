@@ -20,6 +20,8 @@ class OverlayDisplay internal constructor() {
     private val _touches = MutableSharedFlow<MotionEvent>(extraBufferCapacity = TOUCH_BUFFER)
     val touches: SharedFlow<MotionEvent> = _touches.asSharedFlow()
 
+    val outsideTouches = TouchCapture()
+
     @Volatile
     var isShown = false
         private set

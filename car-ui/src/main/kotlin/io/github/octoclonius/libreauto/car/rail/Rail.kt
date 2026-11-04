@@ -4,8 +4,6 @@ import android.telephony.CellSignalStrength
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -36,8 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -57,6 +53,7 @@ import io.github.octoclonius.libreauto.car.designsystem.component.BatteryBadge
 import io.github.octoclonius.libreauto.car.designsystem.component.BatteryIndicator
 import io.github.octoclonius.libreauto.car.designsystem.component.GlyphText
 import io.github.octoclonius.libreauto.car.designsystem.component.SquircleButton
+import io.github.octoclonius.libreauto.car.designsystem.component.dismissOnTouchDown
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarShapes
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 import io.github.octoclonius.libreauto.projection.CarStatusBar
@@ -150,7 +147,11 @@ fun Rail(
     val button: @Composable (Modifier) -> Unit = {
         RailButton(isAppInFront, onButtonClick, it)
     }
-    Surface(modifier.cancelClosingOnTouch({ isClosing }, { closeBounds }, onCancelClose)) {
+    Surface(
+        modifier.dismissOnTouchDown(onCancelClose) {
+            isClosing && closeBounds?.contains(it) != true
+        }
+    ) {
         Box(Modifier.padding(contentPadding)) {
             if (side == RailSide.Bottom) {
                 BottomRail(
@@ -175,26 +176,6 @@ private data class RailStatus(
     val cellular: Cellular?,
     val battery: BatteryState?,
 )
-
-private fun Modifier.cancelClosingOnTouch(
-    isClosing: () -> Boolean,
-    closeBounds: () -> Rect?,
-    onCancel: () -> Unit,
-): Modifier =
-    pointerInput(Unit) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            if (!isClosing() || closeBounds()?.contains(down.position) == true) {
-                return@awaitEachGesture
-            }
-            onCancel()
-            down.consume()
-            do {
-                val event = awaitPointerEvent(PointerEventPass.Initial)
-                event.changes.forEach { it.consume() }
-            } while (event.changes.any { it.pressed })
-        }
-    }
 
 @Composable
 private fun SideRail(
