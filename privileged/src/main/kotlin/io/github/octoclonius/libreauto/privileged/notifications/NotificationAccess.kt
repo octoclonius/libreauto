@@ -19,10 +19,14 @@ internal class NotificationAccess(context: Context) {
                 "setNotificationListenerAccessGranted",
                 ComponentName::class.java,
                 Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
             )
 
     fun allow(listener: ComponentName) {
-        setGranted.invoke(notifications, listener, true)
-        Log.i(TAG, "Allowed ${listener.flattenToShortString()} the phone's notifications")
+        setGranted.invoke(notifications, listener, true, false)
+        Log.i(
+            TAG,
+            "Allowed ${listener.flattenToShortString()} the phone's notifications unless the user chose otherwise",
+        )
     }
 }

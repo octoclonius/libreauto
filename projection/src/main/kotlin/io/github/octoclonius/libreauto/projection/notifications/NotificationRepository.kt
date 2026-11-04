@@ -64,6 +64,10 @@ class NotificationRepository(
                 service?.call("allow the phone's notifications") {
                     it.allowNotificationAccess(listenerComponent)
                 } ?: return@collect
+                if (!notificationManager.isNotificationListenerAccessGranted(listenerComponent)) {
+                    Log.i(TAG, "Notification access stays off: the user turned it off")
+                    return@collect
+                }
                 if (carSessionHolder.session.value != null) requestRebind()
             }
         }

@@ -43,6 +43,26 @@ internal class PhoneBluetooth(private val context: Context) {
                     String::class.java,
                     UserHandle::class.java,
                 )
+        private val getPermissionFlags =
+            PackageManager::class
+                .java
+                .getMethod(
+                    "getPermissionFlags",
+                    String::class.java,
+                    String::class.java,
+                    UserHandle::class.java,
+                )
+        private val USER_OR_FIXED_FLAGS =
+            listOf(
+                    "FLAG_PERMISSION_USER_SET",
+                    "FLAG_PERMISSION_ONE_TIME",
+                    "FLAG_PERMISSION_USER_FIXED",
+                    "FLAG_PERMISSION_POLICY_FIXED",
+                    "FLAG_PERMISSION_SYSTEM_FIXED",
+                )
+                .fold(0) { flags, name ->
+                    flags or PackageManager::class.java.getField(name).getInt(null)
+                }
     }
 
     private val lock = Any()
@@ -60,12 +80,20 @@ internal class PhoneBluetooth(private val context: Context) {
     fun address(): String? = adapter.address
 
     fun grantPermission(packageName: String, permission: String) {
+        val user = Process.myUserHandle()
+        val flags =
+            getPermissionFlags.invoke(context.packageManager, permission, packageName, user) as Int
+        if ((flags and USER_OR_FIXED_FLAGS) != 0) {
+            Log.i(TAG, "Kept $permission for $packageName as set (flags $flags)")
+            return
+        }
         grantRuntimePermission.invoke(
             context.packageManager,
             packageName,
             permission,
-            Process.myUserHandle(),
+            user,
         )
+        Log.i(TAG, "Granted $permission to $packageName")
     }
 
     fun pair(address: String): Boolean {
