@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.res.Resources
@@ -137,13 +138,25 @@ internal fun ResolveInfo.loadCarIcon(
     packageManager: PackageManager,
     carDensity: Int,
     size: Dp,
+): Drawable =
+    loadCarIcon(packageManager, activityInfo.applicationInfo, iconResource, carDensity, size) {
+        loadIcon(packageManager)
+    }
+
+internal fun loadCarIcon(
+    packageManager: PackageManager,
+    app: ApplicationInfo,
+    iconResource: Int,
+    carDensity: Int,
+    size: Dp,
+    fallback: () -> Drawable,
 ): Drawable {
-    if (iconResource == 0) return loadIcon(packageManager)
+    if (iconResource == 0) return fallback()
     return try {
-        val resources = packageManager.getResourcesForApplication(activityInfo.applicationInfo)
+        val resources = packageManager.getResourcesForApplication(app)
         val legacyDensity = iconDensity(carDensity, size.value / LEGACY_ICON_SIZE_DP)
         when (val icon = resources.getDrawableForDensity(iconResource, legacyDensity, null)) {
-            null -> loadIcon(packageManager)
+            null -> fallback()
             is AdaptiveIconDrawable -> {
                 val layerScale = size.value * adaptiveIconLayerScale() / ADAPTIVE_ICON_LAYER_SIZE_DP
                 val layerDensity = iconDensity(carDensity, layerScale)
@@ -152,9 +165,9 @@ internal fun ResolveInfo.loadCarIcon(
             else -> icon
         }
     } catch (e: PackageManager.NameNotFoundException) {
-        loadIcon(packageManager)
+        fallback()
     } catch (e: Resources.NotFoundException) {
-        loadIcon(packageManager)
+        fallback()
     }
 }
 

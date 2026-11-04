@@ -25,5 +25,9 @@ interface IPrivilegedService {
 
     void allowCallAccess() = 15;
 
+    void allowNotificationAccess(in ComponentName listener) = 27;
+
+    oneway void onNotificationClick(String key, int rank, int count) = 28;
+
     IPhoneBluetoothService getBluetoothService() = 26;
 }

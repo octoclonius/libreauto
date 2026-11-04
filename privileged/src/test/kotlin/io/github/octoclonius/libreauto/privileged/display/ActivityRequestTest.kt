@@ -6,22 +6,13 @@ import org.junit.jupiter.api.Test
 
 class ActivityRequestTest {
 
-    private val appUid = 10274
-
     @Test
-    fun theAppsActivityIsAccepted() {
-        assertNull(activityRequestError(isActivity = true, creatorUid = appUid, appUid = appUid))
+    fun anActivityIsAccepted() {
+        assertNull(activityRequestError(isActivity = true))
     }
 
     @Test
     fun anIntentThatIsNoActivityIsRefused() {
-        assertNotNull(
-            activityRequestError(isActivity = false, creatorUid = appUid, appUid = appUid)
-        )
-    }
-
-    @Test
-    fun anIntentFromAnotherAppIsRefused() {
-        assertNotNull(activityRequestError(isActivity = true, creatorUid = 10001, appUid = appUid))
+        assertNotNull(activityRequestError(isActivity = false))
     }
 }

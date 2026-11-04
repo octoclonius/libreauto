@@ -135,7 +135,7 @@ private constructor(
     override fun showActivity(activity: PendingIntent) {
         call(
             "Starting an activity on the car display $id",
-            { activityRequestError(activity.isActivity, activity.creatorUid, appUid) },
+            { activityRequestError(activity.isActivity) },
         ) {
             display.showActivity(context, activity)
         }

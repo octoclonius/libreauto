@@ -5,6 +5,7 @@ import io.github.octoclonius.libreauto.car.apps.PhoneAppsRepository
 import io.github.octoclonius.libreauto.car.home.HomeAppsRepository
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 
@@ -13,6 +14,7 @@ class CarContainer(
     applicationScope: CoroutineScope,
     carSessionHolder: CarSessionHolder,
     phoneSettingsRepository: PhoneSettingsRepository,
+    notificationRepository: NotificationRepository,
 ) {
 
     val phoneAppsRepository = PhoneAppsRepository(context, carSessionHolder, applicationScope)
@@ -24,6 +26,7 @@ class CarContainer(
             carSessionHolder,
             phoneSettingsRepository,
             railOrderRepository,
+            notificationRepository,
             applicationScope,
         )
 

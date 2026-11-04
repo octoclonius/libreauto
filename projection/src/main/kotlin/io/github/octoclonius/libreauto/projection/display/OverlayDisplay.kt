@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.projection.display
 
+import android.graphics.Rect
 import android.view.MotionEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,8 @@ class OverlayDisplay internal constructor() {
     var isShown = false
         private set
 
+    @Volatile private var touchArea: Rect? = null
+
     private var onShown: ((Boolean) -> Unit)? = null
 
     fun show(isShown: Boolean) {
@@ -34,6 +37,13 @@ class OverlayDisplay internal constructor() {
             onShown?.invoke(isShown)
         }
     }
+
+    fun setTouchArea(area: Rect?) {
+        touchArea = area
+    }
+
+    internal fun takesTouchAt(x: Int, y: Int): Boolean =
+        isShown && touchArea.let { it == null || it.contains(x, y) }
 
     internal fun onCreated(id: Int, onShown: (Boolean) -> Unit) {
         synchronized(lock) {

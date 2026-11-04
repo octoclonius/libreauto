@@ -2,13 +2,15 @@ package io.github.octoclonius.libreauto.car
 
 import android.content.Context
 import io.github.octoclonius.libreauto.car.home.HomeState
-import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
+import io.github.octoclonius.libreauto.car.notifications.NotificationsState
+import io.github.octoclonius.libreauto.car.overlay.OverlayHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.projection.CarSession
 import io.github.octoclonius.libreauto.projection.input.NavigationButton
+import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.MainScope
@@ -21,6 +23,7 @@ internal constructor(
     val session: CarSession,
     phoneSettings: PhoneSettingsRepository,
     railOrder: RailOrderRepository,
+    notificationRepository: NotificationRepository,
 ) : Closeable {
 
     internal val home = HomeState()
@@ -30,12 +33,15 @@ internal constructor(
 
     private val scope = MainScope()
     private val railHost = RailHost(context, session, rail, railOrder, navigation)
-    private val quickSettingsHost =
-        QuickSettingsHost(context, session, quickSettings, phoneSettings)
+    private val notifications =
+        NotificationsState(context, notificationRepository, quickSettings, session.displays.car)
+    private val overlayHost =
+        OverlayHost(context, session, quickSettings, phoneSettings, notifications)
 
     internal fun start() {
         railHost.start(scope)
-        quickSettingsHost.start(scope)
+        notifications.start(scope)
+        overlayHost.start(scope)
         scope.launch {
             session.buttons.presses.collect {
                 when (it) {
@@ -49,6 +55,6 @@ internal constructor(
     override fun close() {
         scope.cancel()
         railHost.close()
-        quickSettingsHost.close()
+        overlayHost.close()
     }
 }

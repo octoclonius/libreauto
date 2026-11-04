@@ -25,6 +25,10 @@ import io.github.octoclonius.libreauto.privileged.display.CarDisplaySession
 import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
 import io.github.octoclonius.libreauto.privileged.display.displayRequestError
 import io.github.octoclonius.libreauto.privileged.input.DisplayKeys
+import io.github.octoclonius.libreauto.privileged.notifications.NotificationAccess
+import io.github.octoclonius.libreauto.privileged.notifications.NotificationClicks
+import io.github.octoclonius.libreauto.privileged.notifications.notificationAccessRequestError
+import io.github.octoclonius.libreauto.privileged.notifications.notificationClickRequestError
 import io.github.octoclonius.libreauto.privileged.settings.PhoneSettings
 import io.github.octoclonius.libreauto.privileged.settings.settingRequestError
 import kotlin.system.exitProcess
@@ -44,6 +48,8 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val settings = PhoneSettings(shellContext)
     private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
     private val callAccess = CallAccess(shellContext)
+    private val notificationAccess = NotificationAccess(shellContext)
+    private val notificationClicks = NotificationClicks()
     private val displayLock = Any()
     private val audioLock = Any()
     private var carDisplay: CarDisplaySession? = null
@@ -134,6 +140,26 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     override fun allowCallAccess() {
         identityCall(TAG, "Allowing the app the phone's calls") {
             callAccess.allow(appUid, appPackage)
+        }
+    }
+
+    override fun allowNotificationAccess(listener: ComponentName) {
+        checkedCall(
+            TAG,
+            "Allowing the app the phone's notifications",
+            notificationAccessRequestError(listener.packageName, appPackage),
+        ) {
+            notificationAccess.allow(listener)
+        }
+    }
+
+    override fun onNotificationClick(key: String, rank: Int, count: Int) {
+        checkedCall(
+            TAG,
+            "Reporting a notification click",
+            notificationClickRequestError(rank, count),
+        ) {
+            notificationClicks.click(key, rank, count)
         }
     }
 

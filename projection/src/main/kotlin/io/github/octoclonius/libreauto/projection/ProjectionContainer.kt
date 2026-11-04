@@ -6,6 +6,7 @@ import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.certificate.CertificateRepository
 import io.github.octoclonius.libreauto.projection.display.CarHome
 import io.github.octoclonius.libreauto.projection.media.MediaResumption
+import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import io.github.octoclonius.libreauto.projection.tasks.OpenCarTasksRepository
@@ -23,6 +24,13 @@ class ProjectionContainer(
     val privilegedServiceConnection = PrivilegedServiceConnection(context, privilegedService)
     val carSessionHolder = CarSessionHolder()
     val callRepository = CallRepository(context, privilegedServiceConnection, applicationScope)
+    val notificationRepository =
+        NotificationRepository(
+            context,
+            privilegedServiceConnection,
+            carSessionHolder,
+            applicationScope,
+        )
     val certificateRepository = CertificateRepository(context, applicationScope)
     val phoneSettingsRepository = PhoneSettingsRepository(context, privilegedServiceConnection)
     private val carHome = CarHome(context, carHome)

@@ -26,5 +26,6 @@ class AppContainer(context: Context) {
             applicationScope,
             projectionContainer.carSessionHolder,
             projectionContainer.phoneSettingsRepository,
+            projectionContainer.notificationRepository,
         )
 }

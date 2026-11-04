@@ -8,6 +8,7 @@ import android.companion.virtual.VirtualDeviceManager
 import android.content.Context
 import android.os.IBinder
 import android.os.ServiceManager
+import com.android.internal.statusbar.IStatusBarService
 
 internal object SystemServices {
 
@@ -30,6 +31,11 @@ internal object SystemServices {
     fun activityTaskManager(): IActivityTaskManager =
         IActivityTaskManager.Stub.asInterface(
             service(Context::class.java.getField("ACTIVITY_TASK_SERVICE").get(null) as String)
+        )
+
+    fun statusBarService(): IStatusBarService =
+        IStatusBarService.Stub.asInterface(
+            service(Context::class.java.getField("STATUS_BAR_SERVICE").get(null) as String)
         )
 
     private fun <T> construct(

@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +46,7 @@ private val PANEL_MARGIN = CarSpacing.medium
 private val PANEL_PADDING = CarSpacing.large
 private val TILE_SIZE = DpSize(176.dp, 72.dp)
 private val TILE_SPACING = CarSpacing.medium
+private val NOTIFICATIONS_GAP = CarSpacing.large
 private val TILE_PADDING = CarSpacing.large
 private val TILE_ICON_SIZE = 28.dp
 private const val MAX_COLUMNS = 3
@@ -64,6 +67,8 @@ internal fun QuickSettingsPanel(
     onToggle: (QuickSetting, Boolean) -> Unit,
     onClose: () -> Unit,
     onShowPage: (PendingIntent) -> Unit,
+    hasNotifications: Boolean,
+    notifications: @Composable (Modifier) -> Unit,
 ) {
     val alignment =
         when (railSide) {
@@ -82,14 +87,35 @@ internal fun QuickSettingsPanel(
                     (TILE_SIZE.width + TILE_SPACING))
                 .toInt()
                 .coerceIn(1, MAX_COLUMNS)
-        settings?.let {
+        val width = TILE_SIZE.width * columns + TILE_SPACING * (columns - 1)
+        val tiles = settings?.let(::tiles) ?: return@BoxWithConstraints
+        if (railSide == RailSide.Bottom) {
+            Column(
+                Modifier.fillMaxSize().padding(PANEL_MARGIN),
+                verticalArrangement =
+                    if (hasNotifications) Arrangement.SpaceBetween else Arrangement.Bottom,
+                horizontalAlignment =
+                    if (alignment == Alignment.BottomStart) Alignment.Start else Alignment.End,
+            ) {
+                if (hasNotifications) {
+                    PanelSurface(
+                        Modifier.weight(1f, fill = false).padding(bottom = NOTIFICATIONS_GAP)
+                    ) {
+                        notifications(Modifier.width(width).padding(PANEL_PADDING))
+                    }
+                }
+                Panel(tiles, columns, onToggle, onShowPage)
+            }
+        } else {
             Panel(
-                tiles(it),
+                tiles,
                 columns,
                 onToggle,
                 onShowPage,
                 Modifier.align(alignment).padding(PANEL_MARGIN),
-            )
+            ) {
+                if (hasNotifications) notifications(Modifier.width(width).weight(1f, fill = false))
+            }
         }
     }
 }
@@ -147,23 +173,33 @@ private fun Panel(
     onToggle: (QuickSetting, Boolean) -> Unit,
     onShowPage: (PendingIntent) -> Unit,
     modifier: Modifier = Modifier,
+    below: @Composable ColumnScope.() -> Unit = {},
 ) {
+    PanelSurface(modifier) {
+        Column(
+            Modifier.padding(PANEL_PADDING),
+            verticalArrangement = Arrangement.spacedBy(NOTIFICATIONS_GAP),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
+                tiles.chunked(columns).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
+                        row.forEach { Tile(it, onToggle, onShowPage) }
+                    }
+                }
+            }
+            below()
+        }
+    }
+}
+
+@Composable
+private fun PanelSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(
         modifier,
         shape = CarShapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            Modifier.padding(PANEL_PADDING),
-            verticalArrangement = Arrangement.spacedBy(TILE_SPACING),
-        ) {
-            tiles.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
-                    row.forEach { Tile(it, onToggle, onShowPage) }
-                }
-            }
-        }
-    }
+        content = content,
+    )
 }
 
 @Composable

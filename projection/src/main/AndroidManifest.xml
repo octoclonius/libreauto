@@ -55,6 +55,18 @@
         </service>
 
         <service
+            android:name=".notifications.NotificationListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_autobind_listenerservice"
+                android:value="false" />
+        </service>
+
+        <service
             android:name=".usb.SessionService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />

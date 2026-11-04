@@ -110,7 +110,9 @@ internal class InputChannel(
                     appsGesture =
                         when {
                             displays.rail.outsideTouches.capture() -> AppsGesture.Captured
-                            displays.overlay.isShown -> AppsGesture.Overlay
+                            routed.touch.pointers[routed.touch.actionIndex].let {
+                                displays.overlay.takesTouchAt(it.x, it.y)
+                            } -> AppsGesture.Overlay
                             else -> AppsGesture.App
                         }
                 }
