@@ -19,15 +19,15 @@ class NotificationRequestTest {
     }
 
     @Test
-    fun aClickOnAShownNotificationIsAccepted() {
-        assertNull(notificationClickRequestError(rank = 0, count = 1))
-        assertNull(notificationClickRequestError(rank = 2, count = 3))
+    fun aShownNotificationIsAccepted() {
+        assertNull(notificationVisibilityRequestError(rank = 0, count = 1))
+        assertNull(notificationVisibilityRequestError(rank = 2, count = 3))
     }
 
     @Test
-    fun aClickOutsideTheShownNotificationsIsRefused() {
-        assertNotNull(notificationClickRequestError(rank = -1, count = 3))
-        assertNotNull(notificationClickRequestError(rank = 3, count = 3))
-        assertNotNull(notificationClickRequestError(rank = 0, count = 0))
+    fun aNotificationOutsideTheShownOnesIsRefused() {
+        assertNotNull(notificationVisibilityRequestError(rank = -1, count = 3))
+        assertNotNull(notificationVisibilityRequestError(rank = 3, count = 3))
+        assertNotNull(notificationVisibilityRequestError(rank = 0, count = 0))
     }
 }

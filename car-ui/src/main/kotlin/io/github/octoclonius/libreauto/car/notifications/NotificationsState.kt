@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
-private const val HEADS_UP_MILLIS = 8_000
+private const val HUN_DEFAULT_HEADS_UP_TIMEOUT_MILLIS = 8_000
 private const val TOUCH_ACCEPTANCE_DELAY_MILLIS = 700L
 
 private class HeadsUpAlert(val key: String, val shownAt: Long)
@@ -97,8 +97,12 @@ internal class NotificationsState(
     }
 
     fun dismiss(item: NotificationUiState) {
-        if (alert.value?.key == item.notification.key) hideHeadsUp()
-        repository.cancel(item.notification.key)
+        repository.dismiss(item.notification.key, isHeadsUp = false)
+    }
+
+    fun dismissHeadsUp(item: NotificationUiState) {
+        hideHeadsUp()
+        repository.dismiss(item.notification.key, isHeadsUp = true)
     }
 
     fun hideHeadsUp() {
@@ -122,7 +126,7 @@ internal class NotificationsState(
     private fun headsUpMillis(): Long =
         accessibility
             .getRecommendedTimeoutMillis(
-                HEADS_UP_MILLIS,
+                HUN_DEFAULT_HEADS_UP_TIMEOUT_MILLIS,
                 AccessibilityManager.FLAG_CONTENT_CONTROLS or
                     AccessibilityManager.FLAG_CONTENT_ICONS or
                     AccessibilityManager.FLAG_CONTENT_TEXT,

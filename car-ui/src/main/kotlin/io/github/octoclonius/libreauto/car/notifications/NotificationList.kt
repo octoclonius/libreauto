@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.car.notifications
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -19,13 +20,20 @@ internal fun NotificationList(
     onDismiss: (NotificationUiState) -> Unit,
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
-    LazyColumn(modifier, state, verticalArrangement = Arrangement.spacedBy(CarSpacing.small)) {
+    if (!state.canScrollBackward) state.requestScrollToItem(0)
+    LazyColumn(
+        modifier,
+        state,
+        contentPadding,
+        verticalArrangement = Arrangement.spacedBy(CarSpacing.small),
+    ) {
         items(notifications, key = { it.notification.key }) { item ->
             SwipeToDismissBox(
                 rememberSwipeToDismissBoxState(),
                 backgroundContent = {},
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                 onDismiss = { onDismiss(item) },
             ) {
                 NotificationCard(

@@ -3,9 +3,6 @@ package io.github.octoclonius.libreauto.car.notifications
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
@@ -49,9 +46,7 @@ private val MARGIN = CarSpacing.medium
 private val BORDER_WIDTH = 1.dp
 private val HIDE_DISTANCE = 56.dp
 private val HIDE_VELOCITY = 125.dp
-private const val SURFACE_ALPHA = 0.7f
-private const val ENTER_MILLIS = 250
-private const val EXIT_MILLIS = 200
+private const val SURFACE_ALPHA = 0.75f
 
 private class LastShown(var item: NotificationUiState?)
 
@@ -82,8 +77,8 @@ internal fun HeadsUp(
                 Modifier.align(Alignment.TopCenter)
                     .width(minOf(maxWidth, MAX_WIDTH))
                     .onGloballyPositioned { onBounds(it.boundsInRoot()) },
-            enter = slideInVertically(tween(ENTER_MILLIS)) { -it } + fadeIn(tween(ENTER_MILLIS)),
-            exit = slideOutVertically(tween(EXIT_MILLIS)) { -it } + fadeOut(tween(EXIT_MILLIS)),
+            enter = slideInVertically { -it },
+            exit = slideOutVertically { -it },
         ) {
             if (shown == null) return@AnimatedVisibility
             key(shown.notification.key) {

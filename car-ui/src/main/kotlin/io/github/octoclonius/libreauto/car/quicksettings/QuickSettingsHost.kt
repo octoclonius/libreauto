@@ -66,7 +66,7 @@ private fun QuickSettingsContent(
     val isOpen by state.isOpen.collectAsStateWithLifecycle()
     val list by notifications.notifications.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    LaunchedEffect(isOpen, list) { if (!isOpen) listState.scrollToItem(0) }
+    LaunchedEffect(isOpen) { if (!isOpen) listState.scrollToItem(0) }
     QuickSettingsPanel(
         settings = settings,
         railSide = rail?.side,
@@ -75,13 +75,13 @@ private fun QuickSettingsContent(
         onClose = { state.close() },
         onShowPage = onShowPage,
         hasNotifications = list.isNotEmpty(),
-    ) { modifier ->
+    ) { contentPadding ->
         NotificationList(
             list,
             onClick = notifications::open,
             onDismiss = notifications::dismiss,
-            modifier = modifier,
             state = listState,
+            contentPadding = contentPadding,
         )
     }
 }

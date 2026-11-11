@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+private const val FLAG_NO_DISMISS = 0x00002000
+
 class NotificationRepository(
     context: Context,
     private val privileged: PrivilegedServiceConnection,
@@ -68,34 +70,43 @@ class NotificationRepository(
                     Log.i(TAG, "Notification access stays off: the user turned it off")
                     return@collect
                 }
-                if (carSessionHolder.session.value != null) requestRebind()
+                if (hasSession()) requestRebind()
             }
         }
         externalScope.launch {
             carSessionHolder.session
                 .map { it != null }
                 .distinctUntilChanged()
-                .collect { hasSession -> if (hasSession) requestRebind() else requestUnbind() }
+                .collect { hasSession -> if (hasSession) requestRebind() else onSessionEnded() }
         }
     }
 
-    fun cancel(key: String) {
-        val current = listener ?: return
-        listenerCall("cancel the notification $key") { current.cancelNotification(key) }
+    fun dismiss(key: String, isHeadsUp: Boolean) {
+        val rank = rankOf(key) ?: return
+        val notification = listed[rank].notification
+        privileged.call("dismiss the notification $key") {
+            it.onNotificationClear(
+                notification.packageName,
+                notification.user,
+                key,
+                isHeadsUp,
+                rank,
+                listed.size,
+            )
+        }
     }
 
     fun onClicked(key: String) {
-        val rank = listed.indexOfFirst { it.key == key }
-        if (rank < 0) return
+        val rank = rankOf(key) ?: return
         privileged.call("report a notification click") {
             it.onNotificationClick(key, rank, listed.size)
         }
     }
 
     internal fun onConnected(listener: NotificationListenerService) {
-        if (carSessionHolder.session.value == null) {
+        if (!hasSession()) {
             Log.i(TAG, "No car session; unbinding the notification listener")
-            listenerCall("unbind the notification listener") { listener.requestUnbind() }
+            unbind(listener)
             return
         }
         this.listener = listener
@@ -140,16 +151,23 @@ class NotificationRepository(
         publish()
     }
 
+    private fun onSessionEnded() {
+        val current = listener ?: return
+        unbind(current)
+        clear()
+    }
+
+    private fun hasSession(): Boolean = carSessionHolder.session.value != null
+
     private fun requestRebind() {
         listenerCall("rebind the notification listener") {
             NotificationListenerService.requestRebind(listenerComponent)
         }
     }
 
-    private fun requestUnbind() {
-        val current = listener ?: return
-        listenerCall("unbind the notification listener") { current.requestUnbind() }
-        clear()
+    private fun unbind(listener: NotificationListenerService) {
+        requestRebind()
+        listenerCall("unbind the notification listener") { listener.requestUnbind() }
     }
 
     private fun clear() {
@@ -158,6 +176,8 @@ class NotificationRepository(
         ranking = null
         publish()
     }
+
+    private fun rankOf(key: String): Int? = listed.indexOfFirst { it.key == key }.takeIf { it >= 0 }
 
     private fun alertTarget(posted: NotificationEntry): NotificationEntry? =
         when {
@@ -178,8 +198,8 @@ class NotificationRepository(
             current.orderedKeys.mapNotNull { key ->
                 entries[key]?.takeIf { entry ->
                     isListed(
-                        isClearable = entry.isClearable,
-                        isForegroundService = entry.isForegroundService,
+                        isOngoing = entry.isOngoing,
+                        isNonDismissable = entry.isNonDismissable,
                         isMedia = entry.isMedia,
                         isHiddenOnPhone = current.of(key)?.isHiddenOnPhone() ?: true,
                     )
@@ -214,8 +234,8 @@ private class NotificationEntry(posted: StatusBarNotification) {
     val groupKey: String = posted.groupKey
     val isGroupSummary = (flags and Notification.FLAG_GROUP_SUMMARY) != 0
     val postedWhen = posted.notification.`when`
-    val isClearable = posted.isClearable
-    val isForegroundService = (flags and Notification.FLAG_FOREGROUND_SERVICE) != 0
+    val isOngoing = posted.isOngoing
+    val isNonDismissable = (flags and FLAG_NO_DISMISS) != 0
     val isMedia = posted.notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
     val isOnlyAlertOnce = (flags and Notification.FLAG_ONLY_ALERT_ONCE) != 0
     val isGroupAlertSuppressed =

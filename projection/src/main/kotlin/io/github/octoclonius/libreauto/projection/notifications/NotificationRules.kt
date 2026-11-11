@@ -4,11 +4,11 @@ import android.app.Notification
 import android.app.NotificationManager
 
 internal fun isListed(
-    isClearable: Boolean,
-    isForegroundService: Boolean,
+    isOngoing: Boolean,
+    isNonDismissable: Boolean,
     isMedia: Boolean,
     isHiddenOnPhone: Boolean,
-): Boolean = isClearable && !isForegroundService && !isMedia && !isHiddenOnPhone
+): Boolean = !isOngoing && !isNonDismissable && !isMedia && !isHiddenOnPhone
 
 internal fun isAlerting(
     importance: Int,

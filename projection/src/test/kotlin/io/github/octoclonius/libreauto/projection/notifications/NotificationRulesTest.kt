@@ -14,18 +14,18 @@ class NotificationRulesTest {
     private val groupAlertChildren = 2
 
     @Test
-    fun aClearableNotificationIsListed() {
+    fun aDismissableNotificationIsListed() {
         assertTrue(listed())
     }
 
     @Test
     fun anOngoingNotificationIsNotListed() {
-        assertFalse(listed(isClearable = false))
+        assertFalse(listed(isOngoing = true))
     }
 
     @Test
-    fun aForegroundServiceNotificationIsNotListed() {
-        assertFalse(listed(isForegroundService = true))
+    fun aNonDismissableNotificationIsNotListed() {
+        assertFalse(listed(isNonDismissable = true))
     }
 
     @Test
@@ -103,11 +103,11 @@ class NotificationRulesTest {
     }
 
     private fun listed(
-        isClearable: Boolean = true,
-        isForegroundService: Boolean = false,
+        isOngoing: Boolean = false,
+        isNonDismissable: Boolean = false,
         isMedia: Boolean = false,
         isHiddenOnPhone: Boolean = false,
-    ): Boolean = isListed(isClearable, isForegroundService, isMedia, isHiddenOnPhone)
+    ): Boolean = isListed(isOngoing, isNonDismissable, isMedia, isHiddenOnPhone)
 
     private fun alerting(
         importance: Int = importanceHigh,

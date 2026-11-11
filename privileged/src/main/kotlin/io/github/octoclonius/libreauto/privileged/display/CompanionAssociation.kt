@@ -5,9 +5,9 @@ import android.companion.CompanionDeviceManager
 import android.content.Context
 import android.os.Process
 import android.os.SystemClock
-import android.os.UserHandle
 import android.util.Log
 import io.github.octoclonius.libreauto.privileged.SystemServices
+import io.github.octoclonius.libreauto.privileged.userId
 import java.util.concurrent.TimeUnit
 
 internal class CompanionAssociation(private val context: Context) {
@@ -53,16 +53,13 @@ internal class CompanionAssociation(private val context: Context) {
             PROFILE,
         )
 
-    private fun userId(): Int =
-        UserHandle::class.java.getMethod("getIdentifier").invoke(Process.myUserHandle()) as Int
-
     private fun associate() {
         val command =
             listOf(
                 "cmd",
                 "companiondevice",
                 "associate",
-                userId().toString(),
+                Process.myUserHandle().userId.toString(),
                 context.packageName,
                 ASSOCIATION_ADDRESS,
                 PROFILE,

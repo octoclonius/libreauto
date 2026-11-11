@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,7 +48,7 @@ private val PANEL_MARGIN = CarSpacing.medium
 private val PANEL_PADDING = CarSpacing.large
 private val TILE_SIZE = DpSize(176.dp, 72.dp)
 private val TILE_SPACING = CarSpacing.medium
-private val NOTIFICATIONS_GAP = CarSpacing.large
+private val PANEL_SPACING = CarSpacing.large
 private val TILE_PADDING = CarSpacing.large
 private val TILE_ICON_SIZE = 28.dp
 private const val MAX_COLUMNS = 3
@@ -68,12 +70,12 @@ internal fun QuickSettingsPanel(
     onClose: () -> Unit,
     onShowPage: (PendingIntent) -> Unit,
     hasNotifications: Boolean,
-    notifications: @Composable (Modifier) -> Unit,
+    notifications: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
     val alignment =
         when (railSide) {
             RailSide.Right -> Alignment.TopEnd
-            RailSide.Bottom -> if (isDriverOnRight) Alignment.BottomStart else Alignment.BottomEnd
+            RailSide.Bottom -> if (isDriverOnRight) Alignment.TopStart else Alignment.TopEnd
             else -> Alignment.TopStart
         }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -87,34 +89,26 @@ internal fun QuickSettingsPanel(
                     (TILE_SIZE.width + TILE_SPACING))
                 .toInt()
                 .coerceIn(1, MAX_COLUMNS)
-        val width = TILE_SIZE.width * columns + TILE_SPACING * (columns - 1)
         val tiles = settings?.let(::tiles) ?: return@BoxWithConstraints
-        if (railSide == RailSide.Bottom) {
-            Column(
-                Modifier.fillMaxSize().padding(PANEL_MARGIN),
-                verticalArrangement =
-                    if (hasNotifications) Arrangement.SpaceBetween else Arrangement.Bottom,
-                horizontalAlignment =
-                    if (alignment == Alignment.BottomStart) Alignment.Start else Alignment.End,
-            ) {
-                if (hasNotifications) {
-                    PanelSurface(
-                        Modifier.weight(1f, fill = false).padding(bottom = NOTIFICATIONS_GAP)
-                    ) {
-                        notifications(Modifier.width(width).padding(PANEL_PADDING))
-                    }
+        Column(
+            Modifier.fillMaxHeight()
+                .align(alignment)
+                .padding(PANEL_MARGIN)
+                .width(
+                    TILE_SIZE.width * columns + TILE_SPACING * (columns - 1) + PANEL_PADDING * 2
+                ),
+            verticalArrangement = Arrangement.spacedBy(PANEL_SPACING),
+        ) {
+            if (railSide == RailSide.Bottom) {
+                Box(Modifier.weight(1f)) {
+                    if (hasNotifications) NotificationsPanel(notifications)
                 }
-                Panel(tiles, columns, onToggle, onShowPage)
-            }
-        } else {
-            Panel(
-                tiles,
-                columns,
-                onToggle,
-                onShowPage,
-                Modifier.align(alignment).padding(PANEL_MARGIN),
-            ) {
-                if (hasNotifications) notifications(Modifier.width(width).weight(1f, fill = false))
+                SettingsPanel(tiles, columns, onToggle, onShowPage)
+            } else {
+                SettingsPanel(tiles, columns, onToggle, onShowPage)
+                if (hasNotifications) {
+                    NotificationsPanel(notifications, Modifier.weight(1f, fill = false))
+                }
             }
         }
     }
@@ -167,29 +161,32 @@ private fun tiles(settings: PhoneSettingsState): List<SettingTile> =
     )
 
 @Composable
-private fun Panel(
+private fun SettingsPanel(
     tiles: List<SettingTile>,
     columns: Int,
     onToggle: (QuickSetting, Boolean) -> Unit,
     onShowPage: (PendingIntent) -> Unit,
-    modifier: Modifier = Modifier,
-    below: @Composable ColumnScope.() -> Unit = {},
 ) {
-    PanelSurface(modifier) {
+    PanelSurface {
         Column(
             Modifier.padding(PANEL_PADDING),
-            verticalArrangement = Arrangement.spacedBy(NOTIFICATIONS_GAP),
+            verticalArrangement = Arrangement.spacedBy(TILE_SPACING),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
-                tiles.chunked(columns).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
-                        row.forEach { Tile(it, onToggle, onShowPage) }
-                    }
+            tiles.chunked(columns).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(TILE_SPACING)) {
+                    row.forEach { Tile(it, onToggle, onShowPage) }
                 }
             }
-            below()
         }
     }
+}
+
+@Composable
+private fun NotificationsPanel(
+    notifications: @Composable (contentPadding: PaddingValues) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PanelSurface(modifier.fillMaxWidth()) { notifications(PaddingValues(PANEL_PADDING)) }
 }
 
 @Composable

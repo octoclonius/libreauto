@@ -6,6 +6,7 @@ import android.hardware.usb.UsbManager
 import android.os.HandlerThread
 import android.os.Parcel
 import android.os.Process
+import android.os.UserHandle
 import android.util.Log
 import android.view.Surface
 import io.github.octoclonius.libreauto.privileged.api.AudioInput
@@ -26,9 +27,9 @@ import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
 import io.github.octoclonius.libreauto.privileged.display.displayRequestError
 import io.github.octoclonius.libreauto.privileged.input.DisplayKeys
 import io.github.octoclonius.libreauto.privileged.notifications.NotificationAccess
-import io.github.octoclonius.libreauto.privileged.notifications.NotificationClicks
+import io.github.octoclonius.libreauto.privileged.notifications.NotificationActions
 import io.github.octoclonius.libreauto.privileged.notifications.notificationAccessRequestError
-import io.github.octoclonius.libreauto.privileged.notifications.notificationClickRequestError
+import io.github.octoclonius.libreauto.privileged.notifications.notificationVisibilityRequestError
 import io.github.octoclonius.libreauto.privileged.settings.PhoneSettings
 import io.github.octoclonius.libreauto.privileged.settings.settingRequestError
 import kotlin.system.exitProcess
@@ -49,7 +50,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
     private val callAccess = CallAccess(shellContext)
     private val notificationAccess = NotificationAccess(shellContext)
-    private val notificationClicks = NotificationClicks()
+    private val notificationActions = NotificationActions()
     private val displayLock = Any()
     private val audioLock = Any()
     private var carDisplay: CarDisplaySession? = null
@@ -157,9 +158,26 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         checkedCall(
             TAG,
             "Reporting a notification click",
-            notificationClickRequestError(rank, count),
+            notificationVisibilityRequestError(rank, count),
         ) {
-            notificationClicks.click(key, rank, count)
+            notificationActions.click(key, rank, count)
+        }
+    }
+
+    override fun onNotificationClear(
+        pkg: String,
+        user: UserHandle,
+        key: String,
+        isHeadsUp: Boolean,
+        rank: Int,
+        count: Int,
+    ) {
+        checkedCall(
+            TAG,
+            "Reporting a notification dismissal",
+            notificationVisibilityRequestError(rank, count),
+        ) {
+            notificationActions.clear(pkg, user.userId, key, isHeadsUp, rank, count)
         }
     }
 

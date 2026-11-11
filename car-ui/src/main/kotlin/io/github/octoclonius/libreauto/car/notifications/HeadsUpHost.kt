@@ -47,7 +47,7 @@ private fun HeadsUpContent(
         headsUp = headsUp.takeUnless { isOpen },
         onClick = notifications::openHeadsUp,
         onHide = notifications::hideHeadsUp,
-        onDismiss = notifications::dismiss,
+        onDismiss = notifications::dismissHeadsUp,
         onHold = notifications::holdHeadsUp,
         onOnScreen = notifications::onHeadsUpOnScreen,
         onBounds = { bounds ->

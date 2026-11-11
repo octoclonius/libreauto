@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.privileged.api;
 
 import android.content.ComponentName;
+import android.os.UserHandle;
 import android.view.Surface;
 import io.github.octoclonius.libreauto.privileged.api.AudioInput;
 import io.github.octoclonius.libreauto.privileged.api.AudioOutput;
@@ -28,6 +29,8 @@ interface IPrivilegedService {
     void allowNotificationAccess(in ComponentName listener) = 27;
 
     oneway void onNotificationClick(String key, int rank, int count) = 28;
+
+    oneway void onNotificationClear(String pkg, in UserHandle user, String key, boolean isHeadsUp, int rank, int count) = 29;
 
     IPhoneBluetoothService getBluetoothService() = 26;
 }
