@@ -33,8 +33,9 @@ internal class InputChannel(
     private val router = TouchRouter()
     private val presses = ButtonPresses()
     private val railTouches = WindowTouches("rail", displays.rail::onTouch)
-    private val overlayTouches = WindowTouches("overlay", displays.overlay::onTouch)
-    private var appsGesture = AppsGesture.App
+    private val overlayTouches =
+        displays.overlays.associateWith { WindowTouches(it.name, it::onTouch) }
+    private var appsGesture: AppsGesture = AppsGesture.App
     private var isRailGestureCaptured = false
 
     override val channel: Int
@@ -107,28 +108,29 @@ internal class InputChannel(
         when (routed.target) {
             TouchTarget.Apps -> {
                 if (routed.touch.action == TouchAction.DOWN) {
-                    appsGesture =
-                        when {
-                            displays.rail.outsideTouches.capture() -> AppsGesture.Captured
-                            routed.touch.pointers[routed.touch.actionIndex].let {
-                                displays.overlay.takesTouchAt(it.x, it.y)
-                            } -> AppsGesture.Overlay
-                            else -> AppsGesture.App
-                        }
+                    appsGesture = appsGesture(routed.touch.pointers[routed.touch.actionIndex])
                 }
-                when (appsGesture) {
+                when (val gesture = appsGesture) {
                     AppsGesture.App -> sendToApps(eventTimeNanos, routed.touch)
-                    AppsGesture.Overlay -> overlayTouches.send(eventTimeNanos, routed.touch)
+                    is AppsGesture.Overlay -> gesture.touches.send(eventTimeNanos, routed.touch)
                     AppsGesture.Captured -> {}
                 }
             }
             TouchTarget.Rail -> {
                 if (routed.touch.action == TouchAction.DOWN) {
-                    isRailGestureCaptured = displays.overlay.outsideTouches.capture()
+                    isRailGestureCaptured = displays.overlays.any { it.outsideTouches.capture() }
                 }
                 if (!isRailGestureCaptured) railTouches.send(eventTimeNanos, routed.touch)
             }
         }
+    }
+
+    private fun appsGesture(pointer: TouchPointer): AppsGesture {
+        if (displays.rail.outsideTouches.capture()) return AppsGesture.Captured
+        val overlay =
+            displays.overlays.lastOrNull { it.takesTouchAt(pointer.x, pointer.y) }
+                ?: return AppsGesture.App
+        return AppsGesture.Overlay(overlayTouches.getValue(overlay))
     }
 
     private fun sendToApps(eventTimeNanos: Long, touch: Touch) {
@@ -145,10 +147,12 @@ internal class InputChannel(
     }
 }
 
-private enum class AppsGesture {
-    App,
-    Overlay,
-    Captured,
+private sealed interface AppsGesture {
+    data object App : AppsGesture
+
+    class Overlay(val touches: WindowTouches) : AppsGesture
+
+    data object Captured : AppsGesture
 }
 
 private sealed interface InputChannelState {

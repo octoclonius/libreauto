@@ -4,22 +4,17 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
-import io.github.octoclonius.libreauto.car.notifications.NotificationsState
-import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
-import io.github.octoclonius.libreauto.projection.CarSession
+import androidx.compose.runtime.Composable
+import io.github.octoclonius.libreauto.projection.display.OverlayDisplay
 import io.github.octoclonius.libreauto.projection.display.OverlayDisplayState
-import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 internal class OverlayHost(
     context: Context,
-    private val session: CarSession,
-    private val quickSettings: QuickSettingsState,
-    private val phoneSettings: PhoneSettingsRepository,
-    private val notifications: NotificationsState,
+    private val overlay: OverlayDisplay,
+    private val content: @Composable () -> Unit,
 ) : Closeable {
 
     companion object {
@@ -30,17 +25,8 @@ internal class OverlayHost(
     private var window: OverlayWindow? = null
 
     fun start(scope: CoroutineScope) {
-        val overlay = session.displays.overlay
         scope.launch { overlay.state.collect(::show) }
         scope.launch { overlay.touches.collect { window?.dispatchTouchEvent(it) } }
-        scope.launch { overlay.outsideTouches.captured.collect { quickSettings.close() } }
-        scope.launch { quickSettings.isOpen.collect(overlay.outsideTouches::setCapturing) }
-        scope.launch {
-            combine(quickSettings.isOpen, notifications.isHeadsUpOnScreen) { isOpen, isHeadsUp ->
-                    isOpen || isHeadsUp
-                }
-                .collect(overlay::show)
-        }
     }
 
     override fun close() {
@@ -48,27 +34,24 @@ internal class OverlayHost(
         window = null
     }
 
-    private fun show(overlay: OverlayDisplayState?) {
+    private fun show(state: OverlayDisplayState?) {
         window?.dismiss()
         window = null
-        if (overlay == null) {
-            quickSettings.close()
-            return
-        }
-        val display = context.getSystemService(DisplayManager::class.java).getDisplay(overlay.id)
+        if (state == null) return
+        val name = overlay.name
+        val display = context.getSystemService(DisplayManager::class.java).getDisplay(state.id)
         if (display == null) {
-            Log.w(TAG, "The overlay display ${overlay.id} is already gone")
+            Log.w(TAG, "The $name display ${state.id} is already gone")
             return
         }
-        val created =
-            OverlayWindow(context, display, session, quickSettings, phoneSettings, notifications)
+        val created = OverlayWindow(context, display, content)
         try {
             created.show()
         } catch (e: WindowManager.InvalidDisplayException) {
-            Log.w(TAG, "The overlay display ${overlay.id} went away before the overlay showed", e)
+            Log.w(TAG, "The $name display ${state.id} went away before its window showed", e)
             return
         }
         window = created
-        Log.i(TAG, "Showing the overlay on display ${overlay.id}")
+        Log.i(TAG, "Showing the $name window on display ${state.id}")
     }
 }

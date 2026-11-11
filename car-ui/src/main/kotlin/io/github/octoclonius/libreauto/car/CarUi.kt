@@ -2,8 +2,9 @@ package io.github.octoclonius.libreauto.car
 
 import android.content.Context
 import io.github.octoclonius.libreauto.car.home.HomeState
+import io.github.octoclonius.libreauto.car.notifications.HeadsUpHost
 import io.github.octoclonius.libreauto.car.notifications.NotificationsState
-import io.github.octoclonius.libreauto.car.overlay.OverlayHost
+import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
@@ -35,13 +36,15 @@ internal constructor(
     private val railHost = RailHost(context, session, rail, railOrder, navigation)
     private val notifications =
         NotificationsState(context, notificationRepository, quickSettings, session.displays.car)
-    private val overlayHost =
-        OverlayHost(context, session, quickSettings, phoneSettings, notifications)
+    private val quickSettingsHost =
+        QuickSettingsHost(context, session, quickSettings, phoneSettings, notifications)
+    private val headsUpHost = HeadsUpHost(context, session, quickSettings, notifications)
 
     internal fun start() {
         railHost.start(scope)
         notifications.start(scope)
-        overlayHost.start(scope)
+        quickSettingsHost.start(scope)
+        headsUpHost.start(scope)
         scope.launch {
             session.buttons.presses.collect {
                 when (it) {
@@ -55,6 +58,7 @@ internal constructor(
     override fun close() {
         scope.cancel()
         railHost.close()
-        overlayHost.close()
+        quickSettingsHost.close()
+        headsUpHost.close()
     }
 }

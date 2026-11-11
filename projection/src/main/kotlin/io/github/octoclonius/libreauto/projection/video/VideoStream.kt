@@ -36,7 +36,7 @@ internal class VideoStream(
     companion object {
         private const val TAG = "VideoStream"
         private const val FIRST_SESSION = 0
-        private const val OVERLAY_LAYER = 2
+        private const val FIRST_OVERLAY_LAYER = 2
     }
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor {
@@ -47,7 +47,7 @@ internal class VideoStream(
     private val displaysLock = Any()
     private var compositor: VideoCompositor? = null
     private var rail: RailVirtualDisplay? = null
-    private var overlay: OverlayVirtualDisplay? = null
+    private val overlays = mutableListOf<OverlayVirtualDisplay>()
     private var display: PrivilegedDisplay? = null
 
     fun start() {
@@ -94,10 +94,12 @@ internal class VideoStream(
             } catch (e: RuntimeException) {
                 Log.w(TAG, "Resizing the rail display failed", e)
             }
-            try {
-                overlay?.resize(layout)
-            } catch (e: RuntimeException) {
-                Log.w(TAG, "Resizing the overlay display failed", e)
+            overlays.forEach { overlay ->
+                try {
+                    overlay.resize(layout)
+                } catch (e: RuntimeException) {
+                    Log.w(TAG, "Resizing the ${overlay.name} display failed", e)
+                }
             }
             display?.resize(layout)
             val current = compositor
@@ -137,12 +139,15 @@ internal class VideoStream(
                         encoder?.close()
                     }
                 compositor = created
-                val (appsInput, railInput, overlayInput) = created.inputs
+                val (appsInput, railInput) = created.inputs
                 rail = RailVirtualDisplay(context, railInput, layout, displays.rail)
-                overlay =
-                    OverlayVirtualDisplay(context, overlayInput, layout, displays.overlay) {
-                        created.setHidden(OVERLAY_LAYER, !it)
-                    }
+                displays.overlays.forEachIndexed { index, overlay ->
+                    val layer = FIRST_OVERLAY_LAYER + index
+                    overlays +=
+                        OverlayVirtualDisplay(context, created.inputs[layer], layout, overlay) {
+                            created.setHidden(layer, !it)
+                        }
+                }
                 display =
                     PrivilegedDisplay(
                             appsInput,
@@ -159,7 +164,8 @@ internal class VideoStream(
         }
     }
 
-    private fun areas(layout: CarLayout): List<Area> = listOf(layout.apps, layout.rail, layout.apps)
+    private fun areas(layout: CarLayout): List<Area> =
+        listOf(layout.apps, layout.rail) + displays.overlays.map { layout.apps }
 
     private fun bitRate(format: VideoFormat): Int =
         EncoderSettings.bitRate(codec, format.pixelsOutsideCutouts, format.framesPerSecond)
@@ -168,12 +174,14 @@ internal class VideoStream(
         synchronized(displaysLock) {
             closeAll(TAG) {
                 step("Releasing the car display") { display?.close() }
-                step("Releasing the overlay display") { overlay?.close() }
+                overlays.asReversed().forEach {
+                    step("Releasing the ${it.name} display") { it.close() }
+                }
                 step("Releasing the rail display") { rail?.close() }
                 step("Releasing the compositor") { compositor?.close() }
             }
             display = null
-            overlay = null
+            overlays.clear()
             rail = null
             compositor = null
         }

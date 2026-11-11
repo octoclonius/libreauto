@@ -17,27 +17,29 @@ internal class OverlayVirtualDisplay(
 
     companion object {
         private const val TAG = "OverlayVirtualDisplay"
-        private const val NAME = "LibreAuto overlay"
     }
+
+    val name: String
+        get() = overlay.name
 
     private val display: VirtualDisplay =
         context
             .getSystemService(DisplayManager::class.java)
             .createVirtualDisplay(
-                NAME,
+                "LibreAuto $name",
                 layout.apps.width,
                 layout.apps.height,
                 layout.format.density,
                 surface,
                 0,
-            ) ?: error("No overlay display")
+            ) ?: error("No $name display")
 
     private val id = display.display.displayId
 
     init {
         Log.i(
             TAG,
-            "Created the overlay display $id: ${layout.apps.width}x${layout.apps.height} at " +
+            "Created the $name display $id: ${layout.apps.width}x${layout.apps.height} at " +
                 "${layout.format.density} dpi",
         )
         overlay.onCreated(id, onShown)
@@ -45,12 +47,12 @@ internal class OverlayVirtualDisplay(
 
     fun resize(layout: CarLayout) {
         display.resize(layout.apps.width, layout.apps.height, layout.format.density)
-        Log.i(TAG, "Resized the overlay display $id to ${layout.apps.width}x${layout.apps.height}")
+        Log.i(TAG, "Resized the $name display $id to ${layout.apps.width}x${layout.apps.height}")
     }
 
     override fun close() {
         overlay.onReleased(id)
         display.release()
-        Log.i(TAG, "Released the overlay display $id")
+        Log.i(TAG, "Released the $name display $id")
     }
 }

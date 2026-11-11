@@ -2,7 +2,9 @@ package io.github.octoclonius.libreauto.car.notifications
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -16,8 +18,9 @@ internal fun NotificationList(
     onClick: (NotificationUiState) -> Unit,
     onDismiss: (NotificationUiState) -> Unit,
     modifier: Modifier = Modifier,
+    state: LazyListState = rememberLazyListState(),
 ) {
-    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(CarSpacing.small)) {
+    LazyColumn(modifier, state, verticalArrangement = Arrangement.spacedBy(CarSpacing.small)) {
         items(notifications, key = { it.notification.key }) { item ->
             SwipeToDismissBox(
                 rememberSwipeToDismissBoxState(),
