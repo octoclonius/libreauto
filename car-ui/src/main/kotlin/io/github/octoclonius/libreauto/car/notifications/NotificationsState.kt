@@ -49,7 +49,7 @@ internal class NotificationsState(
     fun start(scope: CoroutineScope) {
         scope.launch {
             combine(repository.notifications, carDensities(carDisplay)) { list, carDensity ->
-                    list.map { apps.uiState(it, carDensity) }
+                    apps.uiStates(list, carDensity)
                 }
                 .flowOn(Dispatchers.IO)
                 .collect { _notifications.value = it }
@@ -62,12 +62,6 @@ internal class NotificationsState(
         }
         scope.launch { repository.alerts.collect(::showHeadsUp) }
         scope.launch {
-            repository.notifications.collect { list ->
-                val shown = alert.value ?: return@collect
-                if (list.none { it.key == shown.key }) hideHeadsUp()
-            }
-        }
-        scope.launch {
             combine(alert, heldAlert) { shown, held -> shown?.takeUnless { it === held } }
                 .distinctUntilChanged()
                 .collectLatest { shown ->
@@ -76,7 +70,14 @@ internal class NotificationsState(
                     alert.compareAndSet(shown, null)
                 }
         }
+        scope.launch {
+            repository.notifications.collect { list ->
+                val shown = alert.value ?: return@collect
+                if (list.none { it.key == shown.key }) hideHeadsUp()
+            }
+        }
         scope.launch { quickSettings.isOpen.collect { if (it) hideHeadsUp() } }
+        scope.launch { repository.isHeadsUpEnabled.collect { if (!it) hideHeadsUp() } }
     }
 
     fun open(item: NotificationUiState) {
@@ -119,7 +120,6 @@ internal class NotificationsState(
 
     private fun showHeadsUp(notification: PhoneNotification) {
         if (quickSettings.isOpen.value) return
-        if (repository.notifications.value.none { it.key == notification.key }) return
         alert.value = HeadsUpAlert(notification.key, SystemClock.elapsedRealtime())
     }
 

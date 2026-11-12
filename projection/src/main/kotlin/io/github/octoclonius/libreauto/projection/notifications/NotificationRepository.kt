@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.Ranking
@@ -19,14 +20,20 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val FLAG_NO_DISMISS = 0x00002000
+private const val FLAG_USER_INITIATED_JOB = 0x00008000
+private const val FLAG_SILENT = 0x00020000
+private const val EXTRA_BUILDER_APPLICATION_INFO = "android.appInfo"
+private const val EXTRA_SUBSTITUTE_APP_NAME = "android.substName"
 
 class NotificationRepository(
     context: Context,
@@ -44,6 +51,14 @@ class NotificationRepository(
 
     private val _notifications = MutableStateFlow<List<PhoneNotification>>(emptyList())
     val notifications: StateFlow<List<PhoneNotification>> = _notifications.asStateFlow()
+
+    val isHeadsUpEnabled: StateFlow<Boolean> =
+        headsUpEnabled(context.contentResolver)
+            .stateIn(
+                externalScope,
+                SharingStarted.Eagerly,
+                isHeadsUpEnabled(context.contentResolver),
+            )
 
     private val _alerts =
         MutableSharedFlow<PhoneNotification>(
@@ -123,21 +138,34 @@ class NotificationRepository(
 
     internal fun onPosted(posted: StatusBarNotification, ranking: RankingMap) {
         val entry = NotificationEntry(posted)
-        val isUpdate = entries.put(posted.key, entry) != null
+        entry.hasInterrupted = entries.put(posted.key, entry)?.hasInterrupted == true
         this.ranking = ranking
         publish()
         val postedRanking = ranking.of(posted.key) ?: return
         val isAlert =
             isAlerting(
+                isHeadsUpEnabled = isHeadsUpEnabled.value,
                 importance = postedRanking.importance,
                 isPeekSuppressed =
                     (postedRanking.suppressedVisualEffects and
                         NotificationManager.Policy.SUPPRESSED_EFFECT_PEEK) != 0,
                 isGroupAlertSuppressed = entry.isGroupAlertSuppressed,
-                isUpdate = isUpdate,
+                isSilent = entry.isSilent,
+                isTooOld =
+                    isTooOldToAlert(
+                        whenMillis = entry.postedWhen,
+                        nowMillis = System.currentTimeMillis(),
+                        hasFullScreenIntent = entry.hasFullScreenIntent,
+                        isForegroundService = entry.isForegroundService,
+                        isUserInitiatedJob = entry.isUserInitiatedJob,
+                    ),
+                hasInterrupted = entry.hasInterrupted,
                 isOnlyAlertOnce = entry.isOnlyAlertOnce,
             )
-        if (isAlert) alertTarget(entry)?.let { _alerts.tryEmit(it.notification) }
+        if (!isAlert) return
+        val target = headsUpTarget(entry, listed) ?: return
+        entry.hasInterrupted = true
+        _alerts.tryEmit(target.notification)
     }
 
     internal fun onRemoved(removed: StatusBarNotification, ranking: RankingMap) {
@@ -179,22 +207,14 @@ class NotificationRepository(
 
     private fun rankOf(key: String): Int? = listed.indexOfFirst { it.key == key }.takeIf { it >= 0 }
 
-    private fun alertTarget(posted: NotificationEntry): NotificationEntry? =
-        when {
-            listed.any { it.key == posted.key } -> posted
-            posted.isGroupSummary ->
-                listed.filter { it.groupKey == posted.groupKey }.maxByOrNull { it.postedWhen }
-            else -> null
-        }
-
     private fun publish() {
         val current = ranking
         listed = if (current == null) emptyList() else listed(current)
         _notifications.value = listed.map { it.notification }
     }
 
-    private fun listed(current: RankingMap): List<NotificationEntry> {
-        val listed =
+    private fun listed(current: RankingMap): List<NotificationEntry> =
+        withoutCoveredSummaries(
             current.orderedKeys.mapNotNull { key ->
                 entries[key]?.takeIf { entry ->
                     isListed(
@@ -205,10 +225,7 @@ class NotificationRepository(
                     )
                 }
             }
-        val groupsWithChildren =
-            listed.filterNot { it.isGroupSummary }.mapTo(HashSet()) { it.groupKey }
-        return listed.filterNot { it.isGroupSummary && it.groupKey in groupsWithChildren }
-    }
+        )
 
     private fun <T> listenerCall(action: String, call: () -> T): T? =
         try {
@@ -219,7 +236,7 @@ class NotificationRepository(
         }
 }
 
-private class NotificationEntry(posted: StatusBarNotification) {
+private class NotificationEntry(posted: StatusBarNotification) : GroupedNotification {
     private val flags = posted.notification.flags
     val key: String = posted.key
     val notification =
@@ -227,17 +244,32 @@ private class NotificationEntry(posted: StatusBarNotification) {
             key = posted.key,
             packageName = posted.packageName,
             user = posted.user,
+            app =
+                posted.notification.extras.getParcelable(
+                    EXTRA_BUILDER_APPLICATION_INFO,
+                    ApplicationInfo::class.java,
+                ),
+            substituteAppName =
+                posted.notification.extras.getString(EXTRA_SUBSTITUTE_APP_NAME)?.ifEmpty { null },
             title = posted.notification.extras.text(Notification.EXTRA_TITLE),
             text = posted.notification.extras.text(Notification.EXTRA_TEXT),
+            smallIcon = posted.notification.smallIcon,
+            prefersSmallIcon =
+                posted.notification.extras.getBoolean(Notification.EXTRA_PREFER_SMALL_ICON),
             contentIntent = posted.notification.contentIntent,
         )
-    val groupKey: String = posted.groupKey
-    val isGroupSummary = (flags and Notification.FLAG_GROUP_SUMMARY) != 0
-    val postedWhen = posted.notification.`when`
+    override val groupKey: String = posted.groupKey
+    override val isGroupSummary = (flags and Notification.FLAG_GROUP_SUMMARY) != 0
+    override val postedWhen = posted.notification.`when`
     val isOngoing = posted.isOngoing
     val isNonDismissable = (flags and FLAG_NO_DISMISS) != 0
     val isMedia = posted.notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
     val isOnlyAlertOnce = (flags and Notification.FLAG_ONLY_ALERT_ONCE) != 0
+    val isSilent = (flags and FLAG_SILENT) != 0
+    val hasFullScreenIntent = posted.notification.fullScreenIntent != null
+    val isForegroundService = (flags and Notification.FLAG_FOREGROUND_SERVICE) != 0
+    val isUserInitiatedJob = (flags and FLAG_USER_INITIATED_JOB) != 0
+    var hasInterrupted = false
     val isGroupAlertSuppressed =
         isGroupAlertSuppressed(
             isInGroup = posted.notification.group != null,

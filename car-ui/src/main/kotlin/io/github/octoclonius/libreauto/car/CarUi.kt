@@ -38,7 +38,7 @@ internal constructor(
         NotificationsState(context, notificationRepository, quickSettings, session.displays.car)
     private val quickSettingsHost =
         QuickSettingsHost(context, session, quickSettings, phoneSettings, notifications)
-    private val headsUpHost = HeadsUpHost(context, session, quickSettings, notifications)
+    private val headsUpHost = HeadsUpHost(context, session, notifications)
 
     internal fun start() {
         railHost.start(scope)
