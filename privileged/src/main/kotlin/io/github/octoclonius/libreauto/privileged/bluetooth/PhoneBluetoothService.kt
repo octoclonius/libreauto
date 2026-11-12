@@ -1,6 +1,5 @@
 package io.github.octoclonius.libreauto.privileged.bluetooth
 
-import android.Manifest
 import android.content.Context
 import android.os.Parcel
 import android.os.Process
@@ -15,7 +14,6 @@ internal class PhoneBluetoothService(
     context: Context,
     private val settings: PhoneSettings,
     private val appUid: Int,
-    private val appPackage: String,
 ) : IPhoneBluetoothService.Stub() {
 
     private companion object {
@@ -27,12 +25,6 @@ internal class PhoneBluetoothService(
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         checkCaller(TAG, code) { isAppCallAllowed(code, it, appUid, Process.myUid()) }
         return super.onTransact(code, data, reply, flags)
-    }
-
-    override fun grantPermission() {
-        identityCall(TAG, "Granting the app Bluetooth access") {
-            bluetooth.grantPermission(appPackage, Manifest.permission.BLUETOOTH_CONNECT)
-        }
     }
 
     override fun turnOn(): Boolean =

@@ -31,6 +31,13 @@
 
     <string name="settings_title">Settings</string>
     <string name="about_title">About</string>
+    <string name="permissions_title">Permissions</string>
+    <string name="permission_allowed">Allowed</string>
+    <string name="permission_not_allowed">Not allowed</string>
+    <string name="notification_access_title">Notifications</string>
+    <string name="notification_access_summary">Show your phone\'s notifications on the car</string>
+    <string name="nearby_devices_title">Nearby devices</string>
+    <string name="nearby_devices_summary">Pair with the car for hands-free calls</string>
     <string name="version_title">Version</string>
 
     <string name="licenses_title">Open source licenses</string>

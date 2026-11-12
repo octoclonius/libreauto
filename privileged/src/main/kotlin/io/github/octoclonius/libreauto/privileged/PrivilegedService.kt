@@ -27,9 +27,7 @@ import io.github.octoclonius.libreauto.privileged.display.CarDisplaySession
 import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
 import io.github.octoclonius.libreauto.privileged.display.displayRequestError
 import io.github.octoclonius.libreauto.privileged.input.DisplayKeys
-import io.github.octoclonius.libreauto.privileged.notifications.NotificationAccess
 import io.github.octoclonius.libreauto.privileged.notifications.NotificationActions
-import io.github.octoclonius.libreauto.privileged.notifications.notificationAccessRequestError
 import io.github.octoclonius.libreauto.privileged.notifications.notificationVisibilityRequestError
 import io.github.octoclonius.libreauto.privileged.settings.PhoneSettings
 import io.github.octoclonius.libreauto.privileged.settings.settingRequestError
@@ -47,11 +45,10 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val association = CompanionAssociation(shellContext)
     private val ambientDisplay = AmbientDisplay(shellContext)
     private val keys = DisplayKeys(shellContext)
-    private val settings = PhoneSettings(shellContext)
-    private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
+    private val settings = PhoneSettings(shellContext, appPackage)
+    private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid)
     private val callAccess = CallAccess(shellContext)
     private val phoneCalls = PhoneCalls(shellContext)
-    private val notificationAccess = NotificationAccess(shellContext)
     private val notificationActions = NotificationActions()
     private val displayLock = Any()
     private val audioLock = Any()
@@ -152,16 +149,6 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
 
     override fun endCall() {
         identityCall(TAG, "Ending the foreground call") { phoneCalls.endCall() }
-    }
-
-    override fun allowNotificationAccess(listener: ComponentName) {
-        checkedCall(
-            TAG,
-            "Allowing the app the phone's notifications",
-            notificationAccessRequestError(listener.packageName, appPackage),
-        ) {
-            notificationAccess.allow(listener)
-        }
     }
 
     override fun onNotificationClick(key: String, rank: Int, count: Int) {

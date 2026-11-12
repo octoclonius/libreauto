@@ -16,6 +16,7 @@ import io.github.octoclonius.libreauto.projection.display.CarHome
 import io.github.octoclonius.libreauto.projection.input.CarButtons
 import io.github.octoclonius.libreauto.projection.input.InputChannel
 import io.github.octoclonius.libreauto.projection.media.MediaResumption
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.tasks.CarTasks
 import io.github.octoclonius.libreauto.projection.tasks.OpenCarTasksRepository
@@ -50,6 +51,7 @@ internal constructor(
     val car: CarInfo,
     private val calls: CallRepository,
     private val privileged: PrivilegedServiceConnection,
+    private val permissions: PermissionsRepository,
     carHome: CarHome,
     openTasks: OpenCarTasksRepository,
     private val mediaResumption: MediaResumption,
@@ -202,6 +204,7 @@ internal constructor(
                 bluetooth,
                 version,
                 privileged,
+                permissions,
                 scope,
             )
         )

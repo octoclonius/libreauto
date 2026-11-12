@@ -30,8 +30,6 @@ interface IPrivilegedService {
 
     oneway void endCall() = 31;
 
-    void allowNotificationAccess(in ComponentName listener) = 27;
-
     oneway void onNotificationClick(String key, int rank, int count) = 28;
 
     oneway void onNotificationClear(String pkg, in UserHandle user, String key, boolean isHeadsUp, int rank, int count) = 29;

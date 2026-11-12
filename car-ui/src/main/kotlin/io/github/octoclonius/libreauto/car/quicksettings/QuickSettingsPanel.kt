@@ -59,6 +59,7 @@ private class SettingTile(
     @StringRes val label: Int,
     val isOn: Boolean?,
     val page: String,
+    val isEnabled: Boolean = isOn != null,
 )
 
 @Composable
@@ -129,6 +130,7 @@ private fun tiles(settings: PhoneSettingsState): List<SettingTile> =
             R.string.bluetooth,
             settings.isBluetoothOn,
             Settings.ACTION_BLUETOOTH_SETTINGS,
+            isEnabled = settings.isBluetoothToggleAllowed,
         ),
         SettingTile(
             QuickSetting.MobileData,
@@ -215,15 +217,14 @@ private fun Tile(
         contentColor =
             if (isOn) MaterialTheme.colorScheme.onPrimaryFixed
             else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isOn == null) CarAlpha.DISABLED else 1f),
+        modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isEnabled) 1f else CarAlpha.DISABLED),
     ) {
         Row(
             Modifier.fillMaxSize()
                 .combinedClickable(
-                    enabled = tile.isOn != null,
                     role = Role.Switch,
                     onLongClick = { onShowPage(settingsPage(context, tile)) },
-                    onClick = { onToggle(tile.setting, !isOn) },
+                    onClick = { if (tile.isEnabled) onToggle(tile.setting, !isOn) },
                 )
                 .padding(horizontal = TILE_PADDING),
             horizontalArrangement = Arrangement.spacedBy(TILE_PADDING),

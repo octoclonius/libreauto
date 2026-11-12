@@ -1,9 +1,11 @@
 package io.github.octoclonius.libreauto.privileged.settings
 
+import android.Manifest
 import android.app.INotificationManager
 import android.app.NotificationManager
 import android.bluetooth.IBluetoothManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.wifi.IWifiManager
@@ -17,7 +19,7 @@ import com.android.internal.telephony.ISub
 import com.android.internal.telephony.ITelephony
 import io.github.octoclonius.libreauto.privileged.api.PhoneSetting
 
-internal class PhoneSettings(private val context: Context) {
+internal class PhoneSettings(private val context: Context, private val appPackage: String) {
 
     companion object {
         private const val TAG = "PhoneSettings"
@@ -39,17 +41,28 @@ internal class PhoneSettings(private val context: Context) {
         if (isDone) {
             Log.i(TAG, "Turned the setting $setting ${if (isOn) "on" else "off"}")
         } else {
-            Log.w(TAG, "Android refused to turn the setting $setting ${if (isOn) "on" else "off"}")
+            Log.w(TAG, "Couldn't turn the setting $setting ${if (isOn) "on" else "off"}")
         }
     }
 
     fun turnOnBluetooth(): Boolean = setBluetooth(true)
 
     private fun setBluetooth(isOn: Boolean): Boolean {
+        if (!isAppAllowedNearbyDevices()) {
+            Log.w(
+                TAG,
+                "LibreAuto may not connect to nearby devices, so it may not turn Bluetooth on or off",
+            )
+            return false
+        }
         val bluetooth = IBluetoothManager.Stub.asInterface(service(BLUETOOTH_MANAGER_SERVICE))
         val source = context.attributionSource
         return if (isOn) bluetooth.enable(source) else bluetooth.disable(source, true)
     }
+
+    private fun isAppAllowedNearbyDevices(): Boolean =
+        context.packageManager.checkPermission(Manifest.permission.BLUETOOTH_CONNECT, appPackage) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun setMobileData(isOn: Boolean): Boolean {
         val subscription = ISub.Stub.asInterface(service(SUBSCRIPTION_SERVICE)).defaultDataSubId

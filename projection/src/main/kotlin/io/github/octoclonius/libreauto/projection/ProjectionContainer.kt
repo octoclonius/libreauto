@@ -7,6 +7,7 @@ import io.github.octoclonius.libreauto.projection.certificate.CertificateReposit
 import io.github.octoclonius.libreauto.projection.display.CarHome
 import io.github.octoclonius.libreauto.projection.media.MediaResumption
 import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import io.github.octoclonius.libreauto.projection.tasks.OpenCarTasksRepository
@@ -24,15 +25,18 @@ class ProjectionContainer(
     val privilegedServiceConnection = PrivilegedServiceConnection(context, privilegedService)
     val carSessionHolder = CarSessionHolder()
     val callRepository = CallRepository(privilegedServiceConnection, applicationScope)
+    val permissionsRepository = PermissionsRepository(context, carSessionHolder, applicationScope)
     val notificationRepository =
         NotificationRepository(
             context,
             privilegedServiceConnection,
             carSessionHolder,
+            permissionsRepository,
             applicationScope,
         )
     val certificateRepository = CertificateRepository(context, applicationScope)
-    val phoneSettingsRepository = PhoneSettingsRepository(context, privilegedServiceConnection)
+    val phoneSettingsRepository =
+        PhoneSettingsRepository(context, privilegedServiceConnection, permissionsRepository)
     private val carHome = CarHome(context, carHome)
     private val openCarTasksRepository = OpenCarTasksRepository(context, applicationScope)
     private val mediaResumption = MediaResumption(context, applicationScope)
@@ -48,6 +52,7 @@ class ProjectionContainer(
                 car,
                 callRepository,
                 privilegedServiceConnection,
+                permissionsRepository,
                 carHome,
                 openCarTasksRepository,
                 mediaResumption,

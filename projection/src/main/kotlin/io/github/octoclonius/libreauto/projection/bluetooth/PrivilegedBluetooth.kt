@@ -6,10 +6,6 @@ import io.github.octoclonius.libreauto.projection.privileged.call
 
 internal class PrivilegedBluetooth(private val connection: PrivilegedServiceConnection) {
 
-    fun grantPermission() {
-        call("grant the app Bluetooth access") { it.grantPermission() }
-    }
-
     fun turnOn(): Boolean = call("turn Bluetooth on") { it.turnOn() } == true
 
     fun address(): String? = call("read the phone's Bluetooth address") { it.address }

@@ -7,9 +7,6 @@ import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Process
-import android.os.UserHandle
 import android.util.Log
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -41,38 +38,6 @@ internal class PhoneBluetooth(private val context: Context) {
         private val setPin by lazy {
             BluetoothDevice::class.java.getMethod("setPin", String::class.java)
         }
-        private val grantRuntimePermission by lazy {
-            PackageManager::class
-                .java
-                .getMethod(
-                    "grantRuntimePermission",
-                    String::class.java,
-                    String::class.java,
-                    UserHandle::class.java,
-                )
-        }
-        private val getPermissionFlags by lazy {
-            PackageManager::class
-                .java
-                .getMethod(
-                    "getPermissionFlags",
-                    String::class.java,
-                    String::class.java,
-                    UserHandle::class.java,
-                )
-        }
-        private val USER_OR_FIXED_FLAGS by lazy {
-            listOf(
-                    "FLAG_PERMISSION_USER_SET",
-                    "FLAG_PERMISSION_ONE_TIME",
-                    "FLAG_PERMISSION_USER_FIXED",
-                    "FLAG_PERMISSION_POLICY_FIXED",
-                    "FLAG_PERMISSION_SYSTEM_FIXED",
-                )
-                .fold(0) { flags, name ->
-                    flags or PackageManager::class.java.getField(name).getInt(null)
-                }
-        }
     }
 
     private val lock = Any()
@@ -88,23 +53,6 @@ internal class PhoneBluetooth(private val context: Context) {
     }
 
     fun address(): String? = adapter.address
-
-    fun grantPermission(packageName: String, permission: String) {
-        val user = Process.myUserHandle()
-        val flags =
-            getPermissionFlags.invoke(context.packageManager, permission, packageName, user) as Int
-        if ((flags and USER_OR_FIXED_FLAGS) != 0) {
-            Log.i(TAG, "Kept $permission for $packageName as set (flags $flags)")
-            return
-        }
-        grantRuntimePermission.invoke(
-            context.packageManager,
-            packageName,
-            permission,
-            user,
-        )
-        Log.i(TAG, "Granted $permission to $packageName")
-    }
 
     fun pair(address: String): Boolean {
         if (adapter.isDiscovering) adapter.cancelDiscovery()

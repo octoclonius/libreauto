@@ -2,7 +2,6 @@ package io.github.octoclonius.libreauto.projection.notifications
 
 import android.app.Notification
 import android.app.NotificationManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
@@ -12,10 +11,9 @@ import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
-import io.github.octoclonius.libreauto.projection.privileged.call
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,15 +38,13 @@ class NotificationRepository(
     context: Context,
     private val privileged: PrivilegedServiceConnection,
     private val carSessionHolder: CarSessionHolder,
+    private val permissions: PermissionsRepository,
     private val externalScope: CoroutineScope,
 ) {
 
     private companion object {
         const val TAG = "NotificationRepository"
     }
-
-    private val listenerComponent = ComponentName(context, NotificationListener::class.java)
-    private val notificationManager = context.getSystemService(NotificationManager::class.java)
 
     private val _notifications = MutableStateFlow<List<PhoneNotification>>(emptyList())
     val notifications: StateFlow<List<PhoneNotification>> = _notifications.asStateFlow()
@@ -73,26 +70,15 @@ class NotificationRepository(
     private var listed: List<NotificationEntry> = emptyList()
 
     fun start() {
-        externalScope.launch(Dispatchers.IO) {
-            privileged.service.collect { service ->
-                if (notificationManager.isNotificationListenerAccessGranted(listenerComponent)) {
-                    return@collect
-                }
-                service?.call("allow the phone's notifications") {
-                    it.allowNotificationAccess(listenerComponent)
-                } ?: return@collect
-                if (!notificationManager.isNotificationListenerAccessGranted(listenerComponent)) {
-                    Log.i(TAG, "Notification access stays off: the user turned it off")
-                    return@collect
-                }
-                if (hasSession()) requestRebind()
-            }
-        }
         externalScope.launch {
-            carSessionHolder.session
-                .map { it != null }
+            combine(
+                    carSessionHolder.session.map { it != null },
+                    permissions.state.map { it.isNotificationAccessAllowed },
+                ) { hasSession, isAllowed ->
+                    hasSession && isAllowed
+                }
                 .distinctUntilChanged()
-                .collect { hasSession -> if (hasSession) requestRebind() else onSessionEnded() }
+                .collect { isListening -> if (isListening) requestRebind() else onListeningEnded() }
         }
     }
 
@@ -179,7 +165,7 @@ class NotificationRepository(
         publish()
     }
 
-    private fun onSessionEnded() {
+    private fun onListeningEnded() {
         val current = listener ?: return
         unbind(current)
         clear()
@@ -189,7 +175,7 @@ class NotificationRepository(
 
     private fun requestRebind() {
         listenerCall("rebind the notification listener") {
-            NotificationListenerService.requestRebind(listenerComponent)
+            NotificationListenerService.requestRebind(permissions.notificationListener)
         }
     }
 

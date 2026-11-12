@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test
 
 class NotificationRequestTest {
 
-    private val appPackage = "io.github.octoclonius.libreauto"
-
-    @Test
-    fun theAppsListenerIsAccepted() {
-        assertNull(notificationAccessRequestError(appPackage, appPackage))
-    }
-
-    @Test
-    fun anotherAppsListenerIsRefused() {
-        assertNotNull(notificationAccessRequestError("com.example.reader", appPackage))
-    }
-
     @Test
     fun aShownNotificationIsAccepted() {
         assertNull(notificationVisibilityRequestError(rank = 0, count = 1))

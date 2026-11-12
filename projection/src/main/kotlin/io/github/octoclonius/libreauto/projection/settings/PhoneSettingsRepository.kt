@@ -17,11 +17,13 @@ import android.telephony.SubscriptionManager
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import io.github.octoclonius.libreauto.privileged.api.PhoneSetting
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 private const val BLUETOOTH_ON = 1
 
@@ -37,6 +39,7 @@ enum class QuickSetting {
 data class PhoneSettingsState(
     val isWifiOn: Boolean,
     val isBluetoothOn: Boolean,
+    val isBluetoothToggleAllowed: Boolean,
     val isMobileDataOn: Boolean?,
     val isAirplaneModeOn: Boolean,
     val isDoNotDisturbOn: Boolean,
@@ -46,6 +49,7 @@ data class PhoneSettingsState(
 class PhoneSettingsRepository(
     context: Context,
     private val privileged: PrivilegedServiceConnection,
+    private val permissions: PermissionsRepository,
 ) {
 
     private val context = context.applicationContext
@@ -80,6 +84,7 @@ class PhoneSettingsRepository(
                             Settings.Global.BLUETOOTH_ON,
                             0,
                         ) == BLUETOOTH_ON,
+                    isBluetoothToggleAllowed = permissions.state.value.isNearbyDevicesAllowed,
                     isMobileDataOn = @SuppressLint("MissingPermission") telephony?.isDataEnabled,
                     isAirplaneModeOn = isAirplaneModeOn(context),
                     isDoNotDisturbOn =
@@ -122,6 +127,7 @@ class PhoneSettingsRepository(
             bluetoothObserver,
         )
         telephony?.registerTelephonyCallback(context.mainExecutor, telephonyCallback)
+        launch { permissions.state.collect { update() } }
         update()
         awaitClose {
             context.unregisterReceiver(receiver)

@@ -13,9 +13,13 @@ import io.github.octoclonius.libreauto.phone.designsystem.component.NavigationRo
 import io.github.octoclonius.libreauto.phone.designsystem.component.PageScaffold
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onAboutClick: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onPermissionsClick: () -> Unit, onAboutClick: () -> Unit) {
     PageScaffold(title = stringResource(R.string.settings_title), onBack = onBack) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())) {
+            NavigationRow(
+                title = stringResource(R.string.permissions_title),
+                onClick = onPermissionsClick,
+            )
             NavigationRow(title = stringResource(R.string.about_title), onClick = onAboutClick)
         }
     }

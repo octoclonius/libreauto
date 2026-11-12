@@ -21,6 +21,7 @@ open class LibreAutoApplication :
         container = AppContainer(this)
         container.projectionContainer.privilegedServiceConnection.start()
         container.projectionContainer.callRepository.start()
+        container.projectionContainer.permissionsRepository.start()
         container.projectionContainer.notificationRepository.start()
         container.carContainer.phoneAppsRepository.start()
         container.carContainer.carUiHolder.start()

@@ -89,7 +89,6 @@ internal class CarHandsFree(
     fun start() {
         if (isClosed) return
         Log.i(TAG, "Connecting hands-free to the car $carAddress, pairing method $pairingMethod")
-        privileged.grantPermission()
         phone.start()
         enter(HandsFreeState.Enabling)
     }

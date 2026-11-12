@@ -6,6 +6,7 @@ import android.util.Log
 import io.github.octoclonius.libreauto.projection.channel.CarChannel
 import io.github.octoclonius.libreauto.projection.channel.ChannelSender
 import io.github.octoclonius.libreauto.projection.channel.isChannelOpened
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.protocol.ChannelMessage
 import io.github.octoclonius.libreauto.protocol.bluetooth.BluetoothMessageType
@@ -18,6 +19,9 @@ import io.github.octoclonius.libreauto.protocol.bluetooth.parsePairingResponse
 import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 internal class BluetoothChannel(
     private val context: Context,
@@ -25,6 +29,7 @@ internal class BluetoothChannel(
     private val car: CarBluetooth,
     private val version: ProtocolVersion,
     private val privileged: PrivilegedServiceConnection,
+    private val permissions: PermissionsRepository,
     private val scope: CoroutineScope,
 ) : CarChannel {
 
@@ -32,6 +37,7 @@ internal class BluetoothChannel(
         private const val TAG = "BluetoothChannel"
     }
 
+    private var handsFreeJob: Job? = null
     private var handsFree: CarHandsFree? = null
 
     override val channel: Int
@@ -55,17 +61,29 @@ internal class BluetoothChannel(
     }
 
     override fun close() {
+        handsFreeJob?.cancel()
+        handsFreeJob = null
         handsFree?.close()
         handsFree = null
     }
 
     private fun onOpenResponse(message: ChannelMessage) {
-        if (!isChannelOpened(TAG, message, "Bluetooth") || handsFree != null) return
+        if (!isChannelOpened(TAG, message, "Bluetooth") || handsFreeJob != null) return
         val address = car.carAddress.uppercase()
         if (!BluetoothAdapter.checkBluetoothAddress(address)) {
             Log.w(TAG, "The car's Bluetooth address \"${car.carAddress}\" isn't one")
             return
         }
+        handsFreeJob = scope.launch {
+            if (!permissions.state.value.isNearbyDevicesAllowed) {
+                Log.i(TAG, "Hands-free waits until LibreAuto may connect to nearby devices")
+            }
+            permissions.state.first { it.isNearbyDevicesAllowed }
+            startHandsFree(address)
+        }
+    }
+
+    private fun startHandsFree(address: String) {
         handsFree =
             CarHandsFree(
                     context,

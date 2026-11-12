@@ -1,8 +1,6 @@
 package io.github.octoclonius.libreauto.privileged.api;
 
 interface IPhoneBluetoothService {
-    void grantPermission() = 1;
-
     boolean turnOn() = 2;
 
     @nullable String getAddress() = 3;

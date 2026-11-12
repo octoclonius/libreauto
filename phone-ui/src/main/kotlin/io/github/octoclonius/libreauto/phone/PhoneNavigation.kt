@@ -19,6 +19,8 @@ import androidx.navigation3.ui.NavDisplay
 import io.github.octoclonius.libreauto.phone.licenses.LicenseScreen
 import io.github.octoclonius.libreauto.phone.licenses.LicensesScreen
 import io.github.octoclonius.libreauto.phone.licenses.LicensesViewModel
+import io.github.octoclonius.libreauto.phone.permissions.PermissionsScreen
+import io.github.octoclonius.libreauto.phone.permissions.PermissionsViewModel
 import io.github.octoclonius.libreauto.phone.settings.AboutScreen
 import io.github.octoclonius.libreauto.phone.settings.SettingsScreen
 import kotlinx.serialization.Serializable
@@ -26,6 +28,8 @@ import kotlinx.serialization.Serializable
 @Serializable private data object Main : NavKey
 
 @Serializable private data object Settings : NavKey
+
+@Serializable private data object Permissions : NavKey
 
 @Serializable private data object About : NavKey
 
@@ -65,7 +69,22 @@ fun PhoneNavigation(mainViewModel: MainViewModel) {
                     )
                 }
                 entry<Settings> {
-                    SettingsScreen(onBack = onBack, onAboutClick = { backStack.add(About) })
+                    SettingsScreen(
+                        onBack = onBack,
+                        onPermissionsClick = { backStack.add(Permissions) },
+                        onAboutClick = { backStack.add(About) },
+                    )
+                }
+                entry<Permissions> {
+                    val viewModel: PermissionsViewModel =
+                        viewModel(factory = PermissionsViewModel.Factory)
+                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                    PermissionsScreen(
+                        uiState = uiState,
+                        notificationListener = viewModel.notificationListener,
+                        onBack = onBack,
+                        onRefresh = viewModel::refresh,
+                    )
                 }
                 entry<About> {
                     AboutScreen(onBack = onBack, onLicensesClick = { backStack.add(Licenses) })
