@@ -47,14 +47,14 @@ private constructor(
             val device =
                 try {
                     createDevice(context, associationId, home)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     association.release(associationId)
                     throw e
                 }
             val display =
                 try {
                     createDisplay(device, surface, width, height, densityDpi)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     device.close()
                     association.release(associationId)
                     throw e
@@ -62,7 +62,7 @@ private constructor(
             val touchscreen =
                 try {
                     VirtualCarTouchscreen.create(device, display.display.displayId, width, height)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     display.release()
                     device.close()
                     association.release(associationId)

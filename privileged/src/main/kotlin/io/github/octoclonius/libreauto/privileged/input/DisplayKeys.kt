@@ -9,14 +9,17 @@ import android.view.KeyEvent
 internal class DisplayKeys(context: Context) {
 
     private val inputManager = context.getSystemService(InputManager::class.java)
-    private val setDisplayId =
+    private val setDisplayId by lazy {
         InputEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
-    private val injectInputEvent =
+    }
+    private val injectInputEvent by lazy {
         InputManager::class
             .java
             .getMethod("injectInputEvent", InputEvent::class.java, Int::class.javaPrimitiveType)
-    private val asyncMode =
+    }
+    private val asyncMode by lazy {
         InputManager::class.java.getField("INJECT_INPUT_EVENT_MODE_ASYNC").getInt(null)
+    }
 
     fun press(displayId: Int, keyCode: Int) {
         val downTime = SystemClock.uptimeMillis()

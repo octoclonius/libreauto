@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.RemoteException
 import android.util.Log
 import android.view.Display
 import io.github.octoclonius.libreauto.privileged.SystemServices
@@ -15,6 +14,7 @@ import io.github.octoclonius.libreauto.privileged.api.DisplayTask
 import io.github.octoclonius.libreauto.privileged.api.IDisplayTaskListener
 import io.github.octoclonius.libreauto.privileged.api.NO_TASK
 import io.github.octoclonius.libreauto.privileged.closeAll
+import io.github.octoclonius.libreauto.privileged.containedCall
 import io.github.octoclonius.libreauto.privileged.listenerCall
 import java.io.Closeable
 
@@ -144,7 +144,7 @@ internal class DisplayTasks(
 
     private fun report() {
         val tasks =
-            try {
+            containedCall(TAG, "Listing the tasks on the display $displayId") {
                 taskManager.getTasks(Int.MAX_VALUE, false, false, displayId).mapNotNull {
                     val packageName =
                         it.baseActivity?.packageName
@@ -152,10 +152,7 @@ internal class DisplayTasks(
                             ?: return@mapNotNull null
                     DisplayTask(it.taskId, packageName)
                 }
-            } catch (e: RemoteException) {
-                Log.e(TAG, "Listing the tasks on the display $displayId failed", e)
-                return
-            }
+            } ?: return
         taskIds = tasks.mapTo(HashSet()) { it.taskId }
         if (tasks == reported) return
         reported = tasks

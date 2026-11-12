@@ -10,6 +10,7 @@ import android.os.Looper
 import io.github.octoclonius.libreauto.privileged.api.AudioFocusHolder
 import io.github.octoclonius.libreauto.privileged.api.AudioPlayer
 import io.github.octoclonius.libreauto.privileged.api.IAudioActivityListener
+import io.github.octoclonius.libreauto.privileged.containedCall
 import io.github.octoclonius.libreauto.privileged.listenerCall
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
@@ -23,11 +24,18 @@ internal class AudioActivityMonitor(
     companion object {
         private const val TAG = "AudioActivityMonitor"
         private val CONFIGURATION = AudioPlaybackConfiguration::class.java
-        private val PLAYER_STATE_STARTED =
+        private val PLAYER_STATE_STARTED by lazy {
             CONFIGURATION.getField("PLAYER_STATE_STARTED").getInt(null)
-        private val getPlayerState = CONFIGURATION.getMethod("getPlayerState")
-        private val getClientUid = CONFIGURATION.getMethod("getClientUid")
-        private val getPlayerInterfaceId = CONFIGURATION.getMethod("getPlayerInterfaceId")
+        }
+        private val getPlayerState by lazy {
+            CONFIGURATION.getMethod("getPlayerState")
+        }
+        private val getClientUid by lazy {
+            CONFIGURATION.getMethod("getClientUid")
+        }
+        private val getPlayerInterfaceId by lazy {
+            CONFIGURATION.getMethod("getPlayerInterfaceId")
+        }
     }
 
     private val audioManager = context.getSystemService(AudioManager::class.java)
@@ -74,6 +82,10 @@ internal class AudioActivityMonitor(
 
     private fun report() {
         if (isClosed) return
+        containedCall(TAG, "Reporting the audio activity") { reportActivity() }
+    }
+
+    private fun reportActivity() {
         val players =
             audioManager.activePlaybackConfigurations
                 .filter { getPlayerState.invoke(it) == PLAYER_STATE_STARTED }
@@ -95,6 +107,10 @@ internal class AudioActivityMonitor(
 
     private fun reportRecording() {
         if (isClosed) return
+        containedCall(TAG, "Reporting the microphone activity") { reportMicrophone() }
+    }
+
+    private fun reportMicrophone() {
         val isRecording =
             audioManager.activeRecordingConfigurations.any {
                 it.clientAudioSource in CarAudioPolicy.MICROPHONE_SOURCES && !it.isClientSilenced

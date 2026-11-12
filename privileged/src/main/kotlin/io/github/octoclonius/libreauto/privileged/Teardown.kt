@@ -7,8 +7,8 @@ internal class Teardown(private val onFailure: (action: String, cause: Throwable
     fun step(action: String, close: () -> Unit) {
         try {
             close()
-        } catch (e: Exception) {
-            onFailure(action, e.unwrapped())
+        } catch (e: Throwable) {
+            onFailure(action, e.containedCause())
         }
     }
 }

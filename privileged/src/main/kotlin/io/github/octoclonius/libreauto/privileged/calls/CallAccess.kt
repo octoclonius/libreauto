@@ -12,7 +12,7 @@ internal class CallAccess(context: Context) {
     }
 
     private val appOps = context.getSystemService(AppOpsManager::class.java)
-    private val setMode =
+    private val setMode by lazy {
         AppOpsManager::class
             .java
             .getMethod(
@@ -22,11 +22,13 @@ internal class CallAccess(context: Context) {
                 String::class.java,
                 Int::class.javaPrimitiveType,
             )
-    private val defaultMode =
+    }
+    private val defaultMode by lazy {
         AppOpsManager::class
             .java
             .getMethod("opToDefaultMode", String::class.java)
             .invoke(null, OP_MANAGE_ONGOING_CALLS) as Int
+    }
 
     fun allow(appUid: Int, appPackage: String) {
         val mode = appOps.checkOpRawNoThrow(OP_MANAGE_ONGOING_CALLS, appUid, appPackage, null)

@@ -12,7 +12,7 @@ internal class NotificationAccess(context: Context) {
     }
 
     private val notifications = context.getSystemService(NotificationManager::class.java)
-    private val setGranted =
+    private val setGranted by lazy {
         NotificationManager::class
             .java
             .getMethod(
@@ -21,6 +21,7 @@ internal class NotificationAccess(context: Context) {
                 Boolean::class.javaPrimitiveType,
                 Boolean::class.javaPrimitiveType,
             )
+    }
 
     fun allow(listener: ComponentName) {
         setGranted.invoke(notifications, listener, true, false)

@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.callbackFlow
 
 private const val PERCENT = 100
 
-private val CHARGING_POLICY_ADAPTIVE_LONGLIFE =
-    BatteryManager::class.java.getField("CHARGING_POLICY_ADAPTIVE_LONGLIFE").getInt(null)
+private const val CHARGING_POLICY_ADAPTIVE_LONGLIFE = 4
 
 data class BatteryState(
     val percent: Int,

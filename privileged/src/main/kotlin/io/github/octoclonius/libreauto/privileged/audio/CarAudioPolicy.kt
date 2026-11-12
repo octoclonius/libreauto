@@ -49,10 +49,11 @@ private constructor(
                 MediaRecorder.AudioSource.VOICE_PERFORMANCE,
             )
 
-        private val setCapturePreset =
+        private val setCapturePreset by lazy {
             AudioAttributes.Builder::class
                 .java
                 .getMethod("setCapturePreset", Int::class.javaPrimitiveType)
+        }
 
         fun register(
             context: Context,
@@ -97,7 +98,7 @@ private constructor(
                         sinks += MixSink(record(context, policy, mix, output))
                     }
                     inputMix?.let { (input, mix) -> MixSource(inject(context, policy, mix, input)) }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     sinks.forEach(MixSink::close)
                     if (isRegistered) unregister(audioManager, policy)
                     placeholders.forEach(AudioTrack::release)

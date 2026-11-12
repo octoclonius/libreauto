@@ -20,9 +20,10 @@ internal class PhoneBluetooth(private val context: Context) {
     companion object {
         private const val TAG = "PhoneBluetooth"
         private const val PROFILE_TIMEOUT_MILLIS = 4_000L
-        private val CONNECTION_POLICY_ALLOWED =
+        private val CONNECTION_POLICY_ALLOWED by lazy {
             BluetoothProfile::class.java.getField("CONNECTION_POLICY_ALLOWED").getInt(null)
-        private val setConnectionPolicy =
+        }
+        private val setConnectionPolicy by lazy {
             BluetoothHeadset::class
                 .java
                 .getMethod(
@@ -30,11 +31,17 @@ internal class PhoneBluetooth(private val context: Context) {
                     BluetoothDevice::class.java,
                     Int::class.javaPrimitiveType,
                 )
-        private val connect =
+        }
+        private val connect by lazy {
             BluetoothHeadset::class.java.getMethod("connect", BluetoothDevice::class.java)
-        private val removeBond = BluetoothDevice::class.java.getMethod("removeBond")
-        private val setPin = BluetoothDevice::class.java.getMethod("setPin", String::class.java)
-        private val grantRuntimePermission =
+        }
+        private val removeBond by lazy {
+            BluetoothDevice::class.java.getMethod("removeBond")
+        }
+        private val setPin by lazy {
+            BluetoothDevice::class.java.getMethod("setPin", String::class.java)
+        }
+        private val grantRuntimePermission by lazy {
             PackageManager::class
                 .java
                 .getMethod(
@@ -43,7 +50,8 @@ internal class PhoneBluetooth(private val context: Context) {
                     String::class.java,
                     UserHandle::class.java,
                 )
-        private val getPermissionFlags =
+        }
+        private val getPermissionFlags by lazy {
             PackageManager::class
                 .java
                 .getMethod(
@@ -52,7 +60,8 @@ internal class PhoneBluetooth(private val context: Context) {
                     String::class.java,
                     UserHandle::class.java,
                 )
-        private val USER_OR_FIXED_FLAGS =
+        }
+        private val USER_OR_FIXED_FLAGS by lazy {
             listOf(
                     "FLAG_PERMISSION_USER_SET",
                     "FLAG_PERMISSION_ONE_TIME",
@@ -63,6 +72,7 @@ internal class PhoneBluetooth(private val context: Context) {
                 .fold(0) { flags, name ->
                     flags or PackageManager::class.java.getField(name).getInt(null)
                 }
+        }
     }
 
     private val lock = Any()

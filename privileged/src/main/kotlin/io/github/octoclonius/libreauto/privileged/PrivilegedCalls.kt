@@ -15,14 +15,19 @@ internal fun <T> checkedCall(tag: String, action: String, refusal: String?, call
 internal fun <T> identityCall(tag: String, action: String, call: () -> T): T? {
     val identity = Binder.clearCallingIdentity()
     return try {
-        call()
-    } catch (e: Exception) {
-        Log.e(tag, "$action failed", e.unwrapped())
-        null
+        containedCall(tag, action, call)
     } finally {
         Binder.restoreCallingIdentity(identity)
     }
 }
+
+internal fun <T> containedCall(tag: String, action: String, call: () -> T): T? =
+    try {
+        call()
+    } catch (e: Throwable) {
+        Log.e(tag, "$action failed", e.containedCause())
+        null
+    }
 
 internal fun listenerCall(tag: String, dropped: String, call: () -> Unit) {
     try {
@@ -41,9 +46,9 @@ internal fun <T> reportingCall(
     val identity = Binder.clearCallingIdentity()
     try {
         return call()
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
+        val cause = e.containedCause()
         onFailure()
-        val cause = e.unwrapped()
         Log.e(tag, "$action failed", cause)
         throw IllegalStateException(
             "$action failed: ${cause.javaClass.simpleName}: ${cause.message}"
