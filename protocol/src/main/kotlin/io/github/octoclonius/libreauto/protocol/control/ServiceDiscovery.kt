@@ -8,7 +8,6 @@ private const val MAX_CHANNEL = 0xFF
 
 private const val DRIVER_POSITION_RIGHT = 1
 
-private const val NATIVE_CLOCK = 1
 private const val NATIVE_PHONE_SIGNAL = 2
 private const val NATIVE_BATTERY = 4
 
@@ -40,8 +39,6 @@ fun carName(response: ServiceDiscoveryResponse): String? =
 
 fun isDriverOnRight(response: ServiceDiscoveryResponse): Boolean =
     response.driver_position == DRIVER_POSITION_RIGHT
-
-fun isClockOnCar(response: ServiceDiscoveryResponse): Boolean = isOnCar(response, NATIVE_CLOCK)
 
 fun isPhoneSignalOnCar(response: ServiceDiscoveryResponse): Boolean =
     isOnCar(response, NATIVE_PHONE_SIGNAL)

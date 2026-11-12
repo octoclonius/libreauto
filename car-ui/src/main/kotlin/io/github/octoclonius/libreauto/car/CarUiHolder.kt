@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.car
 import android.content.Context
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.projection.CarSessionHolder
+import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ class CarUiHolder(
     private val phoneSettings: PhoneSettingsRepository,
     private val railOrder: RailOrderRepository,
     private val notifications: NotificationRepository,
+    private val calls: CallRepository,
     private val externalScope: CoroutineScope,
 ) {
 
@@ -30,7 +32,8 @@ class CarUiHolder(
             carSessionHolder.session.collect { session ->
                 _carUi.value?.close()
                 _carUi.value = session?.let {
-                    CarUi(context, it, phoneSettings, railOrder, notifications).also(CarUi::start)
+                    CarUi(context, it, phoneSettings, railOrder, notifications, calls)
+                        .also(CarUi::start)
                 }
             }
         }

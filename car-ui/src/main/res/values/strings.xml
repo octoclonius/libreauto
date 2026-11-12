@@ -4,6 +4,7 @@
     <string name="close_app">Close %1$s</string>
     <string name="remove">Remove</string>
     <string name="quick_settings">Quick settings</string>
+    <string name="call_in_progress">Call in progress</string>
     <string name="wifi">Wi-Fi</string>
     <string name="bluetooth">Bluetooth</string>
     <string name="mobile_data">Mobile data</string>

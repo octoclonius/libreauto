@@ -10,6 +10,7 @@ import io.github.octoclonius.libreauto.car.rail.RailHost
 import io.github.octoclonius.libreauto.car.rail.RailOrderRepository
 import io.github.octoclonius.libreauto.car.rail.RailState
 import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.input.NavigationButton
 import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
@@ -25,6 +26,7 @@ internal constructor(
     phoneSettings: PhoneSettingsRepository,
     railOrder: RailOrderRepository,
     notificationRepository: NotificationRepository,
+    callRepository: CallRepository,
 ) : Closeable {
 
     internal val home = HomeState()
@@ -33,7 +35,8 @@ internal constructor(
     internal val navigation = CarNavigation(session, home, rail, quickSettings)
 
     private val scope = MainScope()
-    private val railHost = RailHost(context, session, rail, railOrder, navigation)
+    private val railHost =
+        RailHost(context, session, rail, railOrder, navigation, callRepository.calls)
     private val notifications =
         NotificationsState(context, notificationRepository, quickSettings, session.displays.car)
     private val quickSettingsHost =

@@ -32,8 +32,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -43,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -76,6 +83,7 @@ private val BUTTON_ICON_SIZE = 40.dp
 private val BATTERY_HEIGHT = 16.dp
 private val CLOCK_HEIGHT = 16.dp
 private val ICON_PADDING = 2.dp
+private val CALL_PILL_OUTSET = DpSize(CarSpacing.small, 2.dp)
 private val FEEDBACK_INSET = CarSpacing.extraSmall
 private val SIGNAL_LEVELS =
     CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN..CellSignalStrength.SIGNAL_STRENGTH_GREAT
@@ -103,6 +111,7 @@ fun Rail(
     side: RailSide,
     isDriverOnRight: Boolean,
     carStatusBar: CarStatusBar,
+    isCallUnderWay: Boolean,
     contentPadding: PaddingValues,
     apps: List<RailApp>,
     closingTaskId: Int?,
@@ -124,10 +133,11 @@ fun Rail(
             .collectAsStateWithLifecycle(Connectivity(wifiLevel = null, cellular = null))
     val status =
         RailStatus(
-            clock = clock.takeUnless { carStatusBar.isClockShown },
+            clock = clock,
             wifiLevel = connectivity.wifiLevel,
             cellular = connectivity.cellular.takeUnless { carStatusBar.isPhoneSignalShown },
             battery = battery.takeUnless { carStatusBar.isBatteryShown },
+            isCallUnderWay = isCallUnderWay,
         )
     var closeBounds by remember { mutableStateOf<Rect?>(null) }
     val isClosing by rememberUpdatedState(closingTaskId != null)
@@ -175,6 +185,7 @@ private data class RailStatus(
     val wifiLevel: Int?,
     val cellular: Cellular?,
     val battery: BatteryState?,
+    val isCallUnderWay: Boolean,
 )
 
 @Composable
@@ -200,6 +211,7 @@ private fun SideRail(
         val top =
             centered(maxHeight, slotsHeight, statusHeight, maxHeight - RAIL_THICKNESS - slotsHeight)
         StatusButton(
+            status.isCallUnderWay,
             onStatusClick,
             Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged {
                 statusHeight = with(density) { it.height.toDp() }
@@ -210,7 +222,7 @@ private fun SideRail(
                 verticalArrangement = Arrangement.spacedBy(STATUS_ROW_SPACING),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                status.clock?.let { Clock(it) }
+                status.clock?.let { Clock(it, status.isCallUnderWay) }
                 Row(horizontalArrangement = Arrangement.spacedBy(STATUS_SPACING)) {
                     status.wifiLevel?.let { Wifi(it) }
                     status.cellular?.let { CellularIcon(it) }
@@ -253,6 +265,7 @@ private fun BottomRail(
         val rightEdge = maxWidth - if (isDriverOnRight) RAIL_THICKNESS else statusWidth
         val left = centered(maxWidth, slotsWidth, leftEdge, rightEdge - slotsWidth)
         StatusButton(
+            status.isCallUnderWay,
             onStatusClick,
             Modifier.align(if (isDriverOnRight) Alignment.CenterStart else Alignment.CenterEnd)
                 .fillMaxHeight()
@@ -272,16 +285,21 @@ private fun BottomRail(
 
 @Composable
 private fun StatusButton(
+    isCallUnderWay: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val description = stringResource(R.string.quick_settings)
+    val callState = stringResource(R.string.call_in_progress)
     SquircleButton(
         onClick,
         FEEDBACK_INSET,
         CarShapes.largeIncreased,
-        modifier.semantics { contentDescription = description },
+        modifier.semantics {
+            contentDescription = description
+            if (isCallUnderWay) stateDescription = callState
+        },
     ) {
         content()
     }
@@ -308,7 +326,7 @@ private fun BottomStatus(status: RailStatus, modifier: Modifier = Modifier) {
             status.cellular?.let { CellularIcon(it) }
             status.battery?.let { Battery(it) }
         }
-        status.clock?.let { Clock(it) }
+        status.clock?.let { Clock(it, status.isCallUnderWay) }
     }
 }
 
@@ -381,8 +399,26 @@ private fun RailButton(isAppInFront: Boolean, onClick: () -> Unit, modifier: Mod
 }
 
 @Composable
-private fun Clock(time: String) {
-    GlyphText(time, CLOCK_HEIGHT, Modifier.padding(vertical = ICON_PADDING))
+private fun Clock(time: String, isCallUnderWay: Boolean) {
+    if (isCallUnderWay) {
+        GlyphText(
+            time,
+            CLOCK_HEIGHT,
+            Modifier.callPill(MaterialTheme.colorScheme.primaryFixedDim)
+                .padding(vertical = ICON_PADDING),
+            MaterialTheme.colorScheme.onPrimaryFixed,
+        )
+    } else {
+        GlyphText(time, CLOCK_HEIGHT, Modifier.padding(vertical = ICON_PADDING))
+    }
+}
+
+private fun Modifier.callPill(color: Color): Modifier = drawBehind {
+    val outset = Offset(CALL_PILL_OUTSET.width.toPx(), CALL_PILL_OUTSET.height.toPx())
+    val pill = Size(size.width + outset.x * 2, size.height + outset.y * 2)
+    translate(-outset.x, -outset.y) {
+        drawOutline(CarShapes.full.createOutline(pill, layoutDirection, this), color)
+    }
 }
 
 @Composable

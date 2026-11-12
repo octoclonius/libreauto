@@ -20,7 +20,6 @@ import io.github.octoclonius.libreauto.protocol.control.ProtocolVersion
 import io.github.octoclonius.libreauto.protocol.control.byeByeResponse
 import io.github.octoclonius.libreauto.protocol.control.carName
 import io.github.octoclonius.libreauto.protocol.control.isBatteryOnCar
-import io.github.octoclonius.libreauto.protocol.control.isClockOnCar
 import io.github.octoclonius.libreauto.protocol.control.isDriverOnRight
 import io.github.octoclonius.libreauto.protocol.control.isPhoneSignalOnCar
 import io.github.octoclonius.libreauto.protocol.control.parseByeByeRequest
@@ -159,7 +158,6 @@ internal class CarConnection(
                 carName(services),
                 isDriverOnRight(services),
                 CarStatusBar(
-                    isClockOnCar(services),
                     isPhoneSignalOnCar(services),
                     isBatteryOnCar(services),
                 ),

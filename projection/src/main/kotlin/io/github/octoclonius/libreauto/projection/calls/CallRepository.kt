@@ -8,8 +8,11 @@ import io.github.octoclonius.libreauto.projection.privileged.call
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CallRepository(
@@ -22,10 +25,14 @@ class CallRepository(
         const val ANSWER_VIDEO_STATE = VideoProfile.STATE_AUDIO_ONLY
     }
 
-    private val _isInCall = MutableStateFlow(false)
-    val isInCall: StateFlow<Boolean> = _isInCall.asStateFlow()
+    private val _calls = MutableStateFlow<List<PhoneCall>>(emptyList())
+    val calls: StateFlow<List<PhoneCall>> = _calls.asStateFlow()
 
-    private val calls = mutableListOf<Call>()
+    val isInCall: StateFlow<Boolean> =
+        calls.map { isInCall(it) }.stateIn(externalScope, SharingStarted.Eagerly, false)
+
+    private val ids = LinkedHashMap<Call, Int>()
+    private var nextId = 0
 
     fun start() {
         externalScope.launch(Dispatchers.IO) {
@@ -44,12 +51,12 @@ class CallRepository(
     }
 
     internal fun onCallAdded(call: Call) {
-        calls += call
+        ids[call] = nextId++
         publish()
     }
 
     internal fun onCallRemoved(call: Call) {
-        calls -= call
+        ids -= call
         publish()
     }
 
@@ -58,14 +65,17 @@ class CallRepository(
     }
 
     internal fun onUnbound() {
-        calls.clear()
+        ids.clear()
         publish()
     }
 
     private fun publish() {
-        val next = isInCall(calls.filter { it.parent == null }.map { it.details.state })
-        if (next == _isInCall.value) return
-        Log.i(TAG, if (next) "In a call" else "Not in a call")
-        _isInCall.value = next
+        val next = ids.mapNotNull { (call, id) ->
+            if (call.parent != null) return@mapNotNull null
+            callStatus(call.details.state)?.let { PhoneCall(id, it) }
+        }
+        if (next == _calls.value) return
+        Log.i(TAG, "Calls: $next")
+        _calls.value = next
     }
 }

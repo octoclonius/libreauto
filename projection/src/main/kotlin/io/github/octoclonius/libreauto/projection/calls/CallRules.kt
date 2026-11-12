@@ -2,15 +2,14 @@ package io.github.octoclonius.libreauto.projection.calls
 
 import android.telecom.Call
 
-private val IN_CALL_STATES =
-    setOf(
+internal fun callStatus(state: Int): CallStatus? =
+    when (state) {
         Call.STATE_RINGING,
-        Call.STATE_SIMULATED_RINGING,
-        Call.STATE_DIALING,
-        Call.STATE_ACTIVE,
-        Call.STATE_HOLDING,
-    )
+        Call.STATE_SIMULATED_RINGING -> CallStatus.Ringing
+        Call.STATE_DIALING -> CallStatus.Dialing
+        Call.STATE_ACTIVE -> CallStatus.Active
+        Call.STATE_HOLDING -> CallStatus.Holding
+        else -> null
+    }
 
-internal fun isInCall(topLevelStates: List<Int>): Boolean = topLevelStates.any {
-    it in IN_CALL_STATES
-}
+internal fun isInCall(calls: List<PhoneCall>): Boolean = calls.isNotEmpty()

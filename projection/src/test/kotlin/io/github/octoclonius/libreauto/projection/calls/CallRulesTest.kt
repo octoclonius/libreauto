@@ -1,6 +1,8 @@
 package io.github.octoclonius.libreauto.projection.calls
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -19,41 +21,41 @@ class CallRulesTest {
     private val stateSimulatedRinging = 13
 
     @Test
+    fun ringingCallsRing() {
+        assertEquals(CallStatus.Ringing, callStatus(stateRinging))
+        assertEquals(CallStatus.Ringing, callStatus(stateSimulatedRinging))
+    }
+
+    @Test
+    fun dialingActiveAndHeldCallsKeepTheirStatus() {
+        assertEquals(CallStatus.Dialing, callStatus(stateDialing))
+        assertEquals(CallStatus.Active, callStatus(stateActive))
+        assertEquals(CallStatus.Holding, callStatus(stateHolding))
+    }
+
+    @Test
+    fun callsTelecomDoesNotCountAreNotListed() {
+        for (state in
+            listOf(
+                stateNew,
+                stateSelectPhoneAccount,
+                stateConnecting,
+                stateAudioProcessing,
+                stateDisconnecting,
+                stateDisconnected,
+            )) {
+            assertNull(callStatus(state))
+        }
+    }
+
+    @Test
     fun noCallsIsNotInACall() {
         assertFalse(isInCall(emptyList()))
     }
 
     @Test
-    fun aRingingCallIsInACall() {
-        assertTrue(isInCall(listOf(stateRinging)))
-        assertTrue(isInCall(listOf(stateSimulatedRinging)))
-    }
-
-    @Test
-    fun dialingActiveAndHeldCallsAreInACall() {
-        assertTrue(isInCall(listOf(stateDialing)))
-        assertTrue(isInCall(listOf(stateActive)))
-        assertTrue(isInCall(listOf(stateHolding)))
-    }
-
-    @Test
-    fun callsTelecomDoesNotCountAreNotInACall() {
-        assertFalse(
-            isInCall(
-                listOf(
-                    stateNew,
-                    stateSelectPhoneAccount,
-                    stateConnecting,
-                    stateAudioProcessing,
-                    stateDisconnecting,
-                    stateDisconnected,
-                )
-            )
-        )
-    }
-
-    @Test
-    fun oneCallInACallIsEnough() {
-        assertTrue(isInCall(listOf(stateDisconnected, stateHolding)))
+    fun anyListedCallIsInACall() {
+        assertTrue(isInCall(listOf(PhoneCall(0, CallStatus.Ringing))))
+        assertTrue(isInCall(listOf(PhoneCall(0, CallStatus.Holding))))
     }
 }

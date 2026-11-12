@@ -5,11 +5,13 @@ import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.WindowManager
 import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 import io.github.octoclonius.libreauto.projection.display.RailDisplayState
 import io.github.octoclonius.libreauto.projection.tasks.CarTask
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -20,6 +22,7 @@ internal class RailHost(
     private val state: RailState,
     private val railOrder: RailOrderRepository,
     private val actions: RailActions,
+    private val calls: StateFlow<List<PhoneCall>>,
 ) : Closeable {
 
     companion object {
@@ -74,7 +77,16 @@ internal class RailHost(
             return
         }
         val created =
-            RailWindow(context, display, rail, session, state, actions, order.asStateFlow()) {
+            RailWindow(
+                context,
+                display,
+                rail,
+                session,
+                state,
+                actions,
+                order.asStateFlow(),
+                calls,
+            ) {
                 shownCount.value = it
             }
         try {

@@ -93,10 +93,9 @@ class ServiceDiscoveryTest {
     }
 
     @Test
-    fun field13FlagsTheClockSignalAndBatteryTheCarShows() {
+    fun field13FlagsTheSignalAndBatteryTheCarShows() {
         for (flags in 0..7) {
             val response = parseServiceDiscoveryResponse(varint(13, flags))
-            assertEquals(flags and 1 != 0, isClockOnCar(response))
             assertEquals(flags and 2 != 0, isPhoneSignalOnCar(response))
             assertEquals(flags and 4 != 0, isBatteryOnCar(response))
         }
@@ -105,7 +104,6 @@ class ServiceDiscoveryTest {
     @Test
     fun aCarWithoutField13ShowsNoStatusOfItsOwn() {
         val response = parseServiceDiscoveryResponse(message(2))
-        assertFalse(isClockOnCar(response))
         assertFalse(isPhoneSignalOnCar(response))
         assertFalse(isBatteryOnCar(response))
     }

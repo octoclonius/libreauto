@@ -20,6 +20,7 @@ import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarTheme
 import io.github.octoclonius.libreauto.projection.CarSession
+import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 import io.github.octoclonius.libreauto.projection.display.RailDisplayState
 import io.github.octoclonius.libreauto.projection.tasks.CarTask
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +33,7 @@ internal class RailWindow(
     private val state: RailState,
     private val actions: RailActions,
     private val order: StateFlow<List<CarTask>>,
+    private val calls: StateFlow<List<PhoneCall>>,
     private val onShownCount: (Int) -> Unit,
 ) :
     ComponentDialog(
@@ -50,7 +52,9 @@ internal class RailWindow(
         setContentView(
             ComposeView(context).apply {
                 setContent {
-                    CarTheme { RailContent(rail, session, state, actions, order, onShownCount) }
+                    CarTheme {
+                        RailContent(rail, session, state, actions, order, calls, onShownCount)
+                    }
                 }
             }
         )
@@ -68,6 +72,7 @@ private fun RailContent(
     state: RailState,
     actions: RailActions,
     order: StateFlow<List<CarTask>>,
+    calls: StateFlow<List<PhoneCall>>,
     onShownCount: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -79,6 +84,7 @@ private fun RailContent(
     val closingTaskId by state.closingTaskId.collectAsStateWithLifecycle()
     val closedTaskIds by state.closedTaskIds.collectAsStateWithLifecycle()
     val tasks by session.tasks.state.collectAsStateWithLifecycle()
+    val phoneCalls by calls.collectAsStateWithLifecycle()
     val insets = rail.contentInsets
     val padding =
         with(LocalDensity.current) {
@@ -93,6 +99,7 @@ private fun RailContent(
         side = rail.side,
         isDriverOnRight = session.car.isDriverOnRight,
         carStatusBar = session.car.statusBar,
+        isCallUnderWay = isCallUnderWay(phoneCalls),
         contentPadding = padding,
         apps = apps.filter { it.task.taskId !in closedTaskIds },
         closingTaskId = closingTaskId,

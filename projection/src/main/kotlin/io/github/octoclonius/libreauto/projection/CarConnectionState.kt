@@ -13,7 +13,6 @@ sealed interface CarConnectionState {
 data class CarInfo(val name: String?, val isDriverOnRight: Boolean, val statusBar: CarStatusBar)
 
 data class CarStatusBar(
-    val isClockShown: Boolean,
     val isPhoneSignalShown: Boolean,
     val isBatteryShown: Boolean,
 )
