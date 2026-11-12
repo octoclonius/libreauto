@@ -1,10 +1,7 @@
 package io.github.octoclonius.libreauto.projection.calls
 
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.telecom.Call
-import android.telecom.TelecomManager
+import android.telecom.VideoProfile
 import android.util.Log
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.privileged.call
@@ -15,36 +12,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class PhoneCallState(val isRinging: Boolean, val isInCall: Boolean) {
-    companion object {
-        val IDLE = PhoneCallState(isRinging = false, isInCall = false)
-    }
-}
-
 class CallRepository(
-    context: Context,
     private val privileged: PrivilegedServiceConnection,
     private val externalScope: CoroutineScope,
 ) {
 
     private companion object {
         const val TAG = "CallRepository"
-
-        val RINGING_STATES = setOf(Call.STATE_RINGING, Call.STATE_SIMULATED_RINGING)
-        val ACTIVE_ORDER =
-            listOf(
-                Call.STATE_ACTIVE,
-                Call.STATE_DIALING,
-                Call.STATE_PULLING_CALL,
-                Call.STATE_HOLDING,
-            )
+        const val ANSWER_VIDEO_STATE = VideoProfile.STATE_AUDIO_ONLY
     }
 
-    private val _state = MutableStateFlow(PhoneCallState.IDLE)
-    val state: StateFlow<PhoneCallState> = _state.asStateFlow()
+    private val _isInCall = MutableStateFlow(false)
+    val isInCall: StateFlow<Boolean> = _isInCall.asStateFlow()
 
-    private val telecom = context.getSystemService(TelecomManager::class.java)
-    private val main = Handler(Looper.getMainLooper())
     private val calls = mutableListOf<Call>()
 
     fun start() {
@@ -55,35 +35,12 @@ class CallRepository(
         }
     }
 
-    fun answer() {
-        main.post {
-            val ringing = topLevelCalls().firstOrNull { it.details.state in RINGING_STATES }
-            if (ringing == null) {
-                Log.i(TAG, "No ringing call to answer")
-                return@post
-            }
-            Log.i(TAG, "Answering the call of ${callingPackage(ringing)}")
-            ringing.answer(ringing.details.videoState)
-        }
+    fun acceptRingingCall() {
+        privileged.call("answer the ringing call") { it.acceptRingingCall(ANSWER_VIDEO_STATE) }
     }
 
-    fun end() {
-        main.post {
-            val topLevel = topLevelCalls()
-            val ringing = topLevel.firstOrNull { it.details.state in RINGING_STATES }
-            if (ringing != null) {
-                Log.i(TAG, "Rejecting the call of ${callingPackage(ringing)}")
-                ringing.reject(false, null)
-                return@post
-            }
-            val current = firstActive(topLevel)
-            if (current == null) {
-                Log.i(TAG, "No call to end")
-                return@post
-            }
-            Log.i(TAG, "Ending the call of ${callingPackage(current)}")
-            current.disconnect()
-        }
+    fun endCall() {
+        privileged.call("end the foreground call") { it.endCall() }
     }
 
     internal fun onCallAdded(call: Call) {
@@ -106,30 +63,9 @@ class CallRepository(
     }
 
     private fun publish() {
-        val states = topLevelCalls()
-        val next =
-            PhoneCallState(
-                isRinging = states.any { it.details.state in RINGING_STATES },
-                isInCall =
-                    states.any {
-                        it.details.state in RINGING_STATES || it.details.state in ACTIVE_ORDER
-                    },
-            )
-        if (next == _state.value) return
-        Log.i(TAG, "Phone call state: $next")
-        _state.value = next
+        val next = isInCall(calls.filter { it.parent == null }.map { it.details.state })
+        if (next == _isInCall.value) return
+        Log.i(TAG, if (next) "In a call" else "Not in a call")
+        _isInCall.value = next
     }
-
-    private fun topLevelCalls(): List<Call> = calls.filter { it.parent == null }
-
-    private fun firstActive(calls: List<Call>): Call? = ACTIVE_ORDER.firstNotNullOfOrNull { state ->
-        calls.firstOrNull { it.details.state == state }
-    }
-
-    private fun callingPackage(call: Call): String? =
-        if (call.details.hasProperty(Call.Details.PROPERTY_SELF_MANAGED)) {
-            call.details.accountHandle?.componentName?.packageName
-        } else {
-            telecom.defaultDialerPackage
-        }
 }

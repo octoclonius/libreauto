@@ -21,8 +21,6 @@ import io.github.octoclonius.libreauto.protocol.media.AudioType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -57,9 +55,7 @@ internal class CarAudio(
     fun start(channels: List<AudioChannel>, microphone: MicrophoneChannel?) {
         this.channels = channels
         this.microphone = microphone
-        callState = scope.launch {
-            calls.state.map { it.isInCall }.distinctUntilChanged().collect(::onCall)
-        }
+        callState = scope.launch { calls.isInCall.collect(::onCall) }
     }
 
     fun onChannelSettled() {

@@ -45,23 +45,12 @@ class CarButtons internal constructor(context: Context, private val calls: CallR
             _presses.tryEmit(NavigationButton.Home)
         } else if (code == CarButton.BACK) {
             _presses.tryEmit(NavigationButton.Back)
-        } else if (code == CarButton.CALL || code == CarButton.END_CALL) {
-            onCallButton(code)
-        }
-    }
-
-    private fun onCallButton(code: Int) {
-        val call = calls.state.value
-        when {
-            code == CarButton.CALL && call.isRinging -> {
-                Log.i(TAG, "Answering the ringing call for the car's call button")
-                calls.answer()
-            }
-            code == CarButton.END_CALL && call.isInCall -> {
-                Log.i(TAG, "Ending the call for the car's end call button")
-                calls.end()
-            }
-            else -> Log.i(TAG, "The car's call button $code without a call to act on")
+        } else if (code == CarButton.CALL) {
+            Log.i(TAG, "The car's call button answers the ringing call, if any")
+            calls.acceptRingingCall()
+        } else if (code == CarButton.END_CALL) {
+            Log.i(TAG, "The car's end call button ends the foreground call, if any")
+            calls.endCall()
         }
     }
 }

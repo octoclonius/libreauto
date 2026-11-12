@@ -23,6 +23,10 @@ class CallService : InCallService() {
             override fun onDetailsChanged(call: Call, details: Call.Details) {
                 calls.onCallChanged()
             }
+
+            override fun onParentChanged(call: Call, parent: Call?) {
+                calls.onCallChanged()
+            }
         }
 
     override fun onCreate() {

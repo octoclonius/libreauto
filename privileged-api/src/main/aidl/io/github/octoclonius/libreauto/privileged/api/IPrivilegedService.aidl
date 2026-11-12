@@ -26,6 +26,10 @@ interface IPrivilegedService {
 
     void allowCallAccess() = 15;
 
+    oneway void acceptRingingCall(int videoState) = 30;
+
+    oneway void endCall() = 31;
+
     void allowNotificationAccess(in ComponentName listener) = 27;
 
     oneway void onNotificationClick(String key, int rank, int count) = 28;

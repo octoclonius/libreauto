@@ -21,6 +21,7 @@ import io.github.octoclonius.libreauto.privileged.audio.CarAudioSession
 import io.github.octoclonius.libreauto.privileged.audio.audioRequestError
 import io.github.octoclonius.libreauto.privileged.bluetooth.PhoneBluetoothService
 import io.github.octoclonius.libreauto.privileged.calls.CallAccess
+import io.github.octoclonius.libreauto.privileged.calls.PhoneCalls
 import io.github.octoclonius.libreauto.privileged.display.AmbientDisplay
 import io.github.octoclonius.libreauto.privileged.display.CarDisplaySession
 import io.github.octoclonius.libreauto.privileged.display.CompanionAssociation
@@ -49,6 +50,7 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
     private val settings = PhoneSettings(shellContext)
     private val bluetoothService = PhoneBluetoothService(shellContext, settings, appUid, appPackage)
     private val callAccess = CallAccess(shellContext)
+    private val phoneCalls = PhoneCalls(shellContext)
     private val notificationAccess = NotificationAccess(shellContext)
     private val notificationActions = NotificationActions()
     private val displayLock = Any()
@@ -142,6 +144,14 @@ class PrivilegedService(context: Context) : IPrivilegedService.Stub() {
         identityCall(TAG, "Allowing the app the phone's calls") {
             callAccess.allow(appUid, appPackage)
         }
+    }
+
+    override fun acceptRingingCall(videoState: Int) {
+        identityCall(TAG, "Answering the ringing call") { phoneCalls.acceptRingingCall(videoState) }
+    }
+
+    override fun endCall() {
+        identityCall(TAG, "Ending the foreground call") { phoneCalls.endCall() }
     }
 
     override fun allowNotificationAccess(listener: ComponentName) {
