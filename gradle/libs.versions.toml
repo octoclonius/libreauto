@@ -11,6 +11,7 @@ kotlin = "2.4.21"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerialization = "1.12.0"
 ktfmt = "0.64"
+libphonenumberGeocoder = "3.43"
 lifecycle = "2.11.0"
 navigation3 = "1.2.0"
 shizuku = "13.1.5"
@@ -40,6 +41,7 @@ junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+libphonenumber-geocoder = { group = "com.googlecode.libphonenumber", name = "geocoder", version.ref = "libphonenumberGeocoder" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 shizuku-shared = { group = "dev.rikka.shizuku", name = "shared", version.ref = "shizuku" }

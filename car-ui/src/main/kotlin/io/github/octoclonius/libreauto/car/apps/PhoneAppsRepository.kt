@@ -15,6 +15,7 @@ import android.icu.text.AlphabeticIndex
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.NORMAL
 import android.icu.text.AlphabeticIndex.Bucket.LabelType.UNDERFLOW
 import android.os.LocaleList
+import android.os.UserHandle
 import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.projection.CarSessionHolder
 import io.github.octoclonius.libreauto.projection.display.CarDisplay
@@ -142,6 +143,20 @@ internal fun ResolveInfo.loadCarIcon(
     loadCarIcon(packageManager, activityInfo.applicationInfo, iconResource, carDensity, size) {
         loadIcon(packageManager)
     }
+
+internal fun loadCarAppIcon(
+    packageManager: PackageManager,
+    app: ApplicationInfo,
+    user: UserHandle,
+    carDensity: Int,
+    size: Dp,
+): Drawable =
+    packageManager.getUserBadgedIcon(
+        loadCarIcon(packageManager, app, app.icon, carDensity, size) {
+            app.loadIcon(packageManager)
+        },
+        user,
+    )
 
 internal fun loadCarIcon(
     packageManager: PackageManager,

@@ -24,7 +24,7 @@ class ProjectionContainer(
 
     val privilegedServiceConnection = PrivilegedServiceConnection(context, privilegedService)
     val carSessionHolder = CarSessionHolder()
-    val callRepository = CallRepository(privilegedServiceConnection, applicationScope)
+    val callRepository = CallRepository(context, privilegedServiceConnection, applicationScope)
     val permissionsRepository = PermissionsRepository(context, carSessionHolder, applicationScope)
     val notificationRepository =
         NotificationRepository(

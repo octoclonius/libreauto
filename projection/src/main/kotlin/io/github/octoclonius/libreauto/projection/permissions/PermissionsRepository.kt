@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 data class PermissionsState(
     val isNotificationAccessAllowed: Boolean,
     val isNearbyDevicesAllowed: Boolean,
+    val isContactsAllowed: Boolean,
 )
 
 class PermissionsRepository(
@@ -60,8 +61,10 @@ class PermissionsRepository(
         PermissionsState(
             isNotificationAccessAllowed =
                 notificationManager.isNotificationListenerAccessGranted(notificationListener),
-            isNearbyDevicesAllowed =
-                context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) ==
-                    PackageManager.PERMISSION_GRANTED,
+            isNearbyDevicesAllowed = isGranted(Manifest.permission.BLUETOOTH_CONNECT),
+            isContactsAllowed = isGranted(Manifest.permission.READ_CONTACTS),
         )
+
+    private fun isGranted(permission: String): Boolean =
+        context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 }

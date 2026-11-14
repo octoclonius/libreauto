@@ -30,8 +30,6 @@ import io.github.octoclonius.libreauto.phone.R
 import io.github.octoclonius.libreauto.phone.designsystem.component.PageScaffold
 import io.github.octoclonius.libreauto.projection.permissions.PermissionsState
 
-private const val NEARBY_DEVICES = Manifest.permission.BLUETOOTH_CONNECT
-
 @Composable
 fun PermissionsScreen(
     uiState: PermissionsState,
@@ -40,21 +38,10 @@ fun PermissionsScreen(
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = checkNotNull(LocalActivity.current)
     LifecycleResumeEffect(Unit) {
         onRefresh()
         onPauseOrDispose {}
     }
-    var wasRationaleShown by rememberSaveable { mutableStateOf(false) }
-    val nearbyDevices =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted
-            ->
-            val isRationaleShown = activity.shouldShowRequestPermissionRationale(NEARBY_DEVICES)
-            if (isDeniedWithoutDialog(isGranted, wasRationaleShown, isRationaleShown)) {
-                context.startActivity(appInfo(context))
-            }
-            onRefresh()
-        }
     PageScaffold(title = stringResource(R.string.permissions_title), onBack = onBack) { innerPadding
         ->
         Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())) {
@@ -64,20 +51,50 @@ fun PermissionsScreen(
                 isAllowed = uiState.isNotificationAccessAllowed,
                 onClick = { context.startActivity(notificationAccessPage(notificationListener)) },
             )
-            PermissionRow(
+            RuntimePermissionRow(
+                permission = Manifest.permission.BLUETOOTH_CONNECT,
                 title = stringResource(R.string.nearby_devices_title),
                 summary = stringResource(R.string.nearby_devices_summary),
                 isAllowed = uiState.isNearbyDevicesAllowed,
-                onClick = {
-                    if (uiState.isNearbyDevicesAllowed) {
-                        context.startActivity(appInfo(context))
-                    } else {
-                        wasRationaleShown =
-                            activity.shouldShowRequestPermissionRationale(NEARBY_DEVICES)
-                        nearbyDevices.launch(NEARBY_DEVICES)
-                    }
-                },
+                onResult = onRefresh,
             )
+            RuntimePermissionRow(
+                permission = Manifest.permission.READ_CONTACTS,
+                title = stringResource(R.string.contacts_title),
+                summary = stringResource(R.string.contacts_summary),
+                isAllowed = uiState.isContactsAllowed,
+                onResult = onRefresh,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RuntimePermissionRow(
+    permission: String,
+    title: String,
+    summary: String,
+    isAllowed: Boolean,
+    onResult: () -> Unit,
+) {
+    val context = LocalContext.current
+    val activity = checkNotNull(LocalActivity.current)
+    var wasRationaleShown by rememberSaveable { mutableStateOf(false) }
+    val request =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted
+            ->
+            val isRationaleShown = activity.shouldShowRequestPermissionRationale(permission)
+            if (isDeniedWithoutDialog(isGranted, wasRationaleShown, isRationaleShown)) {
+                context.startActivity(appInfo(context))
+            }
+            onResult()
+        }
+    PermissionRow(title, summary, isAllowed) {
+        if (isAllowed) {
+            context.startActivity(appInfo(context))
+        } else {
+            wasRationaleShown = activity.shouldShowRequestPermissionRationale(permission)
+            request.launch(permission)
         }
     }
 }

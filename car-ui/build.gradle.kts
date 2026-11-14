@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.core)
+    implementation(libs.libphonenumber.geocoder)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

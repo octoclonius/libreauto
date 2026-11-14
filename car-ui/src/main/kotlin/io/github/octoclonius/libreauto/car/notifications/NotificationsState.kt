@@ -4,10 +4,10 @@ import android.content.Context
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityManager
 import io.github.octoclonius.libreauto.car.apps.carDensities
+import io.github.octoclonius.libreauto.car.overlay.isTouchAccepted
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.projection.display.CarDisplay
 import io.github.octoclonius.libreauto.projection.notifications.NotificationRepository
-import io.github.octoclonius.libreauto.projection.notifications.PhoneNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 private const val HUN_DEFAULT_HEADS_UP_TIMEOUT_MILLIS = 8_000
-private const val TOUCH_ACCEPTANCE_DELAY_MILLIS = 700L
 
 private class HeadsUpAlert(val key: String, val shownAt: Long)
 
@@ -30,6 +29,7 @@ internal class NotificationsState(
     private val repository: NotificationRepository,
     private val quickSettings: QuickSettingsState,
     private val carDisplay: CarDisplay,
+    private val isCallShown: StateFlow<Boolean>,
 ) {
     private val apps = NotificationApps(context)
     private val accessibility = context.getSystemService(AccessibilityManager::class.java)
@@ -39,12 +39,10 @@ internal class NotificationsState(
 
     private val alert = MutableStateFlow<HeadsUpAlert?>(null)
     private val heldAlert = MutableStateFlow<HeadsUpAlert?>(null)
+    private var waitingAlertKey: String? = null
 
     private val _headsUp = MutableStateFlow<NotificationUiState?>(null)
     val headsUp: StateFlow<NotificationUiState?> = _headsUp.asStateFlow()
-
-    private val _isHeadsUpOnScreen = MutableStateFlow(false)
-    val isHeadsUpOnScreen: StateFlow<Boolean> = _isHeadsUpOnScreen.asStateFlow()
 
     fun start(scope: CoroutineScope) {
         scope.launch {
@@ -60,7 +58,7 @@ internal class NotificationsState(
                 }
                 .collect { _headsUp.value = it }
         }
-        scope.launch { repository.alerts.collect(::showHeadsUp) }
+        scope.launch { repository.alerts.collect { showHeadsUp(it.key) } }
         scope.launch {
             combine(alert, heldAlert) { shown, held -> shown?.takeUnless { it === held } }
                 .distinctUntilChanged()
@@ -77,6 +75,17 @@ internal class NotificationsState(
             }
         }
         scope.launch { quickSettings.isOpen.collect { if (it) hideHeadsUp() } }
+        scope.launch {
+            isCallShown.collect { isShown ->
+                if (isShown) {
+                    hideHeadsUp()
+                } else {
+                    val key = waitingAlertKey ?: return@collect
+                    waitingAlertKey = null
+                    if (repository.notifications.value.any { it.key == key }) showHeadsUp(key)
+                }
+            }
+        }
         scope.launch { repository.isHeadsUpEnabled.collect { if (!it) hideHeadsUp() } }
     }
 
@@ -91,10 +100,9 @@ internal class NotificationsState(
 
     fun openHeadsUp(item: NotificationUiState) {
         val shown = alert.value
-        val isJustShown =
-            shown != null &&
-                SystemClock.elapsedRealtime() - shown.shownAt < TOUCH_ACCEPTANCE_DELAY_MILLIS
-        if (!isJustShown) open(item)
+        if (shown == null || isTouchAccepted(shown.shownAt, SystemClock.elapsedRealtime())) {
+            open(item)
+        }
     }
 
     fun dismiss(item: NotificationUiState) {
@@ -114,13 +122,13 @@ internal class NotificationsState(
         heldAlert.value = if (isHeld) alert.value else null
     }
 
-    fun onHeadsUpOnScreen(isOnScreen: Boolean) {
-        _isHeadsUpOnScreen.value = isOnScreen
-    }
-
-    private fun showHeadsUp(notification: PhoneNotification) {
+    private fun showHeadsUp(key: String) {
         if (quickSettings.isOpen.value) return
-        alert.value = HeadsUpAlert(notification.key, SystemClock.elapsedRealtime())
+        if (isCallShown.value) {
+            waitingAlertKey = key
+            return
+        }
+        alert.value = HeadsUpAlert(key, SystemClock.elapsedRealtime())
     }
 
     private fun headsUpMillis(): Long =

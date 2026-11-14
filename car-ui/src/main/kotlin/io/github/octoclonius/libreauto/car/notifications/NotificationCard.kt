@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,19 @@ private val SMALL_ICON_PADDING = NOTIFICATION_ICON_SIZE * (ICON_CIRCLE_PADDING /
 private val TITLE_SIZE = 20.sp
 private val TEXT_SIZE = 18.sp
 private val TEXT_LINE_HEIGHT = 24.sp
+
+internal val cardTitleStyle: TextStyle
+    @Composable
+    get() =
+        MaterialTheme.typography.titleLarge.copy(
+            fontSize = TITLE_SIZE,
+            fontWeight = FontWeight.Medium,
+        )
+
+internal val cardTextStyle: TextStyle
+    @Composable
+    get() =
+        MaterialTheme.typography.bodyLarge.copy(fontSize = TEXT_SIZE, lineHeight = TEXT_LINE_HEIGHT)
 
 @Composable
 internal fun NotificationCard(
@@ -70,22 +84,14 @@ internal fun NotificationCard(
             Column(Modifier.weight(1f)) {
                 Text(
                     item.notification.title.ifBlank { item.appName },
-                    style =
-                        MaterialTheme.typography.titleLarge.copy(
-                            fontSize = TITLE_SIZE,
-                            fontWeight = FontWeight.Medium,
-                        ),
+                    style = cardTitleStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (item.notification.text.isNotBlank()) {
                     Text(
                         item.notification.text,
-                        style =
-                            MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = TEXT_SIZE,
-                                lineHeight = TEXT_LINE_HEIGHT,
-                            ),
+                        style = cardTextStyle,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -113,7 +119,7 @@ private fun NotificationImage(item: NotificationUiState) {
 }
 
 @Composable
-private fun IconCircle(content: @Composable () -> Unit) {
+internal fun IconCircle(content: @Composable () -> Unit) {
     Box(
         Modifier.size(NOTIFICATION_ICON_SIZE)
             .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),

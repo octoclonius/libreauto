@@ -8,7 +8,7 @@ import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.os.UserHandle
-import io.github.octoclonius.libreauto.car.apps.loadCarIcon
+import io.github.octoclonius.libreauto.car.apps.loadCarAppIcon
 import io.github.octoclonius.libreauto.projection.notifications.PhoneNotification
 
 internal sealed interface NotificationIcon {
@@ -70,13 +70,15 @@ internal class NotificationApps(private val context: Context) {
         val info =
             notification.app
                 ?: return App(notification.packageName, icon = null, isHeadlessSystemApp = false)
-        val icon =
-            loadCarIcon(packageManager, info, info.icon, carDensity, NOTIFICATION_ICON_SIZE) {
-                info.loadIcon(packageManager)
-            }
         return App(
             info.loadLabel(packageManager).toString(),
-            packageManager.getUserBadgedIcon(icon, notification.user),
+            loadCarAppIcon(
+                packageManager,
+                info,
+                notification.user,
+                carDensity,
+                NOTIFICATION_ICON_SIZE,
+            ),
             isHeadlessSystemApp =
                 (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
                     launcherApps.getActivityList(info.packageName, notification.user).isEmpty(),

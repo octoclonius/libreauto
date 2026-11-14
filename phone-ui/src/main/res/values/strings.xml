@@ -38,6 +38,8 @@
     <string name="notification_access_summary">Show your phone\'s notifications on the car</string>
     <string name="nearby_devices_title">Nearby devices</string>
     <string name="nearby_devices_summary">Pair with the car for hands-free calls</string>
+    <string name="contacts_title">Contacts</string>
+    <string name="contacts_summary">Show callers\' names and photos on the car</string>
     <string name="version_title">Version</string>
 
     <string name="licenses_title">Open source licenses</string>

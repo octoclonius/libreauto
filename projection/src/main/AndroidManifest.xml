@@ -10,6 +10,7 @@
         android:name="android.permission.MANAGE_ONGOING_CALLS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <queries>
         <intent>

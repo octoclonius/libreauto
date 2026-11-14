@@ -20,6 +20,14 @@ class CallRulesTest {
     private val stateAudioProcessing = 12
     private val stateSimulatedRinging = 13
 
+    private val presentationAllowed = 1
+    private val presentationRestricted = 2
+    private val presentationUnknown = 3
+    private val presentationPayphone = 4
+    private val presentationUnavailable = 5
+
+    private val number = CallerNumber("5551234567", "(555) 123-4567", "US")
+
     @Test
     fun ringingCallsRing() {
         assertEquals(CallStatus.Ringing, callStatus(stateRinging))
@@ -55,7 +63,67 @@ class CallRulesTest {
 
     @Test
     fun anyListedCallIsInACall() {
-        assertTrue(isInCall(listOf(PhoneCall(0, CallStatus.Ringing))))
-        assertTrue(isInCall(listOf(PhoneCall(0, CallStatus.Holding))))
+        assertTrue(isInCall(listOf(call(CallStatus.Ringing))))
+        assertTrue(isInCall(listOf(call(CallStatus.Holding))))
     }
+
+    @Test
+    fun theContactsNameComesFirst() {
+        assertEquals(
+            Caller.Contact("Mom", number),
+            caller("Mom", "MOBILE CALLER", number, presentationAllowed),
+        )
+    }
+
+    @Test
+    fun theNetworksNameStandsInForAMissingContact() {
+        assertEquals(
+            Caller.Named("MOBILE CALLER", number),
+            caller(null, "MOBILE CALLER", number, presentationAllowed),
+        )
+        assertEquals(
+            Caller.Named("MOBILE CALLER", number),
+            caller(" ", "MOBILE CALLER", number, presentationAllowed),
+        )
+    }
+
+    @Test
+    fun theNumberStandsInForAMissingName() {
+        assertEquals(Caller.Number(number), caller(null, null, number, presentationAllowed))
+    }
+
+    @Test
+    fun nothingToShowIsUnknown() {
+        assertEquals(Caller.Unknown, caller(null, "", null, presentationAllowed))
+    }
+
+    @Test
+    fun aHiddenNumberIsNamedByItsPresentation() {
+        assertEquals(Caller.Private, caller(null, null, null, presentationRestricted))
+        assertEquals(Caller.Payphone, caller(null, null, null, presentationPayphone))
+        assertEquals(Caller.Unknown, caller(null, null, null, presentationUnknown))
+        assertEquals(Caller.Unknown, caller(null, null, null, presentationUnavailable))
+    }
+
+    @Test
+    fun aHiddenNumberWinsOverANameSentAnyway() {
+        assertEquals(Caller.Private, caller("Mom", "MOBILE CALLER", null, presentationRestricted))
+    }
+
+    @Test
+    fun theNetworksCountryComesFirst() {
+        assertEquals("US", countryIso("us", "ca", "DE"))
+    }
+
+    @Test
+    fun theSimsCountryStandsInWithoutANetwork() {
+        assertEquals("CA", countryIso("", "ca", "DE"))
+    }
+
+    @Test
+    fun theLocalesCountryIsTheLastResort() {
+        assertEquals("DE", countryIso(null, "", "DE"))
+    }
+
+    private fun call(status: CallStatus) = PhoneCall(0, status, Caller.Unknown, null, null)
 }
