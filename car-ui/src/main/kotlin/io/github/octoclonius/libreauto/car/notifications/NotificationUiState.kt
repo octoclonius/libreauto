@@ -7,7 +7,9 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
+import android.os.Process
 import android.os.UserHandle
+import android.os.UserManager
 import io.github.octoclonius.libreauto.car.apps.loadCarAppIcon
 import io.github.octoclonius.libreauto.projection.notifications.PhoneNotification
 
@@ -38,6 +40,7 @@ internal class NotificationApps(private val context: Context) {
 
     private val packageManager = context.packageManager
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
+    private val userManager = context.getSystemService(UserManager::class.java)
     private val apps = HashMap<AppKey, App>()
     private val states = HashMap<StateKey, NotificationUiState>()
 
@@ -70,18 +73,14 @@ internal class NotificationApps(private val context: Context) {
         val info =
             notification.app
                 ?: return App(notification.packageName, icon = null, isHeadlessSystemApp = false)
+        val user =
+            notification.user.takeIf { it in userManager.userProfiles } ?: Process.myUserHandle()
         return App(
             info.loadLabel(packageManager).toString(),
-            loadCarAppIcon(
-                packageManager,
-                info,
-                notification.user,
-                carDensity,
-                NOTIFICATION_ICON_SIZE,
-            ),
+            loadCarAppIcon(packageManager, info, user, carDensity, NOTIFICATION_ICON_SIZE),
             isHeadlessSystemApp =
                 (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
-                    launcherApps.getActivityList(info.packageName, notification.user).isEmpty(),
+                    launcherApps.getActivityList(info.packageName, user).isEmpty(),
         )
     }
 
