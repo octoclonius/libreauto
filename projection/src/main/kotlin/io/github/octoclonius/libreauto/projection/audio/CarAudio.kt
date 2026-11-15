@@ -18,11 +18,10 @@ import io.github.octoclonius.libreauto.protocol.control.MessageType
 import io.github.octoclonius.libreauto.protocol.control.audioFocusRequest
 import io.github.octoclonius.libreauto.protocol.control.parseAudioFocusNotification
 import io.github.octoclonius.libreauto.protocol.media.AudioType
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal class CarAudio(
     private val context: Context,
@@ -35,7 +34,7 @@ internal class CarAudio(
 
     companion object {
         private const val TAG = "CarAudio"
-        private const val PAUSE_TIMEOUT_MILLIS = 1_000L
+        private const val BECOMING_NOISY_DELAY_MS = 1_000L
     }
 
     private val negotiation = FocusNegotiation()
@@ -48,7 +47,6 @@ internal class CarAudio(
     private var mediaResumption: MediaResumption? = null
     private var isMediaResumed = false
     private var isMediaPlaying = false
-    private var mediaPaused: CompletableDeferred<Unit>? = null
     private var isClosing = false
     private var isClosed = false
 
@@ -88,10 +86,7 @@ internal class CarAudio(
     suspend fun close() {
         if (isClosing) return
         callState?.cancel()
-        val paused = pauseMedia()
-        if (paused != null && withTimeoutOrNull(PAUSE_TIMEOUT_MILLIS) { paused.await() } == null) {
-            Log.w(TAG, "Media still plays $PAUSE_TIMEOUT_MILLIS ms after pausing it")
-        }
+        if (pauseMedia()) delay(BECOMING_NOISY_DELAY_MS)
         isClosed = true
         closeAll(TAG) {
             step("Stopping the diverted audio") { privilegedAudio?.close() }
@@ -141,15 +136,15 @@ internal class CarAudio(
                 .also(PrivilegedAudio::start)
     }
 
-    private fun pauseMedia(): CompletableDeferred<Unit>? {
+    private fun pauseMedia(): Boolean {
         isClosing = true
-        val resumption = mediaResumption ?: return null
+        val resumption = mediaResumption ?: return false
         if (!isMediaPlaying) {
             resumption.forget()
-            return null
+            return false
         }
         resumption.pause()
-        return CompletableDeferred<Unit>().also { mediaPaused = it }
+        return true
     }
 
     private fun onPipes(pipes: List<ParcelFileDescriptor>) {
@@ -172,7 +167,6 @@ internal class CarAudio(
         post {
             val divertedPlayers = players.filter { isDiverted(it.usage) }
             isMediaPlaying = isMediaPlaying(divertedPlayers)
-            if (!isMediaPlaying) mediaPaused?.complete(Unit)
             for (channel in streaming) {
                 channel.ready?.stream?.setActive(divertedPlayers.any { it.usage in channel.usages })
             }
