@@ -20,6 +20,10 @@ class CallRulesTest {
     private val stateAudioProcessing = 12
     private val stateSimulatedRinging = 13
 
+    private val capabilityHold = 0x1
+    private val capabilityMergeConference = 0x4
+    private val capabilityMute = 0x40
+
     private val presentationAllowed = 1
     private val presentationRestricted = 2
     private val presentationUnknown = 3
@@ -65,6 +69,26 @@ class CallRulesTest {
     fun anyListedCallIsInACall() {
         assertTrue(isInCall(listOf(call(CallStatus.Ringing))))
         assertTrue(isInCall(listOf(call(CallStatus.Holding))))
+    }
+
+    @Test
+    fun aConferenceableCallCanMerge() {
+        assertEquals(
+            capabilityHold or capabilityMute or capabilityMergeConference,
+            callCapabilities(capabilityHold or capabilityMute, hasConferenceableCall = true),
+        )
+    }
+
+    @Test
+    fun withoutAConferenceableCallTheCapabilitiesAreTelecoms() {
+        assertEquals(
+            capabilityHold or capabilityMute,
+            callCapabilities(capabilityHold or capabilityMute, hasConferenceableCall = false),
+        )
+        assertEquals(
+            capabilityMergeConference,
+            callCapabilities(capabilityMergeConference, hasConferenceableCall = false),
+        )
     }
 
     @Test
@@ -125,5 +149,6 @@ class CallRulesTest {
         assertEquals("DE", countryIso(null, "", "DE"))
     }
 
-    private fun call(status: CallStatus) = PhoneCall(0, status, 0, Caller.Unknown, null, null)
+    private fun call(status: CallStatus) =
+        PhoneCall(0, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null)
 }

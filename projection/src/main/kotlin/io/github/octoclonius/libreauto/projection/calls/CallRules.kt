@@ -15,6 +15,10 @@ internal fun callStatus(state: Int): CallStatus? =
 
 internal fun isInCall(calls: List<PhoneCall>): Boolean = calls.isNotEmpty()
 
+internal fun callCapabilities(capabilities: Int, hasConferenceableCall: Boolean): Int =
+    if (hasConferenceableCall) capabilities or Call.Details.CAPABILITY_MERGE_CONFERENCE
+    else capabilities
+
 internal fun caller(
     contactName: String?,
     networkName: String?,

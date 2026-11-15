@@ -35,4 +35,8 @@ data class PhoneCall(
     val caller: Caller,
     val photo: Uri?,
     val app: CallingApp?,
+    val capabilities: Int,
+    val isConference: Boolean,
+    val participants: List<PhoneCall>,
+    val postDialWait: String?,
 )
