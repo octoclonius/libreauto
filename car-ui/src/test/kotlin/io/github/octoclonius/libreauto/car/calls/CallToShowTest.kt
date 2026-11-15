@@ -15,6 +15,13 @@ class CallToShowTest {
     }
 
     @Test
+    fun endingCallsAreNotShown() {
+        assertNull(
+            callToShow(listOf(call(0, CallStatus.Disconnecting), call(1, CallStatus.Disconnected)))
+        )
+    }
+
+    @Test
     fun aRingingCallComesFirst() {
         val ringing = call(2, CallStatus.Ringing)
         val calls =
@@ -70,5 +77,5 @@ class CallToShowTest {
     }
 
     private fun call(id: Int, status: CallStatus) =
-        PhoneCall(id, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null)
+        PhoneCall(id, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null, null)
 }

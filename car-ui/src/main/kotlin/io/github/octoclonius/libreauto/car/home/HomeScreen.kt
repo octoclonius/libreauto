@@ -307,13 +307,13 @@ private fun RemoveTarget(drag: HomeDrag, modifier: Modifier = Modifier) {
                     drag.removeCenter = it.boundsInRoot().center
                     drag.removeRadius = radius
                 }
-                .background(MaterialTheme.colorScheme.primaryFixed, CircleShape),
+                .background(MaterialTheme.colorScheme.primary, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painterResource(R.drawable.ic_close),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryFixed,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(REMOVE_ICON_SIZE),
             )
         }

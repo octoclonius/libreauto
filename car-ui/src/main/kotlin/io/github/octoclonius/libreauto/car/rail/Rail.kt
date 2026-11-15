@@ -404,9 +404,8 @@ private fun Clock(time: String, isCallUnderWay: Boolean) {
         GlyphText(
             time,
             CLOCK_HEIGHT,
-            Modifier.callPill(MaterialTheme.colorScheme.primaryFixedDim)
-                .padding(vertical = ICON_PADDING),
-            MaterialTheme.colorScheme.onPrimaryFixed,
+            Modifier.callPill(MaterialTheme.colorScheme.primary).padding(vertical = ICON_PADDING),
+            MaterialTheme.colorScheme.onPrimary,
         )
     } else {
         GlyphText(time, CLOCK_HEIGHT, Modifier.padding(vertical = ICON_PADDING))

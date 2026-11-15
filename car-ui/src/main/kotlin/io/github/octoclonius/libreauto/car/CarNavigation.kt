@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.car
 
 import android.view.KeyEvent
+import io.github.octoclonius.libreauto.car.calls.CallScreenState
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
 import io.github.octoclonius.libreauto.car.rail.RailActions
@@ -13,16 +14,18 @@ internal class CarNavigation(
     private val home: HomeState,
     private val rail: RailState,
     private val quickSettings: QuickSettingsState,
+    private val callScreen: CallScreenState,
 ) : RailActions {
 
     override fun onAppsButton() {
         quickSettings.close()
-        if (isAppInFront()) showHome() else home.toggleDrawer()
+        if (callScreen.close() || isAppInFront()) showHome() else home.toggleDrawer()
     }
 
     fun onHomeButton() {
         rail.cancelClosing()
         quickSettings.close()
+        callScreen.close()
         if (isAppInFront()) {
             showHome()
         } else {
@@ -35,6 +38,7 @@ internal class CarNavigation(
         when {
             rail.cancelClosing() -> {}
             quickSettings.close() -> {}
+            callScreen.close() -> {}
             home.isDrawerOpen.value -> home.closeDrawer()
             isAppInFront() -> session.displays.car.sendKey(KeyEvent.KEYCODE_BACK)
         }
@@ -51,7 +55,13 @@ internal class CarNavigation(
 
     override fun onAppClick(task: CarTask) {
         quickSettings.close()
+        callScreen.close()
         session.tasks.show(task)
+    }
+
+    fun onCallCardClick() {
+        quickSettings.close()
+        callScreen.open()
     }
 
     override fun onAppClose(task: CarTask) {

@@ -20,6 +20,15 @@ class CallRulesTest {
     private val stateAudioProcessing = 12
     private val stateSimulatedRinging = 13
 
+    private val causeUnknown = 0
+    private val causeError = 1
+    private val causeLocal = 2
+    private val causeRemote = 3
+    private val causeCanceled = 4
+    private val causeMissed = 5
+    private val causeRejected = 6
+    private val causeBusy = 7
+
     private val capabilityHold = 0x1
     private val capabilityMergeConference = 0x4
     private val capabilityMute = 0x40
@@ -53,11 +62,45 @@ class CallRulesTest {
                 stateSelectPhoneAccount,
                 stateConnecting,
                 stateAudioProcessing,
-                stateDisconnecting,
-                stateDisconnected,
             )) {
             assertNull(callStatus(state))
         }
+    }
+
+    @Test
+    fun endingCallsAreListedAsEnding() {
+        assertEquals(CallStatus.Disconnecting, callStatus(stateDisconnecting))
+        assertEquals(CallStatus.Disconnected, callStatus(stateDisconnected))
+    }
+
+    @Test
+    fun endingCallsAreNotInACall() {
+        assertFalse(isInCall(listOf(call(CallStatus.Disconnecting), call(CallStatus.Disconnected))))
+        assertTrue(isInCall(listOf(call(CallStatus.Disconnected), call(CallStatus.Holding))))
+    }
+
+    @Test
+    fun aCallEndedOnThePhoneShowsBriefly() {
+        assertEquals(200L, disconnectedCallDelayMillis(causeLocal))
+    }
+
+    @Test
+    fun aCallEndedByTheOtherSideOrAnErrorShowsLonger() {
+        assertEquals(2000L, disconnectedCallDelayMillis(causeRemote))
+        assertEquals(2000L, disconnectedCallDelayMillis(causeError))
+    }
+
+    @Test
+    fun declinedMissedAndCanceledCallsAreNotShownAsEnded() {
+        assertEquals(0L, disconnectedCallDelayMillis(causeRejected))
+        assertEquals(0L, disconnectedCallDelayMillis(causeMissed))
+        assertEquals(0L, disconnectedCallDelayMillis(causeCanceled))
+    }
+
+    @Test
+    fun otherEndsShowLongest() {
+        assertEquals(5000L, disconnectedCallDelayMillis(causeBusy))
+        assertEquals(5000L, disconnectedCallDelayMillis(causeUnknown))
     }
 
     @Test
@@ -150,5 +193,5 @@ class CallRulesTest {
     }
 
     private fun call(status: CallStatus) =
-        PhoneCall(0, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null)
+        PhoneCall(0, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null, null)
 }

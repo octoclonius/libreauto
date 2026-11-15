@@ -1,7 +1,12 @@
 package io.github.octoclonius.libreauto.projection.calls
 
 import android.telecom.Call
+import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
+
+private const val DISCONNECTED_CALL_SHORT_TIMEOUT_MS = 200L
+private const val DISCONNECTED_CALL_MEDIUM_TIMEOUT_MS = 2000L
+private const val DISCONNECTED_CALL_LONG_TIMEOUT_MS = 5000L
 
 internal fun callStatus(state: Int): CallStatus? =
     when (state) {
@@ -10,10 +15,23 @@ internal fun callStatus(state: Int): CallStatus? =
         Call.STATE_DIALING -> CallStatus.Dialing
         Call.STATE_ACTIVE -> CallStatus.Active
         Call.STATE_HOLDING -> CallStatus.Holding
+        Call.STATE_DISCONNECTING -> CallStatus.Disconnecting
+        Call.STATE_DISCONNECTED -> CallStatus.Disconnected
         else -> null
     }
 
-internal fun isInCall(calls: List<PhoneCall>): Boolean = calls.isNotEmpty()
+internal fun isInCall(calls: List<PhoneCall>): Boolean = calls.any { it.status.isLive }
+
+internal fun disconnectedCallDelayMillis(cause: Int): Long =
+    when (cause) {
+        DisconnectCause.LOCAL -> DISCONNECTED_CALL_SHORT_TIMEOUT_MS
+        DisconnectCause.REMOTE,
+        DisconnectCause.ERROR -> DISCONNECTED_CALL_MEDIUM_TIMEOUT_MS
+        DisconnectCause.REJECTED,
+        DisconnectCause.MISSED,
+        DisconnectCause.CANCELED -> 0L
+        else -> DISCONNECTED_CALL_LONG_TIMEOUT_MS
+    }
 
 internal fun callCapabilities(capabilities: Int, hasConferenceableCall: Boolean): Int =
     if (hasConferenceableCall) capabilities or Call.Details.CAPABILITY_MERGE_CONFERENCE

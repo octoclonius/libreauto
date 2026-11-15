@@ -17,11 +17,16 @@ internal sealed interface CallSubtitle {
     data class Ongoing(val connectTimeMillis: Long) : CallSubtitle
 
     data object OnHold : CallSubtitle
+
+    data object HangingUp : CallSubtitle
+
+    data class Ended(val label: String?) : CallSubtitle
 }
 
 internal fun callSubtitle(
     status: CallStatus,
     connectTimeMillis: Long,
+    disconnectLabel: String?,
     caller: Caller,
     isAppCall: Boolean,
     appName: String?,
@@ -33,6 +38,8 @@ internal fun callSubtitle(
         CallStatus.Dialing -> CallSubtitle.Dialing
         CallStatus.Active -> CallSubtitle.Ongoing(connectTimeMillis)
         CallStatus.Holding -> CallSubtitle.OnHold
+        CallStatus.Disconnecting -> CallSubtitle.HangingUp
+        CallStatus.Disconnected -> CallSubtitle.Ended(disconnectLabel)
     }
 
 internal fun elapsedSeconds(connectTimeMillis: Long, nowMillis: Long): Long =

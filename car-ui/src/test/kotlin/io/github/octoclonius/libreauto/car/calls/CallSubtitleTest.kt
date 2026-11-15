@@ -96,6 +96,7 @@ class CallSubtitleTest {
         callSubtitle(
             CallStatus.Ringing,
             0,
+            null,
             Caller.Named("MOBILE CALLER", number),
             isAppCall = false,
             appName = null,
@@ -111,6 +112,7 @@ class CallSubtitleTest {
         callSubtitle(
             CallStatus.Ringing,
             0,
+            null,
             Caller.Number(number),
             isAppCall = true,
             appName = "Caller",
@@ -142,12 +144,36 @@ class CallSubtitleTest {
     }
 
     @Test
+    fun anEndingCallSaysHangingUp() {
+        assertEquals(CallSubtitle.HangingUp, status(CallStatus.Disconnecting))
+    }
+
+    @Test
+    fun anEndedCallShowsTheReasonItWasGiven() {
+        assertEquals(
+            CallSubtitle.Ended("Busy"),
+            callSubtitle(
+                CallStatus.Disconnected,
+                connectTimeMillis,
+                "Busy",
+                Caller.Contact("Alex Rivera", number),
+                isAppCall = false,
+                appName = null,
+                numberLabel = { "Mobile" },
+                location = { "Mountain View, CA" },
+            ),
+        )
+        assertEquals(CallSubtitle.Ended(null), status(CallStatus.Disconnected))
+    }
+
+    @Test
     fun aCallThatIsNotRingingLooksNothingUp() {
         val lookedUp = mutableListOf<String>()
-        for (status in listOf(CallStatus.Dialing, CallStatus.Active, CallStatus.Holding)) {
+        for (status in CallStatus.entries - CallStatus.Ringing) {
             callSubtitle(
                 status,
                 connectTimeMillis,
+                null,
                 Caller.Contact("Alex Rivera", number),
                 isAppCall = false,
                 appName = "Caller",
@@ -179,6 +205,7 @@ class CallSubtitleTest {
         callSubtitle(
             status,
             connectTimeMillis,
+            null,
             Caller.Contact("Alex Rivera", number),
             isAppCall = true,
             appName = "Caller",
@@ -196,6 +223,7 @@ class CallSubtitleTest {
         callSubtitle(
             CallStatus.Ringing,
             0,
+            null,
             caller,
             isAppCall,
             appName,

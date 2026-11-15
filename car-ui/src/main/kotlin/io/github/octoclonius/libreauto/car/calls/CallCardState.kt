@@ -22,7 +22,10 @@ internal class CallCardState(
     fun start(scope: CoroutineScope) {
         scope.launch {
             uiStates
-                .of(combine(repository.calls, popUpCall, ::listedCall).distinctUntilChanged())
+                .of(
+                    combine(repository.calls, popUpCall, ::listedCall).distinctUntilChanged(),
+                    CALLER_AVATAR_SIZE,
+                )
                 .collect { _card.value = it }
         }
     }

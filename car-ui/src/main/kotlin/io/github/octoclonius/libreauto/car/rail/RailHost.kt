@@ -23,6 +23,7 @@ internal class RailHost(
     private val railOrder: RailOrderRepository,
     private val actions: RailActions,
     private val calls: StateFlow<List<PhoneCall>>,
+    private val isCallScreenShown: StateFlow<Boolean>,
 ) : Closeable {
 
     companion object {
@@ -86,6 +87,7 @@ internal class RailHost(
                 actions,
                 order.asStateFlow(),
                 calls,
+                isCallScreenShown,
             ) {
                 shownCount.value = it
             }

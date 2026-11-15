@@ -18,6 +18,7 @@ import io.github.octoclonius.libreauto.projection.privileged.call
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +56,8 @@ class CallRepository(
 
     private val ids = LinkedHashMap<Call, Int>()
     private val postDialWaits = HashMap<Call, String>()
+    private val disconnected = HashSet<Call>()
+    private val endedCalls = LinkedHashMap<Int, PhoneCall>()
     private var nextId = 0
     private var service: InCallService? = null
     private var pendingAnswer: PendingAnswer? = null
@@ -177,10 +180,13 @@ class CallRepository(
 
     internal fun onCallAdded(call: Call) {
         ids[call] = nextId++
+        recordEnd(call)
         publish()
     }
 
     internal fun onCallRemoved(call: Call) {
+        recordEnd(call)
+        disconnected -= call
         ids -= call
         postDialWaits -= call
         answerIfReleased(call)
@@ -188,6 +194,7 @@ class CallRepository(
     }
 
     internal fun onCallChanged(call: Call) {
+        recordEnd(call)
         answerIfReleased(call)
         publish()
     }
@@ -213,6 +220,7 @@ class CallRepository(
         service = null
         ids.clear()
         postDialWaits.clear()
+        disconnected.clear()
         pendingAnswer = null
         _audio.value = NO_CALL_AUDIO
         publish()
@@ -237,10 +245,25 @@ class CallRepository(
         answer(ringingId)
     }
 
-    private fun publish() {
-        val next = ids.mapNotNull { (call, id) ->
-            if (call.parent == null) phoneCall(call, id) else null
+    private fun recordEnd(call: Call) {
+        if (call.parent != null || call.details.state != Call.STATE_DISCONNECTED) return
+        val id = ids[call] ?: return
+        if (!disconnected.add(call)) return
+        val delayMillis = disconnectedCallDelayMillis(call.details.disconnectCause.code)
+        if (delayMillis == 0L) return
+        endedCalls[id] = phoneCall(call, id) ?: return
+        externalScope.launch {
+            delay(delayMillis)
+            endedCalls -= id
+            publish()
         }
+    }
+
+    private fun publish() {
+        val live = ids.mapNotNull { (call, id) ->
+            if (call.parent == null && call !in disconnected) phoneCall(call, id) else null
+        }
+        val next = (live + endedCalls.values).sortedBy { it.id }
         if (next == _calls.value) return
         Log.i(TAG, "Calls: ${next.map { "${it.id} ${it.status}" }}")
         _calls.value = next
@@ -266,8 +289,15 @@ class CallRepository(
                 call.conferenceableCalls.any { !it.isRttActive },
             ),
             details.hasProperty(Call.Details.PROPERTY_CONFERENCE),
-            call.children.mapNotNull { child -> ids[child]?.let { phoneCall(child, it) } },
+            call.children
+                .mapNotNull { child -> ids[child]?.let { phoneCall(child, it) } }
+                .filter { it.status.isLive },
             postDialWaits[call],
+            if (status == CallStatus.Disconnected) {
+                details.disconnectCause.label?.toString()?.takeIf { it.isNotBlank() }
+            } else {
+                null
+            },
         )
     }
 

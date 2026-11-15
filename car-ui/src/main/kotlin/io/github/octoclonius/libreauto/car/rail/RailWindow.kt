@@ -34,6 +34,7 @@ internal class RailWindow(
     private val actions: RailActions,
     private val order: StateFlow<List<CarTask>>,
     private val calls: StateFlow<List<PhoneCall>>,
+    private val isCallScreenShown: StateFlow<Boolean>,
     private val onShownCount: (Int) -> Unit,
 ) :
     ComponentDialog(
@@ -53,7 +54,16 @@ internal class RailWindow(
             ComposeView(context).apply {
                 setContent {
                     CarTheme {
-                        RailContent(rail, session, state, actions, order, calls, onShownCount)
+                        RailContent(
+                            rail,
+                            session,
+                            state,
+                            actions,
+                            order,
+                            calls,
+                            isCallScreenShown,
+                            onShownCount,
+                        )
                     }
                 }
             }
@@ -73,6 +83,7 @@ private fun RailContent(
     actions: RailActions,
     order: StateFlow<List<CarTask>>,
     calls: StateFlow<List<PhoneCall>>,
+    isCallScreenShown: StateFlow<Boolean>,
     onShownCount: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -85,6 +96,7 @@ private fun RailContent(
     val closedTaskIds by state.closedTaskIds.collectAsStateWithLifecycle()
     val tasks by session.tasks.state.collectAsStateWithLifecycle()
     val phoneCalls by calls.collectAsStateWithLifecycle()
+    val callScreenShown by isCallScreenShown.collectAsStateWithLifecycle()
     val insets = rail.contentInsets
     val padding =
         with(LocalDensity.current) {
@@ -103,7 +115,7 @@ private fun RailContent(
         contentPadding = padding,
         apps = apps.filter { it.task.taskId !in closedTaskIds },
         closingTaskId = closingTaskId,
-        isAppInFront = tasks.frontTaskId != null,
+        isAppInFront = tasks.frontTaskId != null || callScreenShown,
         onButtonClick = actions::onAppsButton,
         onAppClick = { actions.onAppClick(it.task) },
         onAppLongClick = { actions.onAppLongClick(it.task) },

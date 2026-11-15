@@ -2,6 +2,8 @@ package io.github.octoclonius.libreauto.car
 
 import android.content.Context
 import io.github.octoclonius.libreauto.car.calls.CallCardState
+import io.github.octoclonius.libreauto.car.calls.CallScreenHost
+import io.github.octoclonius.libreauto.car.calls.CallScreenState
 import io.github.octoclonius.libreauto.car.calls.CallUiStates
 import io.github.octoclonius.libreauto.car.calls.IncomingCallState
 import io.github.octoclonius.libreauto.car.home.HomeState
@@ -35,12 +37,21 @@ internal constructor(
     internal val home = HomeState()
     internal val rail = RailState()
     internal val quickSettings = QuickSettingsState()
-    internal val navigation = CarNavigation(session, home, rail, quickSettings)
+    private val callUiStates = CallUiStates(context, session.displays.car)
+    private val callScreen = CallScreenState(callRepository, callUiStates)
+    internal val navigation = CarNavigation(session, home, rail, quickSettings, callScreen)
 
     private val scope = MainScope()
     private val railHost =
-        RailHost(context, session, rail, railOrder, navigation, callRepository.calls)
-    private val callUiStates = CallUiStates(context, session.displays.car)
+        RailHost(
+            context,
+            session,
+            rail,
+            railOrder,
+            navigation,
+            callRepository.calls,
+            callScreen.isShown,
+        )
     private val incomingCall = IncomingCallState(callRepository, callUiStates)
     private val callCard = CallCardState(callRepository, incomingCall.call, callUiStates)
     private val notifications =
@@ -52,8 +63,17 @@ internal constructor(
             incomingCall.isShown,
         )
     private val quickSettingsHost =
-        QuickSettingsHost(context, session, quickSettings, phoneSettings, notifications, callCard)
+        QuickSettingsHost(
+            context,
+            session,
+            quickSettings,
+            phoneSettings,
+            notifications,
+            callCard,
+            navigation::onCallCardClick,
+        )
     private val popUpHost = PopUpHost(context, session, notifications, incomingCall)
+    private val callScreenHost = CallScreenHost(context, session, callScreen)
 
     internal fun start() {
         railHost.start(scope)
@@ -61,6 +81,8 @@ internal constructor(
         quickSettingsHost.start(scope)
         incomingCall.start(scope)
         callCard.start(scope)
+        callScreen.start(scope)
+        callScreenHost.start(scope)
         popUpHost.start(scope)
         scope.launch {
             session.buttons.presses.collect {
@@ -77,5 +99,6 @@ internal constructor(
         railHost.close()
         quickSettingsHost.close()
         popUpHost.close()
+        callScreenHost.close()
     }
 }

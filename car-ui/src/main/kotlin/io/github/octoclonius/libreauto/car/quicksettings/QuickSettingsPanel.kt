@@ -212,11 +212,10 @@ private fun Tile(
     Surface(
         shape = CarShapes.largeIncreased,
         color =
-            if (isOn) MaterialTheme.colorScheme.primaryFixed
+            if (isOn) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor =
-            if (isOn) MaterialTheme.colorScheme.onPrimaryFixed
-            else MaterialTheme.colorScheme.onSurface,
+            if (isOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(TILE_SIZE).alpha(if (tile.isEnabled) 1f else CarAlpha.DISABLED),
     ) {
         Row(

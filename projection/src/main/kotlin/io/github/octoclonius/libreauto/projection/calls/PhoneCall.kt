@@ -8,6 +8,11 @@ enum class CallStatus {
     Dialing,
     Active,
     Holding,
+    Disconnecting,
+    Disconnected;
+
+    val isLive: Boolean
+        get() = this != Disconnecting && this != Disconnected
 }
 
 data class CallerNumber(val number: String, val formatted: String, val countryIso: String)
@@ -39,4 +44,5 @@ data class PhoneCall(
     val isConference: Boolean,
     val participants: List<PhoneCall>,
     val postDialWait: String?,
+    val disconnectLabel: String?,
 )

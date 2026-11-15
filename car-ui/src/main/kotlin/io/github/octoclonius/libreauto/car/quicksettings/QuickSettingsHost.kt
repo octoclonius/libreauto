@@ -31,6 +31,7 @@ internal class QuickSettingsHost(
     phoneSettings: PhoneSettingsRepository,
     notifications: NotificationsState,
     callCard: CallCardState,
+    onCallCardClick: () -> Unit,
 ) : Closeable {
 
     private val panel = session.displays.panel
@@ -42,6 +43,7 @@ internal class QuickSettingsHost(
                 phoneSettings,
                 notifications,
                 callCard,
+                onCallCardClick,
                 ::showPage,
             )
         }
@@ -75,6 +77,7 @@ private fun QuickSettingsContent(
     phoneSettings: PhoneSettingsRepository,
     notifications: NotificationsState,
     callCard: CallCardState,
+    onCallCardClick: () -> Unit,
     onShowPage: (PendingIntent) -> Unit,
 ) {
     val rail by session.displays.rail.state.collectAsStateWithLifecycle()
@@ -99,16 +102,21 @@ private fun QuickSettingsContent(
             onDismiss = notifications::dismiss,
             state = listState,
             contentPadding = contentPadding,
-            header = call?.let { shown -> { CallEntry(shown, callCard) } },
+            header = call?.let { shown -> { CallEntry(shown, callCard, onCallCardClick) } },
         )
     }
 }
 
 @Composable
-private fun CallEntry(uiState: CallUiState, state: CallCardState) {
+private fun CallEntry(uiState: CallUiState, state: CallCardState, onClick: () -> Unit) {
     val id = uiState.call.id
-    CallCard(uiState, MaterialTheme.colorScheme.surfaceContainerHighest) {
-        if (uiState.call.status == CallStatus.Ringing) {
+    val isRinging = uiState.call.status == CallStatus.Ringing
+    CallCard(
+        uiState,
+        MaterialTheme.colorScheme.surfaceContainerHighest,
+        onClick = onClick.takeUnless { isRinging },
+    ) {
+        if (isRinging) {
             RingingCallButtons(onDecline = { state.decline(id) }, onAnswer = { state.answer(id) })
         } else {
             HangUpButton { state.hangUp(id) }

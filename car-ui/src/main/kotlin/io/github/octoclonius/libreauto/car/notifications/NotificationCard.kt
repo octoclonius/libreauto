@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.octoclonius.libreauto.car.apps.AppIcon
@@ -119,10 +120,9 @@ private fun NotificationImage(item: NotificationUiState) {
 }
 
 @Composable
-internal fun IconCircle(content: @Composable () -> Unit) {
+internal fun IconCircle(size: Dp = NOTIFICATION_ICON_SIZE, content: @Composable () -> Unit) {
     Box(
-        Modifier.size(NOTIFICATION_ICON_SIZE)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+        Modifier.size(size).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         content()

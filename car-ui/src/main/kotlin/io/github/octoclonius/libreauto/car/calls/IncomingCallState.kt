@@ -38,7 +38,7 @@ internal class IncomingCallState(
                 _isShown.value = next != null
             }
         }
-        scope.launch { uiStates.of(call).collect { _incoming.value = it } }
+        scope.launch { uiStates.of(call, CALLER_AVATAR_SIZE).collect { _incoming.value = it } }
     }
 
     fun answer(id: Int) {

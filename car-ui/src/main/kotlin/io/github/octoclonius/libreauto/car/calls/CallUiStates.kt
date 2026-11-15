@@ -10,6 +10,7 @@ import android.util.DisplayMetrics
 import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.Dp
 import io.github.octoclonius.libreauto.car.apps.carDensities
 import io.github.octoclonius.libreauto.car.apps.loadCarAppIcon
 import io.github.octoclonius.libreauto.projection.calls.CallingApp
@@ -45,20 +46,23 @@ internal class CallUiStates(context: Context, private val carDisplay: CarDisplay
     private val resolver = context.contentResolver
     private val callerLookup = CallerLookup(context)
 
-    fun of(calls: Flow<PhoneCall?>): Flow<CallUiState?> =
+    fun of(calls: Flow<PhoneCall?>, avatarSize: Dp): Flow<CallUiState?> =
         combine(calls, carDensities(carDisplay)) { call, carDensity ->
                 call?.let { it to carDensity }
             }
-            .mapLatest { shown -> shown?.let { (call, carDensity) -> uiState(call, carDensity) } }
+            .mapLatest { shown ->
+                shown?.let { (call, carDensity) -> uiState(call, carDensity, avatarSize) }
+            }
             .flowOn(Dispatchers.IO)
 
-    private fun uiState(call: PhoneCall, carDensity: Int): CallUiState {
-        val app = call.app?.let { loadApp(it, carDensity) }
+    private fun uiState(call: PhoneCall, carDensity: Int, avatarSize: Dp): CallUiState {
+        val app = call.app?.let { loadApp(it, carDensity, avatarSize) }
         return CallUiState(
             call,
             callSubtitle(
                 call.status,
                 call.connectTimeMillis,
+                call.disconnectLabel,
                 call.caller,
                 call.app?.isSelfManaged == true,
                 app?.label,
@@ -66,11 +70,11 @@ internal class CallUiStates(context: Context, private val carDisplay: CarDisplay
                 callerLookup::location,
             ),
             app?.icon,
-            call.photo?.let { loadPhoto(it, carDensity) },
+            call.photo?.let { loadPhoto(it, carDensity, avatarSize) },
         )
     }
 
-    private fun loadApp(app: CallingApp, carDensity: Int): CallApp? {
+    private fun loadApp(app: CallingApp, carDensity: Int, size: Dp): CallApp? {
         val info =
             try {
                 launcherApps.getApplicationInfo(app.packageName, 0, app.user)
@@ -80,12 +84,12 @@ internal class CallUiStates(context: Context, private val carDisplay: CarDisplay
             }
         return CallApp(
             info.loadLabel(packageManager).toString(),
-            loadCarAppIcon(packageManager, info, app.user, carDensity, CALLER_AVATAR_SIZE),
+            loadCarAppIcon(packageManager, info, app.user, carDensity, size),
         )
     }
 
-    private fun loadPhoto(uri: Uri, carDensity: Int): ImageBitmap? {
-        val size = CALLER_AVATAR_SIZE.value * carDensity / DisplayMetrics.DENSITY_DEFAULT
+    private fun loadPhoto(uri: Uri, carDensity: Int, avatarSize: Dp): ImageBitmap? {
+        val size = avatarSize.value * carDensity / DisplayMetrics.DENSITY_DEFAULT
         return try {
             ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _
                     ->

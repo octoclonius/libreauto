@@ -27,10 +27,17 @@ class CallIndicatorTest {
     }
 
     @Test
+    fun anEndingCallIsNoLongerUnderWay() {
+        for (status in listOf(CallStatus.Disconnecting, CallStatus.Disconnected)) {
+            assertFalse(isCallUnderWay(listOf(call(0, status))))
+        }
+    }
+
+    @Test
     fun aCallUnderWayShowsWhileAnotherRings() {
         assertTrue(isCallUnderWay(listOf(call(0, CallStatus.Active), call(1, CallStatus.Ringing))))
     }
 
     private fun call(id: Int, status: CallStatus) =
-        PhoneCall(id, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null)
+        PhoneCall(id, status, 0, Caller.Unknown, null, null, 0, false, emptyList(), null, null)
 }

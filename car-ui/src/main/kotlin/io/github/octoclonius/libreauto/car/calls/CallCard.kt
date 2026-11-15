@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.octoclonius.libreauto.car.R
 import io.github.octoclonius.libreauto.car.apps.AppIcon
@@ -51,7 +52,7 @@ internal val CALLER_AVATAR_SIZE = NOTIFICATION_ICON_SIZE
 private val APP_BADGE_SIZE = 20.dp
 private val CALL_ICON_SIZE = 24.dp
 private val MEDIUM_ICON_BUTTON_CONTAINER_HEIGHT = 56.dp
-private val MEDIUM_ICON_BUTTON_ICON_SIZE = 24.dp
+internal val MEDIUM_ICON_BUTTON_ICON_SIZE = 24.dp
 private val CALL_BUTTON_GAP = CarSpacing.extraLarge
 
 @Composable
@@ -60,20 +61,15 @@ internal fun CallCard(
     color: Color,
     modifier: Modifier = Modifier,
     border: BorderStroke? = null,
+    onClick: (() -> Unit)? = null,
     buttons: @Composable () -> Unit,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = CarShapes.largeIncreased,
-        color = color,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = border,
-    ) {
+    val content: @Composable () -> Unit = {
         Row(
             Modifier.padding(horizontal = CarSpacing.large, vertical = CarSpacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CallerAvatar(uiState)
+            CallerAvatar(uiState, CALLER_AVATAR_SIZE)
             Spacer(Modifier.width(CarSpacing.medium))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -95,6 +91,28 @@ internal fun CallCard(
             Spacer(Modifier.width(CarSpacing.medium))
             buttons()
         }
+    }
+    val cardModifier = modifier.fillMaxWidth()
+    val contentColor = MaterialTheme.colorScheme.onSurface
+    if (onClick == null) {
+        Surface(
+            modifier = cardModifier,
+            shape = CarShapes.largeIncreased,
+            color = color,
+            contentColor = contentColor,
+            border = border,
+            content = content,
+        )
+    } else {
+        Surface(
+            onClick = onClick,
+            modifier = cardModifier,
+            shape = CarShapes.largeIncreased,
+            color = color,
+            contentColor = contentColor,
+            border = border,
+            content = content,
+        )
     }
 }
 
@@ -126,12 +144,13 @@ internal fun HangUpButton(onHangUp: () -> Unit) {
 }
 
 @Composable
-private fun CallerAvatar(uiState: CallUiState) {
+internal fun CallerAvatar(uiState: CallUiState, size: Dp) {
+    val scale = size / CALLER_AVATAR_SIZE
     val photo = uiState.photo
     val appIcon = uiState.appIcon
     when {
         photo != null ->
-            Box(Modifier.size(CALLER_AVATAR_SIZE)) {
+            Box(Modifier.size(size)) {
                 Image(
                     photo,
                     contentDescription = null,
@@ -139,17 +158,17 @@ private fun CallerAvatar(uiState: CallUiState) {
                     contentScale = ContentScale.Crop,
                 )
                 if (appIcon != null) {
-                    AppIcon(appIcon, APP_BADGE_SIZE, Modifier.align(Alignment.BottomEnd))
+                    AppIcon(appIcon, APP_BADGE_SIZE * scale, Modifier.align(Alignment.BottomEnd))
                 }
             }
-        appIcon != null -> AppIcon(appIcon, CALLER_AVATAR_SIZE)
+        appIcon != null -> AppIcon(appIcon, size)
         else ->
-            IconCircle {
+            IconCircle(size) {
                 Icon(
                     painterResource(R.drawable.ic_call),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(CALL_ICON_SIZE),
+                    modifier = Modifier.size(CALL_ICON_SIZE * scale),
                 )
             }
     }
@@ -177,7 +196,7 @@ private fun CallButton(
 }
 
 @Composable
-private fun callerText(caller: Caller): String =
+internal fun callerText(caller: Caller): String =
     when (caller) {
         is Caller.Contact -> caller.name
         is Caller.Named -> caller.name
@@ -188,7 +207,7 @@ private fun callerText(caller: Caller): String =
     }
 
 @Composable
-private fun subtitleText(subtitle: CallSubtitle): String =
+internal fun subtitleText(subtitle: CallSubtitle): String =
     when (subtitle) {
         is CallSubtitle.App -> subtitle.name
         is CallSubtitle.Number -> {
@@ -200,6 +219,8 @@ private fun subtitleText(subtitle: CallSubtitle): String =
         CallSubtitle.Dialing -> stringResource(R.string.call_status_dialing)
         is CallSubtitle.Ongoing -> ongoingText(subtitle.connectTimeMillis)
         CallSubtitle.OnHold -> stringResource(R.string.call_status_on_hold)
+        CallSubtitle.HangingUp -> stringResource(R.string.call_status_hanging_up)
+        is CallSubtitle.Ended -> subtitle.label ?: stringResource(R.string.call_status_ended)
     }
 
 @Composable
