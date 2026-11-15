@@ -7,5 +7,5 @@ class CarDisplays internal constructor(home: CarHome) {
     val popUp = OverlayDisplay("pop-up")
     val panel = OverlayDisplay("panel")
 
-    internal val overlays = listOf(popUp, panel)
+    internal val overlays = listOf(panel, popUp)
 }

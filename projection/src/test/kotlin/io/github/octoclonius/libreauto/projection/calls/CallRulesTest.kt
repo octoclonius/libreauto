@@ -125,5 +125,5 @@ class CallRulesTest {
         assertEquals("DE", countryIso(null, "", "DE"))
     }
 
-    private fun call(status: CallStatus) = PhoneCall(0, status, Caller.Unknown, null, null)
+    private fun call(status: CallStatus) = PhoneCall(0, status, 0, Caller.Unknown, null, null)
 }

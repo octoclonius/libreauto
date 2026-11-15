@@ -1,6 +1,8 @@
 package io.github.octoclonius.libreauto.car
 
 import android.content.Context
+import io.github.octoclonius.libreauto.car.calls.CallCardState
+import io.github.octoclonius.libreauto.car.calls.CallUiStates
 import io.github.octoclonius.libreauto.car.calls.IncomingCallState
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.notifications.NotificationsState
@@ -38,8 +40,9 @@ internal constructor(
     private val scope = MainScope()
     private val railHost =
         RailHost(context, session, rail, railOrder, navigation, callRepository.calls)
-    private val incomingCall =
-        IncomingCallState(context, callRepository, quickSettings, session.displays.car)
+    private val callUiStates = CallUiStates(context, session.displays.car)
+    private val incomingCall = IncomingCallState(callRepository, callUiStates)
+    private val callCard = CallCardState(callRepository, incomingCall.call, callUiStates)
     private val notifications =
         NotificationsState(
             context,
@@ -49,7 +52,7 @@ internal constructor(
             incomingCall.isShown,
         )
     private val quickSettingsHost =
-        QuickSettingsHost(context, session, quickSettings, phoneSettings, notifications)
+        QuickSettingsHost(context, session, quickSettings, phoneSettings, notifications, callCard)
     private val popUpHost = PopUpHost(context, session, notifications, incomingCall)
 
     internal fun start() {
@@ -57,6 +60,7 @@ internal constructor(
         notifications.start(scope)
         quickSettingsHost.start(scope)
         incomingCall.start(scope)
+        callCard.start(scope)
         popUpHost.start(scope)
         scope.launch {
             session.buttons.presses.collect {

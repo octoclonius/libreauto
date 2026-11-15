@@ -31,6 +31,7 @@ data class CallingApp(val packageName: String, val user: UserHandle, val isSelfM
 data class PhoneCall(
     val id: Int,
     val status: CallStatus,
+    val connectTimeMillis: Long,
     val caller: Caller,
     val photo: Uri?,
     val app: CallingApp?,

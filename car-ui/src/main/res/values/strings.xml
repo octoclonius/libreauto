@@ -7,10 +7,14 @@
     <string name="call_in_progress">Call in progress</string>
     <string name="answer">Answer</string>
     <string name="decline">Decline</string>
+    <string name="hang_up">Hang up</string>
     <string name="caller_private">Private number</string>
     <string name="caller_payphone">Payphone</string>
     <string name="caller_unknown">Unknown</string>
     <string name="caller_number_with_label">%1$s %2$s</string>
+    <string name="call_status_dialing">Dialing</string>
+    <string name="call_status_ongoing">Ongoing call • %1$s</string>
+    <string name="call_status_on_hold">On hold</string>
     <string name="wifi">Wi-Fi</string>
     <string name="bluetooth">Bluetooth</string>
     <string name="mobile_data">Mobile data</string>

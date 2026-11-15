@@ -32,5 +32,5 @@ class CallIndicatorTest {
     }
 
     private fun call(id: Int, status: CallStatus) =
-        PhoneCall(id, status, Caller.Unknown, null, null)
+        PhoneCall(id, status, 0, Caller.Unknown, null, null)
 }

@@ -69,6 +69,10 @@ class CallRepository(
         onCall(id, "reject") { it.reject(false, null) }
     }
 
+    fun disconnect(id: Int) {
+        onCall(id, "disconnect") { it.disconnect() }
+    }
+
     internal fun onCallAdded(call: Call) {
         ids[call] = nextId++
         publish()
@@ -113,6 +117,7 @@ class CallRepository(
         PhoneCall(
             id,
             status,
+            details.connectTimeMillis,
             caller(
                 details.contactDisplayName,
                 details.callerDisplayName,

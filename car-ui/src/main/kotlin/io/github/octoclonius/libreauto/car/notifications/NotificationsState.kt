@@ -34,6 +34,8 @@ internal class NotificationsState(
     private val apps = NotificationApps(context)
     private val accessibility = context.getSystemService(AccessibilityManager::class.java)
 
+    private val uiStates = MutableStateFlow<List<NotificationUiState>>(emptyList())
+
     private val _notifications = MutableStateFlow<List<NotificationUiState>>(emptyList())
     val notifications: StateFlow<List<NotificationUiState>> = _notifications.asStateFlow()
 
@@ -50,13 +52,19 @@ internal class NotificationsState(
                     apps.uiStates(list, carDensity)
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { _notifications.value = it }
+                .collect { uiStates.value = it }
         }
         scope.launch {
-            combine(alert, _notifications) { shown, list ->
+            combine(alert, uiStates) { shown, list ->
                     shown?.let { list.firstOrNull { item -> item.notification.key == it.key } }
                 }
                 .collect { _headsUp.value = it }
+        }
+        scope.launch {
+            combine(uiStates, alert) { list, shown ->
+                    list.filterNot { it.notification.key == shown?.key }
+                }
+                .collect { _notifications.value = it }
         }
         scope.launch { repository.alerts.collect { showHeadsUp(it.key) } }
         scope.launch {
@@ -74,7 +82,6 @@ internal class NotificationsState(
                 if (list.none { it.key == shown.key }) hideHeadsUp()
             }
         }
-        scope.launch { quickSettings.isOpen.collect { if (it) hideHeadsUp() } }
         scope.launch {
             isCallShown.collect { isShown ->
                 if (isShown) {
@@ -123,7 +130,6 @@ internal class NotificationsState(
     }
 
     private fun showHeadsUp(key: String) {
-        if (quickSettings.isOpen.value) return
         if (isCallShown.value) {
             waitingAlertKey = key
             return

@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 
+private const val HEADER_KEY = "header"
+
 @Composable
 internal fun NotificationList(
     notifications: List<NotificationUiState>,
@@ -21,6 +23,7 @@ internal fun NotificationList(
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(),
+    header: (@Composable () -> Unit)? = null,
 ) {
     if (!state.canScrollBackward) state.requestScrollToItem(0)
     LazyColumn(
@@ -29,6 +32,7 @@ internal fun NotificationList(
         contentPadding,
         verticalArrangement = Arrangement.spacedBy(CarSpacing.small),
     ) {
+        if (header != null) item(key = HEADER_KEY) { header() }
         items(notifications, key = { it.notification.key }) { item ->
             SwipeToDismissBox(
                 rememberSwipeToDismissBoxState(),
