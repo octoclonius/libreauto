@@ -11,20 +11,28 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-internal data class CallScreenUiState(
-    val call: CallUiState,
-    val heldCaller: Caller?,
-    val buttons: CallScreenButtons,
-)
+internal sealed interface CallScreenUiState {
+    val call: CallUiState
+
+    data class InCall(
+        override val call: CallUiState,
+        val heldCaller: Caller?,
+        val buttons: CallScreenButtons,
+    ) : CallScreenUiState
+
+    data class Ringing(override val call: CallUiState, val canAnswerAndRelease: Boolean) :
+        CallScreenUiState
+}
 
 internal class CallScreenState(
     private val repository: CallRepository,
     private val uiStates: CallUiStates,
 ) {
 
-    private val isOpen = MutableStateFlow(false)
+    private val stack = MutableStateFlow<List<CallScreenEntry>>(emptyList())
 
     private val _screen = MutableStateFlow<CallScreenUiState?>(null)
     val screen: StateFlow<CallScreenUiState?> = _screen.asStateFlow()
@@ -33,39 +41,41 @@ internal class CallScreenState(
     val isShown: StateFlow<Boolean> = _isShown.asStateFlow()
 
     fun start(scope: CoroutineScope) {
-        val shown = repository.calls.map(::callScreenCalls).distinctUntilChanged()
-        val primary =
-            uiStates.of(shown.map { it?.primary }.distinctUntilChanged(), CALL_SCREEN_AVATAR_SIZE)
         scope.launch {
-            combine(primary, shown, repository.audio) { call, calls, audio ->
-                    Triple(call, calls, audio.isMuted)
-                }
-                .filter { (call, calls, _) -> call?.call?.id == calls?.primary?.id }
-                .collect { (call, calls, isMuted) ->
-                    _screen.value =
-                        if (call == null || calls == null) {
-                            null
-                        } else {
-                            CallScreenUiState(
-                                call,
-                                calls.secondary?.caller,
-                                callScreenButtons(calls, isMuted),
-                            )
-                        }
-                }
+            repository.calls.collect { calls -> stack.update { reconciledCallScreen(it, calls) } }
         }
-        scope.launch { shown.collect { if (it == null) isOpen.value = false } }
+        val view =
+            combine(stack, repository.calls) { entries, calls ->
+                    callScreenView(reconciledCallScreen(entries, calls).lastOrNull(), calls)
+                }
+                .distinctUntilChanged()
+        val shownCall =
+            uiStates.of(view.map { it?.shownCall }.distinctUntilChanged(), CALL_SCREEN_AVATAR_SIZE)
         scope.launch {
-            combine(isOpen, _screen) { open, screen -> open && screen != null }
+            combine(shownCall, view, repository.audio) { call, shown, audio ->
+                    Triple(call, shown, audio.isMuted)
+                }
+                .filter { (call, shown, _) -> call?.call?.id == shown?.shownCall?.id }
+                .collect { (call, shown, isMuted) -> _screen.value = uiState(call, shown, isMuted) }
+        }
+        scope.launch {
+            combine(stack, _screen) { entries, screen -> entries.isNotEmpty() && screen != null }
                 .collect { _isShown.value = it }
         }
     }
 
-    fun open() {
-        if (callScreenCalls(repository.calls.value) != null) isOpen.value = true
+    fun open(entry: CallScreenEntry) {
+        stack.update { pushedCallScreen(it, entry, repository.calls.value) }
     }
 
-    fun close(): Boolean = isOpen.getAndUpdate { false }
+    fun back(): Boolean {
+        val entries = stack.value
+        if (entries.isEmpty()) return false
+        stack.value = entries.dropLast(1)
+        return true
+    }
+
+    fun close(): Boolean = stack.getAndUpdate { emptyList() }.isNotEmpty()
 
     fun perform(action: CallAction) {
         when (action) {
@@ -75,6 +85,26 @@ internal class CallScreenState(
             is CallAction.Merge -> repository.merge(action.id)
             is CallAction.SwapConference -> repository.swapConference(action.id)
             is CallAction.Disconnect -> repository.disconnect(action.id)
+            is CallAction.Answer -> repository.answer(action.id)
+            is CallAction.AnswerAndRelease -> repository.answerAndRelease(action.id)
+            is CallAction.Reject -> repository.reject(action.id)
+        }
+    }
+
+    private fun uiState(
+        call: CallUiState?,
+        shown: CallScreenView?,
+        isMuted: Boolean,
+    ): CallScreenUiState? {
+        if (call == null || shown == null) return null
+        return when (shown) {
+            is CallScreenView.InCall ->
+                CallScreenUiState.InCall(
+                    call,
+                    shown.calls.secondary?.caller,
+                    callScreenButtons(shown.calls, isMuted),
+                )
+            is CallScreenView.Ringing -> CallScreenUiState.Ringing(call, shown.canAnswerAndRelease)
         }
     }
 }

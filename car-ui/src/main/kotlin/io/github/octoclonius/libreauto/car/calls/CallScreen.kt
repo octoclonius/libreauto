@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.Icon
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.octoclonius.libreauto.car.R
+import io.github.octoclonius.libreauto.car.designsystem.theme.CALL_NOTIFICATION_ANSWER_COLOR
 import io.github.octoclonius.libreauto.car.designsystem.theme.CALL_NOTIFICATION_DECLINE_COLOR
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 import io.github.octoclonius.libreauto.car.rail.RAIL_ICON_SIZE
@@ -51,10 +54,60 @@ private class ButtonSpot(val width: Dp, val content: @Composable () -> Unit)
 @Composable
 internal fun CallScreen(uiState: CallScreenUiState, onAction: (CallAction) -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        HeldCallRow(uiState.heldCaller)
+        HeldCallRow((uiState as? CallScreenUiState.InCall)?.heldCaller)
         CallerRow(uiState.call, Modifier.weight(1f))
-        CallButtons(uiState.buttons, onAction)
+        when (uiState) {
+            is CallScreenUiState.InCall -> CallButtons(uiState.buttons, onAction)
+            is CallScreenUiState.Ringing -> RingingButtons(uiState, onAction)
+        }
         Spacer(Modifier.height(SCREEN_MARGIN))
+    }
+}
+
+@Composable
+private fun RingingButtons(uiState: CallScreenUiState.Ringing, onAction: (CallAction) -> Unit) {
+    val id = uiState.call.call.id
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN),
+        verticalArrangement = Arrangement.spacedBy(BUTTON_GAP),
+    ) {
+        if (uiState.canAnswerAndRelease) {
+            Button(
+                { onAction(CallAction.AnswerAndRelease(id)) },
+                Modifier.fillMaxWidth().height(BUTTON_SIZE),
+                shape = CircleShape,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+            ) {
+                Text(
+                    stringResource(R.string.answer_and_end_ongoing_call),
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(BUTTON_GAP)) {
+            PillButton(
+                CALL_NOTIFICATION_DECLINE_COLOR,
+                R.drawable.ic_call_end,
+                R.string.decline,
+                Modifier.weight(1f),
+            ) {
+                onAction(CallAction.Reject(id))
+            }
+            PillButton(
+                CALL_NOTIFICATION_ANSWER_COLOR,
+                R.drawable.ic_call,
+                R.string.answer,
+                Modifier.weight(1f),
+            ) {
+                onAction(CallAction.Answer(id))
+            }
+        }
     }
 }
 
@@ -129,7 +182,16 @@ private fun CallButtons(buttons: CallScreenButtons, onAction: (CallAction) -> Un
         )
     val fromEnd =
         listOf(
-            ButtonSpot(END_BUTTON_WIDTH) { EndButton { onAction(buttons.end) } },
+            ButtonSpot(END_BUTTON_WIDTH) {
+                PillButton(
+                    CALL_NOTIFICATION_DECLINE_COLOR,
+                    R.drawable.ic_call_end,
+                    R.string.hang_up,
+                    Modifier.width(END_BUTTON_WIDTH),
+                ) {
+                    onAction(buttons.end)
+                }
+            },
             ButtonSpot(BUTTON_SIZE) {
                 buttons.holdOrMerge?.let { HoldOrMergeButton(it, onAction) }
             },
@@ -231,20 +293,26 @@ private fun ToggleButton(
 }
 
 @Composable
-private fun EndButton(onClick: () -> Unit) {
+private fun PillButton(
+    color: Color,
+    @DrawableRes icon: Int,
+    @StringRes label: Int,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     FilledIconButton(
         onClick,
-        Modifier.width(END_BUTTON_WIDTH).height(BUTTON_SIZE),
+        modifier.height(BUTTON_SIZE),
         shape = CircleShape,
         colors =
             IconButtonDefaults.filledIconButtonColors(
-                containerColor = CALL_NOTIFICATION_DECLINE_COLOR,
+                containerColor = color,
                 contentColor = Color.White,
             ),
     ) {
         Icon(
-            painterResource(R.drawable.ic_call_end),
-            stringResource(R.string.hang_up),
+            painterResource(icon),
+            stringResource(label),
             Modifier.size(MEDIUM_ICON_BUTTON_ICON_SIZE),
         )
     }

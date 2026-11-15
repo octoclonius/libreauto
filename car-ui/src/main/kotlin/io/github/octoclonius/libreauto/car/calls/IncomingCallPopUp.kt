@@ -10,6 +10,7 @@ internal fun IncomingCallPopUp(
     incoming: CallUiState?,
     onAnswer: (Int) -> Unit,
     onDecline: (Int) -> Unit,
+    onOpen: (Int) -> Unit,
     onHide: () -> Unit,
     onOnScreen: (Boolean) -> Unit,
     onBounds: (Rect?) -> Unit,
@@ -21,7 +22,12 @@ internal fun IncomingCallPopUp(
         onOnScreen = onOnScreen,
         onBounds = onBounds,
     ) { shown ->
-        CallCard(shown, PopUpDefaults.color, border = PopUpDefaults.border) {
+        CallCard(
+            shown,
+            PopUpDefaults.color,
+            border = PopUpDefaults.border,
+            onClick = { onOpen(shown.call.id) },
+        ) {
             RingingCallButtons(
                 onDecline = { onDecline(shown.call.id) },
                 onAnswer = { onAnswer(shown.call.id) },

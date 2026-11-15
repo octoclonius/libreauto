@@ -38,8 +38,10 @@ internal constructor(
     internal val rail = RailState()
     internal val quickSettings = QuickSettingsState()
     private val callUiStates = CallUiStates(context, session.displays.car)
+    private val incomingCall = IncomingCallState(callRepository, callUiStates)
     private val callScreen = CallScreenState(callRepository, callUiStates)
-    internal val navigation = CarNavigation(session, home, rail, quickSettings, callScreen)
+    internal val navigation =
+        CarNavigation(session, home, rail, quickSettings, callScreen, incomingCall)
 
     private val scope = MainScope()
     private val railHost =
@@ -52,7 +54,6 @@ internal constructor(
             callRepository.calls,
             callScreen.isShown,
         )
-    private val incomingCall = IncomingCallState(callRepository, callUiStates)
     private val callCard = CallCardState(callRepository, incomingCall.call, callUiStates)
     private val notifications =
         NotificationsState(
@@ -72,7 +73,8 @@ internal constructor(
             callCard,
             navigation::onCallCardClick,
         )
-    private val popUpHost = PopUpHost(context, session, notifications, incomingCall)
+    private val popUpHost =
+        PopUpHost(context, session, notifications, incomingCall, navigation::onIncomingCallClick)
     private val callScreenHost = CallScreenHost(context, session, callScreen)
 
     internal fun start() {

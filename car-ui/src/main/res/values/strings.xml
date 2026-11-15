@@ -22,6 +22,7 @@
     <string name="hold">Hold</string>
     <string name="merge">Merge</string>
     <string name="swap">Swap</string>
+    <string name="answer_and_end_ongoing_call">End ongoing call &amp; answer</string>
     <string name="wifi">Wi-Fi</string>
     <string name="bluetooth">Bluetooth</string>
     <string name="mobile_data">Mobile data</string>

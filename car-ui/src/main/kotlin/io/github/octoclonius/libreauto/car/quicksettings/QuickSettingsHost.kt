@@ -19,6 +19,7 @@ import io.github.octoclonius.libreauto.car.notifications.NotificationsState
 import io.github.octoclonius.libreauto.car.overlay.OverlayHost
 import io.github.octoclonius.libreauto.projection.CarSession
 import io.github.octoclonius.libreauto.projection.calls.CallStatus
+import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 import io.github.octoclonius.libreauto.projection.settings.PhoneSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +32,7 @@ internal class QuickSettingsHost(
     phoneSettings: PhoneSettingsRepository,
     notifications: NotificationsState,
     callCard: CallCardState,
-    onCallCardClick: () -> Unit,
+    onCallCardClick: (PhoneCall) -> Unit,
 ) : Closeable {
 
     private val panel = session.displays.panel
@@ -77,7 +78,7 @@ private fun QuickSettingsContent(
     phoneSettings: PhoneSettingsRepository,
     notifications: NotificationsState,
     callCard: CallCardState,
-    onCallCardClick: () -> Unit,
+    onCallCardClick: (PhoneCall) -> Unit,
     onShowPage: (PendingIntent) -> Unit,
 ) {
     val rail by session.displays.rail.state.collectAsStateWithLifecycle()
@@ -108,13 +109,13 @@ private fun QuickSettingsContent(
 }
 
 @Composable
-private fun CallEntry(uiState: CallUiState, state: CallCardState, onClick: () -> Unit) {
+private fun CallEntry(uiState: CallUiState, state: CallCardState, onClick: (PhoneCall) -> Unit) {
     val id = uiState.call.id
     val isRinging = uiState.call.status == CallStatus.Ringing
     CallCard(
         uiState,
         MaterialTheme.colorScheme.surfaceContainerHighest,
-        onClick = onClick.takeUnless { isRinging },
+        onClick = { onClick(uiState.call) },
     ) {
         if (isRinging) {
             RingingCallButtons(onDecline = { state.decline(id) }, onAnswer = { state.answer(id) })

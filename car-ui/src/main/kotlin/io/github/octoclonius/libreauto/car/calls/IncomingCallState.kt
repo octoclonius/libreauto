@@ -41,12 +41,14 @@ internal class IncomingCallState(
         scope.launch { uiStates.of(call, CALLER_AVATAR_SIZE).collect { _incoming.value = it } }
     }
 
+    fun acceptsTouch(): Boolean = isTouchAccepted(shownAt, SystemClock.elapsedRealtime())
+
     fun answer(id: Int) {
-        if (isTouchAccepted(shownAt, SystemClock.elapsedRealtime())) repository.answer(id)
+        if (acceptsTouch()) repository.answer(id)
     }
 
     fun decline(id: Int) {
-        if (isTouchAccepted(shownAt, SystemClock.elapsedRealtime())) repository.reject(id)
+        if (acceptsTouch()) repository.reject(id)
     }
 
     fun hide() {

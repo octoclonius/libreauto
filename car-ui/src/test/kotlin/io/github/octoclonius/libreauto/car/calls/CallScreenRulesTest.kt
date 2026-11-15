@@ -181,6 +181,126 @@ class CallScreenRulesTest {
         assertTrue(buttons(call(3, CallStatus.Active, capabilityMute)).mute!!.isEnabled)
     }
 
+    @Test
+    fun aRingingCallOpensItsRingingViewAndOthersOpenTheCall() {
+        assertEquals(CallScreenEntry.Ringing(1), callScreenEntry(call(1, CallStatus.Ringing)))
+        assertEquals(CallScreenEntry.InCall, callScreenEntry(call(1, CallStatus.Active)))
+    }
+
+    @Test
+    fun aRingingViewStacksOnTopOfTheCall() {
+        val calls = listOf(call(0, CallStatus.Active), call(1, CallStatus.Ringing))
+        val stack = pushedCallScreen(listOf(CallScreenEntry.InCall), ringing(1), calls)
+        assertEquals(listOf(CallScreenEntry.InCall, ringing(1)), stack)
+    }
+
+    @Test
+    fun ringingViewsStackWithoutLimit() {
+        val calls =
+            listOf(
+                call(0, CallStatus.Active),
+                call(1, CallStatus.Ringing),
+                call(2, CallStatus.Ringing),
+            )
+        val stack =
+            pushedCallScreen(
+                pushedCallScreen(listOf(CallScreenEntry.InCall), ringing(1), calls),
+                ringing(2),
+                calls,
+            )
+        assertEquals(listOf(CallScreenEntry.InCall, ringing(1), ringing(2)), stack)
+    }
+
+    @Test
+    fun openingWhatIsAlreadyShownChangesNothing() {
+        val calls = listOf(call(1, CallStatus.Ringing))
+        assertEquals(listOf(ringing(1)), pushedCallScreen(listOf(ringing(1)), ringing(1), calls))
+    }
+
+    @Test
+    fun nothingOpensWithoutItsCall() {
+        assertEquals(
+            emptyList<CallScreenEntry>(),
+            pushedCallScreen(emptyList(), ringing(1), emptyList()),
+        )
+        assertEquals(
+            emptyList<CallScreenEntry>(),
+            pushedCallScreen(
+                emptyList(),
+                CallScreenEntry.InCall,
+                listOf(call(1, CallStatus.Ringing)),
+            ),
+        )
+    }
+
+    @Test
+    fun anAnsweredCallTurnsIntoTheCallScreenOnce() {
+        val calls = listOf(call(0, CallStatus.Holding), call(1, CallStatus.Active))
+        assertEquals(
+            listOf(CallScreenEntry.InCall),
+            reconciledCallScreen(listOf(CallScreenEntry.InCall, ringing(1)), calls),
+        )
+        assertEquals(
+            listOf(CallScreenEntry.InCall),
+            reconciledCallScreen(listOf(ringing(1)), calls),
+        )
+    }
+
+    @Test
+    fun aDeclinedOrMissedCallLeavesTheStack() {
+        val calls = listOf(call(0, CallStatus.Active))
+        assertEquals(
+            listOf(CallScreenEntry.InCall),
+            reconciledCallScreen(listOf(CallScreenEntry.InCall, ringing(1)), calls),
+        )
+        assertEquals(
+            emptyList<CallScreenEntry>(),
+            reconciledCallScreen(listOf(ringing(1)), listOf(call(1, CallStatus.Disconnecting))),
+        )
+    }
+
+    @Test
+    fun theCallScreenLeavesTheStackOnceNoCallIsLeftToShow() {
+        assertEquals(
+            listOf(ringing(1)),
+            reconciledCallScreen(
+                listOf(CallScreenEntry.InCall, ringing(1)),
+                listOf(call(1, CallStatus.Ringing)),
+            ),
+        )
+    }
+
+    @Test
+    fun theRingingViewOffersToEndTheActiveCall() {
+        val ringing = call(1, CallStatus.Ringing)
+        assertEquals(
+            CallScreenView.Ringing(ringing, canAnswerAndRelease = true),
+            callScreenView(ringing(1), listOf(call(0, CallStatus.Active), ringing)),
+        )
+    }
+
+    @Test
+    fun aHeldCallIsNotEndedToAnswer() {
+        val ringing = call(1, CallStatus.Ringing)
+        assertEquals(
+            CallScreenView.Ringing(ringing, canAnswerAndRelease = false),
+            callScreenView(ringing(1), listOf(call(0, CallStatus.Holding), ringing)),
+        )
+    }
+
+    @Test
+    fun theCallScreenShowsTheCallsInOrder() {
+        val active = call(0, CallStatus.Active)
+        val calls = listOf(active, call(1, CallStatus.Ringing))
+        assertEquals(
+            CallScreenView.InCall(CallScreenCalls(active, null)),
+            callScreenView(CallScreenEntry.InCall, calls),
+        )
+        assertNull(callScreenView(null, calls))
+    }
+
+    private fun ringing(id: Int) = CallScreenEntry.Ringing(id)
+
     private fun buttons(
         primary: PhoneCall,
         secondary: PhoneCall? = null,

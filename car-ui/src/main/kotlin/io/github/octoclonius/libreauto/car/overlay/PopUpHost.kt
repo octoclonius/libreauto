@@ -22,6 +22,7 @@ internal class PopUpHost(
     session: CarSession,
     notifications: NotificationsState,
     incomingCall: IncomingCallState,
+    onIncomingCallClick: (Int) -> Unit,
 ) : Closeable {
 
     private val popUp = session.displays.popUp
@@ -34,6 +35,7 @@ internal class PopUpHost(
             PopUpContent(
                 notifications,
                 incomingCall,
+                onIncomingCallClick,
                 onHeadsUpOnScreen = { isHeadsUpOnScreen.value = it },
                 onHeadsUpBounds = { headsUpBounds.value = it },
                 onCallOnScreen = { isCallOnScreen.value = it },
@@ -61,6 +63,7 @@ internal class PopUpHost(
 private fun PopUpContent(
     notifications: NotificationsState,
     incomingCall: IncomingCallState,
+    onIncomingCallClick: (Int) -> Unit,
     onHeadsUpOnScreen: (Boolean) -> Unit,
     onHeadsUpBounds: (Rect?) -> Unit,
     onCallOnScreen: (Boolean) -> Unit,
@@ -81,6 +84,7 @@ private fun PopUpContent(
         incoming = incoming,
         onAnswer = incomingCall::answer,
         onDecline = incomingCall::decline,
+        onOpen = onIncomingCallClick,
         onHide = incomingCall::hide,
         onOnScreen = onCallOnScreen,
         onBounds = onCallBounds,
