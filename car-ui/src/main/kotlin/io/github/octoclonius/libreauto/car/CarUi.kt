@@ -8,6 +8,7 @@ import io.github.octoclonius.libreauto.car.calls.CallUiStates
 import io.github.octoclonius.libreauto.car.calls.IncomingCallState
 import io.github.octoclonius.libreauto.car.home.HomeState
 import io.github.octoclonius.libreauto.car.notifications.NotificationsState
+import io.github.octoclonius.libreauto.car.overlay.CarOverlays
 import io.github.octoclonius.libreauto.car.overlay.PopUpHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsHost
 import io.github.octoclonius.libreauto.car.quicksettings.QuickSettingsState
@@ -39,7 +40,7 @@ internal constructor(
     internal val quickSettings = QuickSettingsState()
     private val callUiStates = CallUiStates(context, session.displays.car)
     private val incomingCall = IncomingCallState(callRepository, callUiStates)
-    private val callScreen = CallScreenState(callRepository, callUiStates)
+    private val callScreen = CallScreenState(callRepository, callUiStates, incomingCall.call)
     internal val navigation =
         CarNavigation(session, home, rail, quickSettings, callScreen, incomingCall)
 
@@ -76,6 +77,8 @@ internal constructor(
     private val popUpHost =
         PopUpHost(context, session, notifications, incomingCall, navigation::onIncomingCallClick)
     private val callScreenHost = CallScreenHost(context, session, callScreen)
+    private val overlays =
+        CarOverlays(session.displays, quickSettings, popUpHost.isShown, callScreen)
 
     internal fun start() {
         railHost.start(scope)
@@ -86,6 +89,7 @@ internal constructor(
         callScreen.start(scope)
         callScreenHost.start(scope)
         popUpHost.start(scope)
+        overlays.start(scope)
         scope.launch {
             session.buttons.presses.collect {
                 when (it) {

@@ -9,10 +9,12 @@ import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import io.github.octoclonius.libreauto.projection.display.Area
+import io.github.octoclonius.libreauto.projection.display.OverlayLayer
 import io.github.octoclonius.libreauto.protocol.media.VideoFormat
 import java.io.Closeable
 import java.nio.ByteBuffer
@@ -25,8 +27,10 @@ import java.util.concurrent.TimeUnit
 internal class VideoCompositor(
     private val format: VideoFormat,
     private val areas: List<Area>,
+    overlayCount: Int,
     private val decoderDepth: Int,
     private val profiler: VideoProfiler,
+    private val onOverlaysShown: (Set<Int>) -> Unit,
     private val onFailed: () -> Unit,
 ) : Closeable {
 
@@ -65,13 +69,14 @@ internal class VideoCompositor(
 
     private class Layer(
         var area: Area,
+        val overlay: Int?,
         val textureId: Int,
         val texture: SurfaceTexture,
         val surface: Surface,
     ) {
         val matrix = FloatArray(16)
         var hasPicture = false
-        var isHidden = false
+        var isHidden = overlay != null
     }
 
     private val thread = HandlerThread("video-compositor").apply { start() }
@@ -81,6 +86,11 @@ internal class VideoCompositor(
     private val intervalNanos = TimeUnit.SECONDS.toNanos(1) / format.framesPerSecond
     private val deviationNanos = (intervalNanos * FRAME_TIME_DEVIATION).toLong()
     private val onVsync = Choreographer.FrameCallback(::onVsync)
+    private val firstOverlay = areas.size - overlayCount
+    private val overlaySwitch = OverlaySwitch(overlayCount)
+    private val onOverlayDeadline = Runnable {
+        if (overlaySwitch.onDeadline(SystemClock.uptimeMillis())) applyShownOverlays()
+    }
     private lateinit var choreographer: Choreographer
 
     private var eglDisplay = EGL14.EGL_NO_DISPLAY
@@ -130,15 +140,30 @@ internal class VideoCompositor(
         if (!isPosted) onApplied(null)
     }
 
-    fun setHidden(layer: Int, isHidden: Boolean) {
+    fun showOverlays(shown: Set<Int>) {
         handler.post {
-            val hidden = layers.getOrNull(layer) ?: return@post
-            if (hidden.isHidden == isHidden) return@post
-            hidden.isHidden = isHidden
-            hasNewPicture = true
-            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+            if (isReleased || isFailed) return@post
+            if (overlaySwitch.show(shown, SystemClock.uptimeMillis())) applyShownOverlays()
+            handler.removeCallbacks(onOverlayDeadline)
+            overlaySwitch.deadlineMillis?.let { handler.postAtTime(onOverlayDeadline, it) }
         }
     }
+
+    fun overlayLayer(overlay: Int): OverlayLayer =
+        object : OverlayLayer {
+            override fun expect(contentId: Int) {
+                handler.post { overlaySwitch.expect(overlay, contentId) }
+            }
+
+            override fun reportDrawn(contentId: Int, latchNanos: Long) {
+                handler.post {
+                    val now = SystemClock.uptimeMillis()
+                    if (overlaySwitch.reportDrawn(overlay, contentId, latchNanos, now)) {
+                        applyShownOverlays()
+                    }
+                }
+            }
+        }
 
     fun attach(output: Surface) {
         onThread {
@@ -234,11 +259,13 @@ internal class VideoCompositor(
             "eglMakeCurrent",
         )
         program = linkProgram()
-        layers = areas.map(::createLayer)
+        layers = areas.mapIndexed { index, area ->
+            createLayer(area, (index - firstOverlay).takeIf { it >= 0 })
+        }
         return layers.map { it.surface }
     }
 
-    private fun createLayer(area: Area): Layer {
+    private fun createLayer(area: Area, overlay: Int?): Layer {
         val textureId = IntArray(1).also { GLES20.glGenTextures(1, it, 0) }[0]
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId)
         GLES20.glTexParameteri(
@@ -263,7 +290,7 @@ internal class VideoCompositor(
         )
         val texture =
             SurfaceTexture(textureId).apply { setDefaultBufferSize(area.width, area.height) }
-        val layer = Layer(area, textureId, texture, Surface(texture))
+        val layer = Layer(area, overlay, textureId, texture, Surface(texture))
         texture.setOnFrameAvailableListener({ onFrameAvailable(layer) }, handler)
         return layer
     }
@@ -325,10 +352,32 @@ internal class VideoCompositor(
             layer.texture.updateTexImage()
             layer.texture.getTransformMatrix(layer.matrix)
             layer.hasPicture = true
+            val overlay = layer.overlay
+            if (
+                overlay != null &&
+                    overlaySwitch.onPicture(
+                        overlay,
+                        layer.texture.timestamp,
+                        SystemClock.uptimeMillis(),
+                    )
+            ) {
+                applyShownOverlays()
+            }
             if (layer.isHidden) return@guarded
             hasNewPicture = true
             if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
         }
+    }
+
+    private fun applyShownOverlays() {
+        val shown = overlaySwitch.shown
+        for (layer in layers) {
+            val overlay = layer.overlay ?: continue
+            layer.isHidden = overlay !in shown
+        }
+        onOverlaysShown(shown)
+        hasNewPicture = true
+        if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
     }
 
     private fun schedule() {
@@ -410,6 +459,7 @@ internal class VideoCompositor(
     private fun release() {
         isReleased = true
         choreographer.removeFrameCallback(onVsync)
+        handler.removeCallbacks(onOverlayDeadline)
         layers.forEach {
             it.surface.release()
             it.texture.release()

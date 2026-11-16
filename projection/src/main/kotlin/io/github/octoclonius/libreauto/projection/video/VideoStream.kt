@@ -135,19 +135,30 @@ internal class VideoStream(
         synchronized(displaysLock) {
             try {
                 val created =
-                    VideoCompositor(layout.format, areas(layout), decoderDepth, profiler) {
+                    VideoCompositor(
+                        layout.format,
+                        areas(layout),
+                        displays.overlays.size,
+                        decoderDepth,
+                        profiler,
+                        displays::onOverlaysShown,
+                    ) {
                         encoder?.close()
                     }
                 compositor = created
                 val (appsInput, railInput) = created.inputs
                 rail = RailVirtualDisplay(context, railInput, layout, displays.rail)
                 displays.overlays.forEachIndexed { index, overlay ->
-                    val layer = FIRST_OVERLAY_LAYER + index
                     overlays +=
-                        OverlayVirtualDisplay(context, created.inputs[layer], layout, overlay) {
-                            created.setHidden(layer, !it)
-                        }
+                        OverlayVirtualDisplay(
+                            context,
+                            created.inputs[FIRST_OVERLAY_LAYER + index],
+                            layout,
+                            overlay,
+                            created.overlayLayer(index),
+                        )
                 }
+                displays.onOverlaysCreated(created::showOverlays)
                 display =
                     PrivilegedDisplay(
                             appsInput,
@@ -173,6 +184,7 @@ internal class VideoStream(
     private fun release() {
         synchronized(displaysLock) {
             closeAll(TAG) {
+                step("Detaching the overlays") { displays.onOverlaysReleased() }
                 step("Releasing the car display") { display?.close() }
                 overlays.asReversed().forEach {
                     step("Releasing the ${it.name} display") { it.close() }

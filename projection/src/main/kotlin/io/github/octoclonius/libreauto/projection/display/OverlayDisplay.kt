@@ -12,6 +12,12 @@ import kotlinx.coroutines.flow.update
 
 data class OverlayDisplayState(val id: Int)
 
+internal interface OverlayLayer {
+    fun expect(contentId: Int)
+
+    fun reportDrawn(contentId: Int, latchNanos: Long)
+}
+
 class OverlayDisplay internal constructor(val name: String) {
     private val lock = Any()
 
@@ -25,17 +31,22 @@ class OverlayDisplay internal constructor(val name: String) {
 
     @Volatile
     var isShown = false
-        private set
+        internal set
 
     @Volatile private var touchArea: Rect? = null
 
-    private var onShown: ((Boolean) -> Unit)? = null
+    private var layer: OverlayLayer? = null
+    private var expectedContent: Int? = null
 
-    fun show(isShown: Boolean) {
+    fun expect(contentId: Int) {
         synchronized(lock) {
-            this.isShown = isShown
-            onShown?.invoke(isShown)
+            expectedContent = contentId
+            layer?.expect(contentId)
         }
+    }
+
+    fun reportDrawn(contentId: Int, latchNanos: Long) {
+        synchronized(lock) { layer?.reportDrawn(contentId, latchNanos) }
     }
 
     fun setTouchArea(area: Rect?) {
@@ -45,16 +56,17 @@ class OverlayDisplay internal constructor(val name: String) {
     internal fun takesTouchAt(x: Int, y: Int): Boolean =
         isShown && touchArea.let { it == null || it.contains(x, y) }
 
-    internal fun onCreated(id: Int, onShown: (Boolean) -> Unit) {
+    internal fun onCreated(id: Int, layer: OverlayLayer) {
         synchronized(lock) {
-            this.onShown = onShown
-            onShown(isShown)
+            this.layer = layer
+            expectedContent?.let(layer::expect)
         }
         _state.value = OverlayDisplayState(id)
     }
 
     internal fun onReleased(id: Int) {
-        synchronized(lock) { onShown = null }
+        synchronized(lock) { layer = null }
+        isShown = false
         _state.update { if (it?.id == id) null else it }
     }
 

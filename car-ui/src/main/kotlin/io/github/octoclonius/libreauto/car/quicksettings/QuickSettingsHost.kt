@@ -54,10 +54,7 @@ internal class QuickSettingsHost(
         scope.launch { panel.state.collect { if (it == null) state.close() } }
         scope.launch { panel.outsideTouches.captured.collect { state.close() } }
         scope.launch {
-            state.isOpen.collect {
-                panel.outsideTouches.setCapturing(it)
-                panel.show(it)
-            }
+            state.isOpen.collect(panel.outsideTouches::setCapturing)
         }
     }
 

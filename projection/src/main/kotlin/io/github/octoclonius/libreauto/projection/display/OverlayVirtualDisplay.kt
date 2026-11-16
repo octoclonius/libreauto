@@ -12,7 +12,7 @@ internal class OverlayVirtualDisplay(
     surface: Surface,
     layout: CarLayout,
     private val overlay: OverlayDisplay,
-    onShown: (Boolean) -> Unit,
+    layer: OverlayLayer,
 ) : Closeable {
 
     companion object {
@@ -42,7 +42,7 @@ internal class OverlayVirtualDisplay(
             "Created the $name display $id: ${layout.apps.width}x${layout.apps.height} at " +
                 "${layout.format.density} dpi",
         )
-        overlay.onCreated(id, onShown)
+        overlay.onCreated(id, layer)
     }
 
     fun resize(layout: CarLayout) {

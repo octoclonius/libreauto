@@ -21,6 +21,17 @@ internal data class Keypad(val isShown: Boolean = false, val digits: String = ""
 
 internal data class CallScreenKeypad(val digits: String, val toneCallId: Int?)
 
+internal enum class CallScreenSurface {
+    Ongoing,
+    Ringing,
+}
+
+internal data class CallScreenSurfaces(
+    val ongoingCallId: Int? = null,
+    val ringingCallId: Int? = null,
+    val shown: CallScreenSurface? = null,
+)
+
 internal sealed interface CallScreenEntry {
     data object InCall : CallScreenEntry
 
@@ -132,6 +143,25 @@ internal fun reconciledKeypad(
             previous.none { it.id == call.id && it.status == CallStatus.Ringing }
     }
     return if (startsRinging) keypad.copy(isShown = false) else keypad
+}
+
+internal fun callScreenSurfaces(
+    top: CallScreenEntry?,
+    popUpCall: PhoneCall?,
+    calls: List<PhoneCall>,
+): CallScreenSurfaces {
+    val ringingIds = calls.filter { it.status == CallStatus.Ringing }.map { it.id }
+    val ringingCallId =
+        listOfNotNull((top as? CallScreenEntry.Ringing)?.id, popUpCall?.id).firstOrNull {
+            it in ringingIds
+        } ?: ringingIds.firstOrNull()
+    val shown =
+        when (top) {
+            null -> null
+            CallScreenEntry.InCall -> CallScreenSurface.Ongoing
+            is CallScreenEntry.Ringing -> CallScreenSurface.Ringing
+        }
+    return CallScreenSurfaces(callScreenCalls(calls)?.primary?.id, ringingCallId, shown)
 }
 
 internal fun callScreenView(

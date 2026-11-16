@@ -4,6 +4,7 @@ import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.calls.Caller
 import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,17 +33,24 @@ internal sealed interface CallScreenUiState {
 internal class CallScreenState(
     private val repository: CallRepository,
     private val uiStates: CallUiStates,
+    private val popUpCall: StateFlow<PhoneCall?>,
 ) {
 
     private val stack = MutableStateFlow<List<CallScreenEntry>>(emptyList())
     private val keypad = MutableStateFlow(Keypad())
     private var toneCallId: Int? = null
 
-    private val _screen = MutableStateFlow<CallScreenUiState?>(null)
-    val screen: StateFlow<CallScreenUiState?> = _screen.asStateFlow()
+    private val _surfaces = MutableStateFlow(CallScreenSurfaces())
+    val surfaces: StateFlow<CallScreenSurfaces> = _surfaces.asStateFlow()
 
     private val _isShown = MutableStateFlow(false)
     val isShown: StateFlow<Boolean> = _isShown.asStateFlow()
+
+    private val _ongoingScreen = MutableStateFlow<CallScreenUiState?>(null)
+    val ongoingScreen: StateFlow<CallScreenUiState?> = _ongoingScreen.asStateFlow()
+
+    private val _ringingScreen = MutableStateFlow<CallScreenUiState?>(null)
+    val ringingScreen: StateFlow<CallScreenUiState?> = _ringingScreen.asStateFlow()
 
     fun start(scope: CoroutineScope) {
         scope.launch {
@@ -51,30 +59,26 @@ internal class CallScreenState(
                 stack.update { reconciledCallScreen(it, calls) }
                 keypad.update { reconciledKeypad(it, previous, calls) }
                 previous = calls
+                updateSurfaces()
             }
         }
-        val view =
-            combine(stack, repository.calls, keypad) { entries, calls, keypad ->
-                    callScreenView(reconciledCallScreen(entries, calls).lastOrNull(), calls, keypad)
-                }
-                .distinctUntilChanged()
-        val shownCall =
-            uiStates.of(view.map { it?.shownCall }.distinctUntilChanged(), CALL_SCREEN_AVATAR_SIZE)
-        scope.launch {
-            combine(shownCall, view, repository.audio) { call, shown, audio ->
-                    Triple(call, shown, audio.isMuted)
-                }
-                .filter { (call, shown, _) -> call?.call?.id == shown?.shownCall?.id }
-                .collect { (call, shown, isMuted) -> _screen.value = uiState(call, shown, isMuted) }
-        }
-        scope.launch {
-            combine(stack, _screen) { entries, screen -> entries.isNotEmpty() && screen != null }
-                .collect { _isShown.value = it }
-        }
+        scope.launch { popUpCall.collect { updateSurfaces() } }
+        val ongoingView =
+            combine(repository.calls, keypad) { calls, keypad ->
+                callScreenView(CallScreenEntry.InCall, calls, keypad)
+            }
+        val ringingCallId = surfaces.map { it.ringingCallId }.distinctUntilChanged()
+        val ringingView =
+            combine(ringingCallId, repository.calls, keypad) { id, calls, keypad ->
+                id?.let { callScreenView(CallScreenEntry.Ringing(it), calls, keypad) }
+            }
+        collectScreen(scope, ongoingView, _ongoingScreen)
+        collectScreen(scope, ringingView, _ringingScreen)
     }
 
     fun open(entry: CallScreenEntry) {
         stack.update { pushedCallScreen(it, entry, repository.calls.value) }
+        updateSurfaces()
     }
 
     fun back(): Boolean {
@@ -86,10 +90,15 @@ internal class CallScreenState(
             return true
         }
         stack.value = entries.dropLast(1)
+        updateSurfaces()
         return true
     }
 
-    fun close(): Boolean = stack.getAndUpdate { emptyList() }.isNotEmpty()
+    fun close(): Boolean {
+        val wasOpen = stack.getAndUpdate { emptyList() }.isNotEmpty()
+        updateSurfaces()
+        return wasOpen
+    }
 
     fun perform(action: CallAction) {
         when (action) {
@@ -112,6 +121,36 @@ internal class CallScreenState(
             is CallAction.Answer -> repository.answer(action.id)
             is CallAction.AnswerAndRelease -> repository.answerAndRelease(action.id)
             is CallAction.Reject -> repository.reject(action.id)
+        }
+    }
+
+    private fun updateSurfaces() {
+        val calls = repository.calls.value
+        val top = reconciledCallScreen(stack.value, calls).lastOrNull()
+        val next = callScreenSurfaces(top, popUpCall.value, calls)
+        _surfaces.value = next
+        _isShown.value = next.shown != null
+    }
+
+    private fun collectScreen(
+        scope: CoroutineScope,
+        view: Flow<CallScreenView?>,
+        screen: MutableStateFlow<CallScreenUiState?>,
+    ) {
+        val distinctView = view.distinctUntilChanged()
+        val shownCall =
+            uiStates.of(
+                distinctView.map { it?.shownCall }.distinctUntilChanged(),
+                CALL_SCREEN_AVATAR_SIZE,
+            )
+        scope.launch {
+            combine(shownCall, distinctView, repository.audio) { call, shown, audio ->
+                    Triple(call, shown, audio.isMuted)
+                }
+                .filter { (call, shown, _) -> call?.call?.id == shown?.shownCall?.id }
+                .collect { (call, shown, isMuted) ->
+                    uiState(call, shown, isMuted)?.let { screen.value = it }
+                }
         }
     }
 

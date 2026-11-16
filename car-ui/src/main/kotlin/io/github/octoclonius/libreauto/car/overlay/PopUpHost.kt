@@ -14,6 +14,8 @@ import io.github.octoclonius.libreauto.projection.CarSession
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -30,6 +32,8 @@ internal class PopUpHost(
     private val isCallOnScreen = MutableStateFlow(false)
     private val headsUpBounds = MutableStateFlow<Rect?>(null)
     private val callBounds = MutableStateFlow<Rect?>(null)
+    private val _isShown = MutableStateFlow(false)
+    val isShown: StateFlow<Boolean> = _isShown.asStateFlow()
     private val host =
         OverlayHost(context, popUp) {
             PopUpContent(
@@ -47,7 +51,7 @@ internal class PopUpHost(
         host.start(scope)
         scope.launch {
             combine(isHeadsUpOnScreen, isCallOnScreen) { headsUp, call -> headsUp || call }
-                .collect(popUp::show)
+                .collect { _isShown.value = it }
         }
         scope.launch {
             combine(headsUpBounds, callBounds, ::touchArea).collect(popUp::setTouchArea)

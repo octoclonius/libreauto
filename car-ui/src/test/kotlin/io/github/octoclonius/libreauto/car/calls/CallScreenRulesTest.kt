@@ -402,7 +402,53 @@ class CallScreenRulesTest {
         assertEquals(Keypad(), reconciledKeypad(Keypad(true, "12"), previous, emptyList()))
     }
 
+    @Test
+    fun noCallsDrawNothing() {
+        assertEquals(CallScreenSurfaces(), callScreenSurfaces(null, null, emptyList()))
+    }
+
+    @Test
+    fun theOngoingSurfaceDrawsTheCallScreensCall() {
+        val calls = listOf(call(0, CallStatus.Holding), call(1, CallStatus.Dialing))
+        assertEquals(1, callScreenSurfaces(null, null, calls).ongoingCallId)
+    }
+
+    @Test
+    fun theRingingSurfaceDrawsTheOpenRingingCallFirst() {
+        val calls = ringingCalls(1, 2, 3)
+        assertEquals(3, callScreenSurfaces(ringing(3), calls[1], calls).ringingCallId)
+    }
+
+    @Test
+    fun theRingingSurfaceOtherwiseDrawsThePopUpsCall() {
+        val calls = ringingCalls(1, 2)
+        assertEquals(2, callScreenSurfaces(inCall, calls[1], calls).ringingCallId)
+    }
+
+    @Test
+    fun theRingingSurfaceOtherwiseDrawsTheFirstRingingCall() {
+        val calls = listOf(call(0, CallStatus.Active)) + ringingCalls(1, 2)
+        assertEquals(1, callScreenSurfaces(null, null, calls).ringingCallId)
+        assertEquals(1, callScreenSurfaces(null, call(5, CallStatus.Active), calls).ringingCallId)
+    }
+
+    @Test
+    fun theSurfaceShownFollowsTheCallScreensTop() {
+        val calls = listOf(call(0, CallStatus.Active)) + ringingCalls(1)
+        assertNull(callScreenSurfaces(null, null, calls).shown)
+        assertEquals(
+            CallScreenSurface.Ongoing,
+            callScreenSurfaces(inCall, null, calls).shown,
+        )
+        assertEquals(
+            CallScreenSurface.Ringing,
+            callScreenSurfaces(ringing(1), null, calls).shown,
+        )
+    }
+
     private val inCall = CallScreenEntry.InCall
+
+    private fun ringingCalls(vararg ids: Int) = ids.map { call(it, CallStatus.Ringing) }
 
     private fun ringing(id: Int) = CallScreenEntry.Ringing(id)
 
