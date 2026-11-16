@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.projection.calls
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.OutcomeReceiver
 import android.os.Process
@@ -13,6 +14,7 @@ import android.telecom.VideoProfile
 import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
 import android.util.Log
+import io.github.octoclonius.libreauto.projection.permissions.PermissionsRepository
 import io.github.octoclonius.libreauto.projection.privileged.PrivilegedServiceConnection
 import io.github.octoclonius.libreauto.projection.privileged.call
 import java.util.Locale
@@ -31,6 +33,7 @@ import kotlinx.coroutines.launch
 class CallRepository(
     context: Context,
     private val privileged: PrivilegedServiceConnection,
+    private val permissions: PermissionsRepository,
     private val externalScope: CoroutineScope,
 ) {
 
@@ -277,6 +280,7 @@ class CallRepository(
             status,
             details.connectTimeMillis,
             caller(
+                voicemailName(details),
                 details.contactDisplayName,
                 details.callerDisplayName,
                 details.handle?.let { callerNumber(it.scheme, it.schemeSpecificPart) },
@@ -313,6 +317,19 @@ class CallRepository(
             if (scheme == PhoneAccount.SCHEME_TEL) PhoneNumberUtils.formatNumber(number, country)
             else null
         return CallerNumber(number, formatted ?: number, country)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun voicemailName(details: Call.Details): String? {
+        val handle = details.handle ?: return null
+        if (!permissions.state.value.isPhoneAllowed) return null
+        val number = handle.schemeSpecificPart
+        val isVoicemail =
+            handle.scheme == PhoneAccount.SCHEME_VOICEMAIL ||
+                !number.isNullOrEmpty() && telecom.isVoiceMailNumber(details.accountHandle, number)
+        if (!isVoicemail) return null
+        val account = details.accountHandle?.let(telephony::createForPhoneAccountHandle)
+        return (account ?: telephony).voiceMailAlphaTag
     }
 
     private fun callingApp(details: Call.Details): CallingApp? {

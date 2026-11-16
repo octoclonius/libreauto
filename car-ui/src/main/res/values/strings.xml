@@ -19,6 +19,7 @@
     <string name="call_status_ended">Call ended</string>
     <string name="call_held_caller">%1$s • On hold</string>
     <string name="mute">Mute</string>
+    <string name="keypad">Keypad</string>
     <string name="hold">Hold</string>
     <string name="merge">Merge</string>
     <string name="swap">Swap</string>

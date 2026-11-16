@@ -2,6 +2,7 @@ package io.github.octoclonius.libreauto.car.calls
 
 import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.calls.Caller
+import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,7 @@ internal sealed interface CallScreenUiState {
         override val call: CallUiState,
         val heldCaller: Caller?,
         val buttons: CallScreenButtons,
+        val keypad: CallScreenKeypad?,
     ) : CallScreenUiState
 
     data class Ringing(override val call: CallUiState, val canAnswerAndRelease: Boolean) :
@@ -33,6 +35,8 @@ internal class CallScreenState(
 ) {
 
     private val stack = MutableStateFlow<List<CallScreenEntry>>(emptyList())
+    private val keypad = MutableStateFlow(Keypad())
+    private var toneCallId: Int? = null
 
     private val _screen = MutableStateFlow<CallScreenUiState?>(null)
     val screen: StateFlow<CallScreenUiState?> = _screen.asStateFlow()
@@ -42,11 +46,16 @@ internal class CallScreenState(
 
     fun start(scope: CoroutineScope) {
         scope.launch {
-            repository.calls.collect { calls -> stack.update { reconciledCallScreen(it, calls) } }
+            var previous = emptyList<PhoneCall>()
+            repository.calls.collect { calls ->
+                stack.update { reconciledCallScreen(it, calls) }
+                keypad.update { reconciledKeypad(it, previous, calls) }
+                previous = calls
+            }
         }
         val view =
-            combine(stack, repository.calls) { entries, calls ->
-                    callScreenView(reconciledCallScreen(entries, calls).lastOrNull(), calls)
+            combine(stack, repository.calls, keypad) { entries, calls, keypad ->
+                    callScreenView(reconciledCallScreen(entries, calls).lastOrNull(), calls, keypad)
                 }
                 .distinctUntilChanged()
         val shownCall =
@@ -71,6 +80,11 @@ internal class CallScreenState(
     fun back(): Boolean {
         val entries = stack.value
         if (entries.isEmpty()) return false
+        val view = callScreenView(entries.last(), repository.calls.value, keypad.value)
+        if (view is CallScreenView.InCall && view.keypad != null) {
+            keypad.update { it.copy(isShown = false) }
+            return true
+        }
         stack.value = entries.dropLast(1)
         return true
     }
@@ -80,6 +94,16 @@ internal class CallScreenState(
     fun perform(action: CallAction) {
         when (action) {
             is CallAction.SetMuted -> repository.setMuted(action.isMuted)
+            is CallAction.SetKeypadShown -> keypad.update { it.copy(isShown = action.isShown) }
+            is CallAction.PlayDtmfTone -> {
+                keypad.update { it.copy(digits = it.digits + action.digit) }
+                toneCallId = action.id
+                repository.playDtmfTone(action.id, action.digit)
+            }
+            CallAction.StopDtmfTone -> {
+                toneCallId?.let(repository::stopDtmfTone)
+                toneCallId = null
+            }
             is CallAction.Hold -> repository.hold(action.id)
             is CallAction.Unhold -> repository.unhold(action.id)
             is CallAction.Merge -> repository.merge(action.id)
@@ -102,7 +126,8 @@ internal class CallScreenState(
                 CallScreenUiState.InCall(
                     call,
                     shown.calls.secondary?.caller,
-                    callScreenButtons(shown.calls, isMuted),
+                    callScreenButtons(shown.calls, isMuted, isKeypadShown = shown.keypad != null),
+                    shown.keypad,
                 )
             is CallScreenView.Ringing -> CallScreenUiState.Ringing(call, shown.canAnswerAndRelease)
         }

@@ -13,8 +13,13 @@ private val PRIMARY_ORDER =
         CallStatus.Holding,
     )
 private val SECONDARY_ORDER = listOf(CallStatus.Active, CallStatus.Holding)
+private val DTMF_ORDER = listOf(CallStatus.Dialing, CallStatus.Active)
 
 internal data class CallScreenCalls(val primary: PhoneCall, val secondary: PhoneCall?)
+
+internal data class Keypad(val isShown: Boolean = false, val digits: String = "")
+
+internal data class CallScreenKeypad(val digits: String, val toneCallId: Int?)
 
 internal sealed interface CallScreenEntry {
     data object InCall : CallScreenEntry
@@ -25,7 +30,7 @@ internal sealed interface CallScreenEntry {
 internal sealed interface CallScreenView {
     val shownCall: PhoneCall
 
-    data class InCall(val calls: CallScreenCalls) : CallScreenView {
+    data class InCall(val calls: CallScreenCalls, val keypad: CallScreenKeypad?) : CallScreenView {
         override val shownCall: PhoneCall
             get() = calls.primary
     }
@@ -38,6 +43,12 @@ internal sealed interface CallScreenView {
 
 internal sealed interface CallAction {
     data class SetMuted(val isMuted: Boolean) : CallAction
+
+    data class SetKeypadShown(val isShown: Boolean) : CallAction
+
+    data class PlayDtmfTone(val id: Int, val digit: Char) : CallAction
+
+    data object StopDtmfTone : CallAction
 
     data class Hold(val id: Int) : CallAction
 
@@ -64,6 +75,7 @@ internal data class CallButton(
 
 internal data class CallScreenButtons(
     val mute: CallButton?,
+    val keypad: CallButton,
     val holdOrMerge: CallButton?,
     val swap: CallButton?,
     val end: CallAction,
@@ -109,10 +121,30 @@ internal fun reconciledCallScreen(
     return entries.filterIndexed { index, entry -> index == 0 || entry != entries[index - 1] }
 }
 
-internal fun callScreenView(entry: CallScreenEntry?, calls: List<PhoneCall>): CallScreenView? =
+internal fun reconciledKeypad(
+    keypad: Keypad,
+    previous: List<PhoneCall>,
+    calls: List<PhoneCall>,
+): Keypad {
+    if (calls.isEmpty()) return Keypad()
+    val startsRinging = calls.any { call ->
+        call.status == CallStatus.Ringing &&
+            previous.none { it.id == call.id && it.status == CallStatus.Ringing }
+    }
+    return if (startsRinging) keypad.copy(isShown = false) else keypad
+}
+
+internal fun callScreenView(
+    entry: CallScreenEntry?,
+    calls: List<PhoneCall>,
+    keypad: Keypad,
+): CallScreenView? =
     when (entry) {
         null -> null
-        CallScreenEntry.InCall -> callScreenCalls(calls)?.let(CallScreenView::InCall)
+        CallScreenEntry.InCall ->
+            callScreenCalls(calls)?.let { screenCalls ->
+                CallScreenView.InCall(screenCalls, callScreenKeypad(screenCalls, calls, keypad))
+            }
         is CallScreenEntry.Ringing ->
             calls
                 .firstOrNull { it.id == entry.id && it.status == CallStatus.Ringing }
@@ -123,7 +155,11 @@ internal fun canAnswerAndRelease(calls: List<PhoneCall>, ringing: PhoneCall): Bo
     it.status == CallStatus.Active && it.id != ringing.id
 }
 
-internal fun callScreenButtons(calls: CallScreenCalls, isMuted: Boolean): CallScreenButtons {
+internal fun callScreenButtons(
+    calls: CallScreenCalls,
+    isMuted: Boolean,
+    isKeypadShown: Boolean,
+): CallScreenButtons {
     val primary = calls.primary
     val secondary = calls.secondary
     val isEnabled = primary.status.isLive
@@ -159,7 +195,18 @@ internal fun callScreenButtons(calls: CallScreenCalls, isMuted: Boolean): CallSc
             canSwapConference -> CallButton(CallAction.SwapConference(primary.id), isEnabled)
             else -> null
         }
-    return CallScreenButtons(mute, holdOrMerge, swap, CallAction.Disconnect(primary.id))
+    val keypad =
+        CallButton(CallAction.SetKeypadShown(!isKeypadShown), isEnabled, isChecked = isKeypadShown)
+    return CallScreenButtons(mute, keypad, holdOrMerge, swap, CallAction.Disconnect(primary.id))
+}
+
+private fun callScreenKeypad(
+    screenCalls: CallScreenCalls,
+    calls: List<PhoneCall>,
+    keypad: Keypad,
+): CallScreenKeypad? {
+    if (!keypad.isShown || !screenCalls.primary.status.isLive) return null
+    return CallScreenKeypad(keypad.digits, firstInOrder(calls, DTMF_ORDER, ignored = null)?.id)
 }
 
 private fun firstInOrder(

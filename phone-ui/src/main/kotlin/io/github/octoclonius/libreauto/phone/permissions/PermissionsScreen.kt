@@ -65,6 +65,13 @@ fun PermissionsScreen(
                 isAllowed = uiState.isContactsAllowed,
                 onResult = onRefresh,
             )
+            RuntimePermissionRow(
+                permission = Manifest.permission.READ_PHONE_STATE,
+                title = stringResource(R.string.phone_title),
+                summary = stringResource(R.string.phone_summary),
+                isAllowed = uiState.isPhoneAllowed,
+                onResult = onRefresh,
+            )
         }
     }
 }

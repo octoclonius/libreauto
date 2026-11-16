@@ -38,12 +38,14 @@ internal fun callCapabilities(capabilities: Int, hasConferenceableCall: Boolean)
     else capabilities
 
 internal fun caller(
+    voicemailName: String?,
     contactName: String?,
     networkName: String?,
     number: CallerNumber?,
     numberPresentation: Int,
 ): Caller =
     when {
+        !voicemailName.isNullOrBlank() -> Caller.Voicemail(voicemailName)
         numberPresentation == TelecomManager.PRESENTATION_RESTRICTED -> Caller.Private
         numberPresentation == TelecomManager.PRESENTATION_PAYPHONE -> Caller.Payphone
         numberPresentation != TelecomManager.PRESENTATION_ALLOWED -> Caller.Unknown

@@ -58,6 +58,7 @@ private fun callerSubtitle(
             caller.number?.let { CallSubtitle.Number(it.formatted, numberLabel(it)) }
         is Caller.Named -> caller.number?.let { CallSubtitle.Number(it.formatted, null) }
         is Caller.Number -> location(caller.number)?.ifBlank { null }?.let(CallSubtitle::Location)
+        is Caller.Voicemail,
         Caller.Private,
         Caller.Payphone,
         Caller.Unknown -> null

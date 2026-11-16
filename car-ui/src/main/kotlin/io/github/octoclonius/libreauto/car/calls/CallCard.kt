@@ -201,6 +201,7 @@ internal fun callerText(caller: Caller): String =
         is Caller.Contact -> caller.name
         is Caller.Named -> caller.name
         is Caller.Number -> leftToRight(caller.number.formatted)
+        is Caller.Voicemail -> caller.name
         Caller.Private -> stringResource(R.string.caller_private)
         Caller.Payphone -> stringResource(R.string.caller_payphone)
         Caller.Unknown -> stringResource(R.string.caller_unknown)

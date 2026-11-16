@@ -3,6 +3,10 @@ package io.github.octoclonius.libreauto.car.calls
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,12 +28,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,14 +61,28 @@ private val SCREEN_MARGIN = CarSpacing.extraLarge * 2
 private val BUTTON_SIZE = RAIL_ICON_SIZE
 private val BUTTON_GAP = CarSpacing.extraLarge
 private val END_BUTTON_WIDTH = BUTTON_SIZE * 2 + BUTTON_GAP
+private val KEY_GAP = CarSpacing.small
+private val KEY_MAX_WIDTH = 200.dp
+private val KEY_MAX_HEIGHT = 72.dp
+private const val KEYPAD_COLUMNS = 3
+private const val KEYPAD_LAYOUT = "123456789*0#"
+private const val KEYS = "0123456789*#"
+private val KEY_TO_CHARS =
+    listOf("+", "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "", "")
 
 private class ButtonSpot(val width: Dp, val content: @Composable () -> Unit)
 
 @Composable
 internal fun CallScreen(uiState: CallScreenUiState, onAction: (CallAction) -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        HeldCallRow((uiState as? CallScreenUiState.InCall)?.heldCaller)
-        CallerRow(uiState.call, Modifier.weight(1f))
+        val inCall = uiState as? CallScreenUiState.InCall
+        HeldCallRow(inCall?.heldCaller)
+        val keypad = inCall?.keypad
+        if (keypad == null) {
+            CallerRow(uiState.call, Modifier.weight(1f))
+        } else {
+            Keypad(keypad, onAction, Modifier.weight(1f))
+        }
         when (uiState) {
             is CallScreenUiState.InCall -> CallButtons(uiState.buttons, onAction)
             is CallScreenUiState.Ringing -> RingingButtons(uiState, onAction)
@@ -171,6 +198,100 @@ private fun CallerRow(uiState: CallUiState, modifier: Modifier) {
 }
 
 @Composable
+private fun Keypad(keypad: CallScreenKeypad, onAction: (CallAction) -> Unit, modifier: Modifier) {
+    val digitsStyle = MaterialTheme.typography.headlineMedium
+    val digitsHeight = with(LocalDensity.current) { digitsStyle.lineHeight.toDp() }
+    val rows = KEYPAD_LAYOUT.length / KEYPAD_COLUMNS
+    DisposableEffect(Unit) { onDispose { onAction(CallAction.StopDtmfTone) } }
+    BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = BUTTON_GAP)
+    ) {
+        val keyWidth =
+            minOf((maxWidth - KEY_GAP * (KEYPAD_COLUMNS - 1)) / KEYPAD_COLUMNS, KEY_MAX_WIDTH)
+        val keyHeight = minOf((maxHeight - digitsHeight - KEY_GAP * rows) / rows, KEY_MAX_HEIGHT)
+        Column(
+            Modifier.align(Alignment.CenterStart)
+                .width(keyWidth * KEYPAD_COLUMNS + KEY_GAP * (KEYPAD_COLUMNS - 1)),
+            verticalArrangement = Arrangement.spacedBy(KEY_GAP),
+        ) {
+            Text(
+                keypad.digits,
+                Modifier.fillMaxWidth(),
+                style = digitsStyle,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.StartEllipsis,
+            )
+            KEYPAD_LAYOUT.chunked(KEYPAD_COLUMNS).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(KEY_GAP)) {
+                    row.forEach { key ->
+                        KeypadKey(
+                            key,
+                            keypad.toneCallId,
+                            onAction,
+                            Modifier.width(keyWidth).height(keyHeight),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeypadKey(
+    key: Char,
+    toneCallId: Int?,
+    onAction: (CallAction) -> Unit,
+    modifier: Modifier,
+) {
+    val interactions = remember { MutableInteractionSource() }
+    val currentToneCallId by rememberUpdatedState(toneCallId)
+    val currentOnAction by rememberUpdatedState(onAction)
+    Box(
+        modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .indication(interactions, ripple())
+            .pointerInput(key) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        val press = PressInteraction.Press(offset)
+                        interactions.emit(press)
+                        currentToneCallId?.let { currentOnAction(CallAction.PlayDtmfTone(it, key)) }
+                        val isReleased = tryAwaitRelease()
+                        currentOnAction(CallAction.StopDtmfTone)
+                        interactions.emit(
+                            if (isReleased) PressInteraction.Release(press)
+                            else PressInteraction.Cancel(press)
+                        )
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                key.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val letters = KEY_TO_CHARS[KEYS.indexOf(key)]
+            if (letters.isNotEmpty()) {
+                Text(
+                    letters,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CallButtons(buttons: CallScreenButtons, onAction: (CallAction) -> Unit) {
     val beforeEnd =
         listOf(
@@ -178,7 +299,10 @@ private fun CallButtons(buttons: CallScreenButtons, onAction: (CallAction) -> Un
                 buttons.mute?.let {
                     ToggleButton(it, R.drawable.ic_mic_off, R.string.mute, onAction)
                 }
-            }
+            },
+            ButtonSpot(BUTTON_SIZE) {
+                ToggleButton(buttons.keypad, R.drawable.ic_dialpad, R.string.keypad, onAction)
+            },
         )
     val fromEnd =
         listOf(

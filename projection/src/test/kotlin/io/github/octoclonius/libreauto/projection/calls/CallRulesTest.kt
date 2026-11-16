@@ -135,10 +135,27 @@ class CallRulesTest {
     }
 
     @Test
+    fun voicemailIsNamedFirst() {
+        assertEquals(
+            Caller.Voicemail("Voicemail"),
+            caller("Voicemail", "Mom", "MOBILE CALLER", number, presentationAllowed),
+        )
+        assertEquals(
+            Caller.Voicemail("Voicemail"),
+            caller("Voicemail", null, null, null, presentationRestricted),
+        )
+    }
+
+    @Test
+    fun aBlankVoicemailNameIsNotUsed() {
+        assertEquals(Caller.Number(number), caller(" ", null, null, number, presentationAllowed))
+    }
+
+    @Test
     fun theContactsNameComesFirst() {
         assertEquals(
             Caller.Contact("Mom", number),
-            caller("Mom", "MOBILE CALLER", number, presentationAllowed),
+            caller(null, "Mom", "MOBILE CALLER", number, presentationAllowed),
         )
     }
 
@@ -146,35 +163,38 @@ class CallRulesTest {
     fun theNetworksNameStandsInForAMissingContact() {
         assertEquals(
             Caller.Named("MOBILE CALLER", number),
-            caller(null, "MOBILE CALLER", number, presentationAllowed),
+            caller(null, null, "MOBILE CALLER", number, presentationAllowed),
         )
         assertEquals(
             Caller.Named("MOBILE CALLER", number),
-            caller(" ", "MOBILE CALLER", number, presentationAllowed),
+            caller(null, " ", "MOBILE CALLER", number, presentationAllowed),
         )
     }
 
     @Test
     fun theNumberStandsInForAMissingName() {
-        assertEquals(Caller.Number(number), caller(null, null, number, presentationAllowed))
+        assertEquals(Caller.Number(number), caller(null, null, null, number, presentationAllowed))
     }
 
     @Test
     fun nothingToShowIsUnknown() {
-        assertEquals(Caller.Unknown, caller(null, "", null, presentationAllowed))
+        assertEquals(Caller.Unknown, caller(null, null, "", null, presentationAllowed))
     }
 
     @Test
     fun aHiddenNumberIsNamedByItsPresentation() {
-        assertEquals(Caller.Private, caller(null, null, null, presentationRestricted))
-        assertEquals(Caller.Payphone, caller(null, null, null, presentationPayphone))
-        assertEquals(Caller.Unknown, caller(null, null, null, presentationUnknown))
-        assertEquals(Caller.Unknown, caller(null, null, null, presentationUnavailable))
+        assertEquals(Caller.Private, caller(null, null, null, null, presentationRestricted))
+        assertEquals(Caller.Payphone, caller(null, null, null, null, presentationPayphone))
+        assertEquals(Caller.Unknown, caller(null, null, null, null, presentationUnknown))
+        assertEquals(Caller.Unknown, caller(null, null, null, null, presentationUnavailable))
     }
 
     @Test
     fun aHiddenNumberWinsOverANameSentAnyway() {
-        assertEquals(Caller.Private, caller("Mom", "MOBILE CALLER", null, presentationRestricted))
+        assertEquals(
+            Caller.Private,
+            caller(null, "Mom", "MOBILE CALLER", null, presentationRestricted),
+        )
     }
 
     @Test

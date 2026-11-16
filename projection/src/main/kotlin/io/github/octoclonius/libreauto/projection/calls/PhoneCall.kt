@@ -24,6 +24,8 @@ sealed interface Caller {
 
     data class Number(val number: CallerNumber) : Caller
 
+    data class Voicemail(val name: String) : Caller
+
     data object Private : Caller
 
     data object Payphone : Caller

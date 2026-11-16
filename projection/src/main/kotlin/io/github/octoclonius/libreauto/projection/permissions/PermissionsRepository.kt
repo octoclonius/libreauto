@@ -21,6 +21,7 @@ data class PermissionsState(
     val isNotificationAccessAllowed: Boolean,
     val isNearbyDevicesAllowed: Boolean,
     val isContactsAllowed: Boolean,
+    val isPhoneAllowed: Boolean,
 )
 
 class PermissionsRepository(
@@ -63,6 +64,7 @@ class PermissionsRepository(
                 notificationManager.isNotificationListenerAccessGranted(notificationListener),
             isNearbyDevicesAllowed = isGranted(Manifest.permission.BLUETOOTH_CONNECT),
             isContactsAllowed = isGranted(Manifest.permission.READ_CONTACTS),
+            isPhoneAllowed = isGranted(Manifest.permission.READ_PHONE_STATE),
         )
 
     private fun isGranted(permission: String): Boolean =

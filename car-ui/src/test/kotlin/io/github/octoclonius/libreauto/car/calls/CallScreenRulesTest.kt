@@ -169,6 +169,7 @@ class CallScreenRulesTest {
                     call(1, CallStatus.Holding),
                 )
             assertFalse(buttons.mute!!.isEnabled)
+            assertFalse(buttons.keypad.isEnabled)
             assertFalse(buttons.holdOrMerge!!.isEnabled)
             assertFalse(buttons.swap!!.isEnabled)
             assertEquals(CallAction.Disconnect(0), buttons.end)
@@ -275,7 +276,7 @@ class CallScreenRulesTest {
         val ringing = call(1, CallStatus.Ringing)
         assertEquals(
             CallScreenView.Ringing(ringing, canAnswerAndRelease = true),
-            callScreenView(ringing(1), listOf(call(0, CallStatus.Active), ringing)),
+            callScreenView(ringing(1), listOf(call(0, CallStatus.Active), ringing), Keypad()),
         )
     }
 
@@ -284,7 +285,7 @@ class CallScreenRulesTest {
         val ringing = call(1, CallStatus.Ringing)
         assertEquals(
             CallScreenView.Ringing(ringing, canAnswerAndRelease = false),
-            callScreenView(ringing(1), listOf(call(0, CallStatus.Holding), ringing)),
+            callScreenView(ringing(1), listOf(call(0, CallStatus.Holding), ringing), Keypad()),
         )
     }
 
@@ -293,19 +294,128 @@ class CallScreenRulesTest {
         val active = call(0, CallStatus.Active)
         val calls = listOf(active, call(1, CallStatus.Ringing))
         assertEquals(
-            CallScreenView.InCall(CallScreenCalls(active, null)),
-            callScreenView(CallScreenEntry.InCall, calls),
+            CallScreenView.InCall(CallScreenCalls(active, null), keypad = null),
+            callScreenView(CallScreenEntry.InCall, calls, Keypad()),
         )
-        assertNull(callScreenView(null, calls))
+        assertNull(callScreenView(null, calls, Keypad()))
     }
 
+    @Test
+    fun theKeypadButtonOpensTheKeypad() {
+        assertEquals(
+            CallButton(CallAction.SetKeypadShown(true), isEnabled = true),
+            buttons(call(0, CallStatus.Holding)).keypad,
+        )
+    }
+
+    @Test
+    fun theKeypadButtonIsCheckedWhileTheKeypadIsShownAndClosesIt() {
+        assertEquals(
+            CallButton(CallAction.SetKeypadShown(false), isEnabled = true, isChecked = true),
+            buttons(call(0, CallStatus.Active), isKeypadShown = true).keypad,
+        )
+    }
+
+    @Test
+    fun anOpenKeypadReplacesTheCallerWithItsDigits() {
+        val active = call(0, CallStatus.Active)
+        assertEquals(
+            CallScreenView.InCall(CallScreenCalls(active, null), CallScreenKeypad("12", 0)),
+            callScreenView(CallScreenEntry.InCall, listOf(active), Keypad(true, "12")),
+        )
+    }
+
+    @Test
+    fun aClosedKeypadIsNotShown() {
+        val view = callScreenView(inCall, listOf(call(0, CallStatus.Active)), Keypad(false, "12"))
+        assertNull((view as CallScreenView.InCall).keypad)
+    }
+
+    @Test
+    fun theKeypadIsNotShownOnTheRingingView() {
+        val calls = listOf(call(0, CallStatus.Active), call(1, CallStatus.Ringing))
+        assertEquals(
+            CallScreenView.Ringing(calls[1], canAnswerAndRelease = true),
+            callScreenView(ringing(1), calls, Keypad(isShown = true)),
+        )
+    }
+
+    @Test
+    fun anEndingCallShowsItsEndInsteadOfTheKeypad() {
+        for (status in listOf(CallStatus.Disconnecting, CallStatus.Disconnected)) {
+            val view =
+                callScreenView(
+                    inCall,
+                    listOf(call(0, status), call(1, CallStatus.Holding)),
+                    Keypad(isShown = true),
+                )
+            assertNull((view as CallScreenView.InCall).keypad)
+        }
+    }
+
+    @Test
+    fun tonesGoToTheDialingCallFirst() {
+        val calls = listOf(call(0, CallStatus.Active), call(1, CallStatus.Dialing))
+        assertEquals(1, shownKeypad(calls)?.toneCallId)
+    }
+
+    @Test
+    fun tonesGoToTheActiveCallWhenNoneIsDialing() {
+        val calls =
+            listOf(
+                call(0, CallStatus.Holding),
+                call(1, CallStatus.Active),
+                call(2, CallStatus.Ringing),
+            )
+        assertEquals(1, shownKeypad(calls)?.toneCallId)
+    }
+
+    @Test
+    fun aHeldCallAloneGetsNoTones() {
+        val keypad = shownKeypad(listOf(call(0, CallStatus.Holding)))
+        assertEquals(CallScreenKeypad("", toneCallId = null), keypad)
+    }
+
+    @Test
+    fun theKeypadClosesWhenACallStartsRinging() {
+        val previous = listOf(call(0, CallStatus.Active))
+        val calls = previous + call(1, CallStatus.Ringing)
+        assertEquals(Keypad(false, "12"), reconciledKeypad(Keypad(true, "12"), previous, calls))
+    }
+
+    @Test
+    fun theKeypadStaysOpenWhileTheSameCallKeepsRinging() {
+        val calls = listOf(call(0, CallStatus.Active), call(1, CallStatus.Ringing))
+        assertEquals(Keypad(true, "12"), reconciledKeypad(Keypad(true, "12"), calls, calls))
+    }
+
+    @Test
+    fun theKeypadKeepsItsDigitsAcrossCallChanges() {
+        val previous = listOf(call(0, CallStatus.Active), call(1, CallStatus.Holding))
+        val calls = listOf(call(0, CallStatus.Disconnected), call(1, CallStatus.Active))
+        assertEquals(Keypad(true, "12"), reconciledKeypad(Keypad(true, "12"), previous, calls))
+    }
+
+    @Test
+    fun theKeypadResetsOnceNoCallIsLeft() {
+        val previous = listOf(call(0, CallStatus.Disconnected))
+        assertEquals(Keypad(), reconciledKeypad(Keypad(true, "12"), previous, emptyList()))
+    }
+
+    private val inCall = CallScreenEntry.InCall
+
     private fun ringing(id: Int) = CallScreenEntry.Ringing(id)
+
+    private fun shownKeypad(calls: List<PhoneCall>): CallScreenKeypad? =
+        (callScreenView(inCall, calls, Keypad(isShown = true)) as CallScreenView.InCall).keypad
 
     private fun buttons(
         primary: PhoneCall,
         secondary: PhoneCall? = null,
         isMuted: Boolean = false,
-    ): CallScreenButtons = callScreenButtons(CallScreenCalls(primary, secondary), isMuted)
+        isKeypadShown: Boolean = false,
+    ): CallScreenButtons =
+        callScreenButtons(CallScreenCalls(primary, secondary), isMuted, isKeypadShown)
 
     private fun call(id: Int, status: CallStatus, capabilities: Int = 0) =
         PhoneCall(

@@ -40,6 +40,8 @@
     <string name="nearby_devices_summary">Pair with the car for hands-free calls</string>
     <string name="contacts_title">Contacts</string>
     <string name="contacts_summary">Show callers\' names and photos on the car</string>
+    <string name="phone_title">Phone</string>
+    <string name="phone_summary">Show voicemail calls by name on the car</string>
     <string name="version_title">Version</string>
 
     <string name="licenses_title">Open source licenses</string>
