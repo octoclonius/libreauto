@@ -1,9 +1,16 @@
 package io.github.octoclonius.libreauto.projection.calls
 
-import android.telecom.CallEndpoint
+enum class AudioOutputType {
+    Bluetooth,
+    Speaker,
+    WiredHeadset,
+    Earpiece,
+}
+
+data class AudioOutput(val id: String, val type: AudioOutputType, val name: String)
 
 data class CallAudio(
     val isMuted: Boolean,
-    val endpoint: CallEndpoint?,
-    val endpoints: List<CallEndpoint>,
+    val output: AudioOutput?,
+    val outputs: List<AudioOutput>,
 )

@@ -40,7 +40,7 @@ class CallRepository(
     private companion object {
         const val TAG = "CallRepository"
         const val ANSWER_VIDEO_STATE = VideoProfile.STATE_AUDIO_ONLY
-        val NO_CALL_AUDIO = CallAudio(isMuted = false, endpoint = null, endpoints = emptyList())
+        val NO_CALL_AUDIO = CallAudio(isMuted = false, output = null, outputs = emptyList())
     }
 
     private class PendingAnswer(val released: Call, val ringing: Call)
@@ -63,6 +63,7 @@ class CallRepository(
     private val endedCalls = LinkedHashMap<Int, PhoneCall>()
     private var nextId = 0
     private var service: InCallService? = null
+    private var endpoints: List<CallEndpoint> = emptyList()
     private var pendingAnswer: PendingAnswer? = null
 
     fun start() {
@@ -157,13 +158,18 @@ class CallRepository(
         service.setMuted(isMuted)
     }
 
-    fun requestEndpointChange(endpoint: CallEndpoint) {
+    fun requestAudioOutput(output: AudioOutput) {
         val service = service
         if (service == null) {
             Log.i(TAG, "No calls; no audio to route")
             return
         }
-        Log.i(TAG, "Asking Telecom to route the call audio to ${endpoint.endpointType}")
+        val endpoint = endpoints.firstOrNull { it.identifier.toString() == output.id }
+        if (endpoint == null) {
+            Log.i(TAG, "The audio output ${output.type} is gone; nothing to route to")
+            return
+        }
+        Log.i(TAG, "Asking Telecom to route the call audio to ${output.type}")
         service.requestCallEndpointChange(
             endpoint,
             service.mainExecutor,
@@ -212,15 +218,17 @@ class CallRepository(
     }
 
     internal fun onEndpointChanged(endpoint: CallEndpoint) {
-        _audio.update { it.copy(endpoint = endpoint) }
+        _audio.update { it.copy(output = audioOutput(endpoint)) }
     }
 
     internal fun onAvailableEndpointsChanged(endpoints: List<CallEndpoint>) {
-        _audio.update { it.copy(endpoints = endpoints) }
+        this.endpoints = endpoints
+        _audio.update { it.copy(outputs = endpoints.mapNotNull(::audioOutput)) }
     }
 
     internal fun onUnbound() {
         service = null
+        endpoints = emptyList()
         ids.clear()
         postDialWaits.clear()
         disconnected.clear()
@@ -331,6 +339,11 @@ class CallRepository(
         val account = details.accountHandle?.let(telephony::createForPhoneAccountHandle)
         return (account ?: telephony).voiceMailAlphaTag
     }
+
+    private fun audioOutput(endpoint: CallEndpoint): AudioOutput? =
+        audioOutputType(endpoint.endpointType)?.let { type ->
+            AudioOutput(endpoint.identifier.toString(), type, endpoint.endpointName.toString())
+        }
 
     private fun callingApp(details: Call.Details): CallingApp? {
         val account = details.accountHandle

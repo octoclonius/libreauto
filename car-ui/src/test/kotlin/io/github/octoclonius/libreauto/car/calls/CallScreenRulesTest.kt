@@ -1,5 +1,8 @@
 package io.github.octoclonius.libreauto.car.calls
 
+import io.github.octoclonius.libreauto.projection.calls.AudioOutput
+import io.github.octoclonius.libreauto.projection.calls.AudioOutputType
+import io.github.octoclonius.libreauto.projection.calls.CallAudio
 import io.github.octoclonius.libreauto.projection.calls.CallStatus
 import io.github.octoclonius.libreauto.projection.calls.Caller
 import io.github.octoclonius.libreauto.projection.calls.PhoneCall
@@ -276,7 +279,7 @@ class CallScreenRulesTest {
         val ringing = call(1, CallStatus.Ringing)
         assertEquals(
             CallScreenView.Ringing(ringing, canAnswerAndRelease = true),
-            callScreenView(ringing(1), listOf(call(0, CallStatus.Active), ringing), Keypad()),
+            view(ringing(1), listOf(call(0, CallStatus.Active), ringing), Keypad()),
         )
     }
 
@@ -285,7 +288,7 @@ class CallScreenRulesTest {
         val ringing = call(1, CallStatus.Ringing)
         assertEquals(
             CallScreenView.Ringing(ringing, canAnswerAndRelease = false),
-            callScreenView(ringing(1), listOf(call(0, CallStatus.Holding), ringing), Keypad()),
+            view(ringing(1), listOf(call(0, CallStatus.Holding), ringing), Keypad()),
         )
     }
 
@@ -294,10 +297,10 @@ class CallScreenRulesTest {
         val active = call(0, CallStatus.Active)
         val calls = listOf(active, call(1, CallStatus.Ringing))
         assertEquals(
-            CallScreenView.InCall(CallScreenCalls(active, null), keypad = null),
-            callScreenView(CallScreenEntry.InCall, calls, Keypad()),
+            CallScreenView.InCall(CallScreenCalls(active, null), keypad = null, false),
+            view(CallScreenEntry.InCall, calls, Keypad()),
         )
-        assertNull(callScreenView(null, calls, Keypad()))
+        assertNull(view(null, calls, Keypad()))
     }
 
     @Test
@@ -320,14 +323,14 @@ class CallScreenRulesTest {
     fun anOpenKeypadReplacesTheCallerWithItsDigits() {
         val active = call(0, CallStatus.Active)
         assertEquals(
-            CallScreenView.InCall(CallScreenCalls(active, null), CallScreenKeypad("12", 0)),
-            callScreenView(CallScreenEntry.InCall, listOf(active), Keypad(true, "12")),
+            CallScreenView.InCall(CallScreenCalls(active, null), CallScreenKeypad("12", 0), false),
+            view(CallScreenEntry.InCall, listOf(active), Keypad(true, "12")),
         )
     }
 
     @Test
     fun aClosedKeypadIsNotShown() {
-        val view = callScreenView(inCall, listOf(call(0, CallStatus.Active)), Keypad(false, "12"))
+        val view = view(inCall, listOf(call(0, CallStatus.Active)), Keypad(false, "12"))
         assertNull((view as CallScreenView.InCall).keypad)
     }
 
@@ -336,7 +339,7 @@ class CallScreenRulesTest {
         val calls = listOf(call(0, CallStatus.Active), call(1, CallStatus.Ringing))
         assertEquals(
             CallScreenView.Ringing(calls[1], canAnswerAndRelease = true),
-            callScreenView(ringing(1), calls, Keypad(isShown = true)),
+            view(ringing(1), calls, Keypad(isShown = true)),
         )
     }
 
@@ -344,7 +347,7 @@ class CallScreenRulesTest {
     fun anEndingCallShowsItsEndInsteadOfTheKeypad() {
         for (status in listOf(CallStatus.Disconnecting, CallStatus.Disconnected)) {
             val view =
-                callScreenView(
+                view(
                     inCall,
                     listOf(call(0, status), call(1, CallStatus.Holding)),
                     Keypad(isShown = true),
@@ -446,6 +449,97 @@ class CallScreenRulesTest {
         )
     }
 
+    @Test
+    fun theSoundButtonOpensTheOutputs() {
+        val sound = buttons(call(0, CallStatus.Active), output = car, outputs = listOf(car)).sound
+        assertEquals(
+            SoundButton(
+                CallButton(CallAction.SetAudioOutputsShown(true), isEnabled = true),
+                car.type,
+            ),
+            sound,
+        )
+    }
+
+    @Test
+    fun theSoundButtonOpensTheOutputsEvenWithOnlyOne() {
+        val sound =
+            buttons(call(0, CallStatus.Active), output = speaker, outputs = listOf(speaker)).sound
+        assertEquals(
+            SoundButton(
+                CallButton(
+                    CallAction.SetAudioOutputsShown(true),
+                    isEnabled = true,
+                    isChecked = true,
+                ),
+                AudioOutputType.Speaker,
+            ),
+            sound,
+        )
+    }
+
+    @Test
+    fun theSoundButtonIsLitWhenTheSoundLeavesTheCar() {
+        val outputs = listOf(car, speaker, headset, handset)
+        for (output in listOf(speaker, headset, handset)) {
+            val sound =
+                buttons(call(0, CallStatus.Active), output = output, outputs = outputs).sound
+            assertTrue(sound.button.isChecked)
+            assertEquals(output.type, sound.icon)
+        }
+    }
+
+    @Test
+    fun noOutputsDisableTheSoundButtonWithTheSpeakerPhoneIcon() {
+        val sound = buttons(call(0, CallStatus.Active)).sound
+        assertFalse(sound.button.isEnabled)
+        assertFalse(sound.button.isChecked)
+        assertEquals(AudioOutputType.Speaker, sound.icon)
+    }
+
+    @Test
+    fun anEndingCallDisablesTheSoundButton() {
+        val sound =
+            buttons(call(0, CallStatus.Disconnected), output = car, outputs = listOf(car)).sound
+        assertFalse(sound.button.isEnabled)
+    }
+
+    @Test
+    fun theOutputsListBluetoothThenSpeakerThenHeadsetThenHandset() {
+        val earbuds = AudioOutput("earbuds", AudioOutputType.Bluetooth, "Earbuds")
+        assertEquals(
+            listOf(car, earbuds, speaker, headset, handset),
+            audioOutputsInOrder(listOf(handset, car, headset, speaker, earbuds)),
+        )
+    }
+
+    @Test
+    fun theOutputsShowOnlyForALiveCall() {
+        val shown = { status: CallStatus ->
+            (view(inCall, listOf(call(0, status)), Keypad(), isAudioOutputsShown = true)
+                    as CallScreenView.InCall)
+                .isAudioOutputsShown
+        }
+        assertTrue(shown(CallStatus.Active))
+        assertFalse(shown(CallStatus.Disconnected))
+    }
+
+    @Test
+    fun theOutputsCloseWhenACallStartsRinging() {
+        val previous = listOf(call(0, CallStatus.Active))
+        assertTrue(reconciledAudioOutputsShown(true, previous, previous))
+        assertFalse(
+            reconciledAudioOutputsShown(true, previous, previous + call(1, CallStatus.Ringing))
+        )
+    }
+
+    @Test
+    fun theOutputsCloseOnceNoCallIsLeft() {
+        assertFalse(
+            reconciledAudioOutputsShown(true, listOf(call(0, CallStatus.Disconnected)), emptyList())
+        )
+    }
+
     private val inCall = CallScreenEntry.InCall
 
     private fun ringingCalls(vararg ids: Int) = ids.map { call(it, CallStatus.Ringing) }
@@ -453,15 +547,33 @@ class CallScreenRulesTest {
     private fun ringing(id: Int) = CallScreenEntry.Ringing(id)
 
     private fun shownKeypad(calls: List<PhoneCall>): CallScreenKeypad? =
-        (callScreenView(inCall, calls, Keypad(isShown = true)) as CallScreenView.InCall).keypad
+        (view(inCall, calls, Keypad(isShown = true)) as CallScreenView.InCall).keypad
 
     private fun buttons(
         primary: PhoneCall,
         secondary: PhoneCall? = null,
         isMuted: Boolean = false,
         isKeypadShown: Boolean = false,
+        output: AudioOutput? = null,
+        outputs: List<AudioOutput> = emptyList(),
     ): CallScreenButtons =
-        callScreenButtons(CallScreenCalls(primary, secondary), isMuted, isKeypadShown)
+        callScreenButtons(
+            CallScreenCalls(primary, secondary),
+            CallAudio(isMuted, output, outputs),
+            isKeypadShown,
+        )
+
+    private fun view(
+        entry: CallScreenEntry?,
+        calls: List<PhoneCall>,
+        keypad: Keypad,
+        isAudioOutputsShown: Boolean = false,
+    ): CallScreenView? = callScreenView(entry, calls, keypad, isAudioOutputsShown)
+
+    private val car = AudioOutput("car", AudioOutputType.Bluetooth, "Buick")
+    private val speaker = AudioOutput("speaker", AudioOutputType.Speaker, "Speaker")
+    private val headset = AudioOutput("headset", AudioOutputType.WiredHeadset, "Wired headset")
+    private val handset = AudioOutput("handset", AudioOutputType.Earpiece, "Earpiece")
 
     private fun call(id: Int, status: CallStatus, capabilities: Int = 0) =
         PhoneCall(

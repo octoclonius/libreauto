@@ -1,6 +1,7 @@
 package io.github.octoclonius.libreauto.projection.calls
 
 import android.telecom.Call
+import android.telecom.CallEndpoint
 import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
 
@@ -17,6 +18,15 @@ internal fun callStatus(state: Int): CallStatus? =
         Call.STATE_HOLDING -> CallStatus.Holding
         Call.STATE_DISCONNECTING -> CallStatus.Disconnecting
         Call.STATE_DISCONNECTED -> CallStatus.Disconnected
+        else -> null
+    }
+
+internal fun audioOutputType(endpointType: Int): AudioOutputType? =
+    when (endpointType) {
+        CallEndpoint.TYPE_BLUETOOTH -> AudioOutputType.Bluetooth
+        CallEndpoint.TYPE_SPEAKER -> AudioOutputType.Speaker
+        CallEndpoint.TYPE_WIRED_HEADSET -> AudioOutputType.WiredHeadset
+        CallEndpoint.TYPE_EARPIECE -> AudioOutputType.Earpiece
         else -> null
     }
 

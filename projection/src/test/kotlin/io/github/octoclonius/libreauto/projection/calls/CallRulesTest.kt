@@ -135,6 +135,20 @@ class CallRulesTest {
     }
 
     @Test
+    fun callEndpointsBecomeAudioOutputs() {
+        assertEquals(AudioOutputType.Earpiece, audioOutputType(1))
+        assertEquals(AudioOutputType.Bluetooth, audioOutputType(2))
+        assertEquals(AudioOutputType.WiredHeadset, audioOutputType(3))
+        assertEquals(AudioOutputType.Speaker, audioOutputType(4))
+    }
+
+    @Test
+    fun streamingAndUnknownEndpointsAreNotOutputs() {
+        assertNull(audioOutputType(5))
+        assertNull(audioOutputType(-1))
+    }
+
+    @Test
     fun voicemailIsNamedFirst() {
         assertEquals(
             Caller.Voicemail("Voicemail"),

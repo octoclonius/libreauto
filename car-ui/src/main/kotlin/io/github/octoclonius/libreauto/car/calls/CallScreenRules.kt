@@ -1,6 +1,9 @@
 package io.github.octoclonius.libreauto.car.calls
 
 import android.telecom.Call
+import io.github.octoclonius.libreauto.projection.calls.AudioOutput
+import io.github.octoclonius.libreauto.projection.calls.AudioOutputType
+import io.github.octoclonius.libreauto.projection.calls.CallAudio
 import io.github.octoclonius.libreauto.projection.calls.CallStatus
 import io.github.octoclonius.libreauto.projection.calls.PhoneCall
 
@@ -14,12 +17,24 @@ private val PRIMARY_ORDER =
     )
 private val SECONDARY_ORDER = listOf(CallStatus.Active, CallStatus.Holding)
 private val DTMF_ORDER = listOf(CallStatus.Dialing, CallStatus.Active)
+private val AUDIO_OUTPUT_ORDER =
+    listOf(
+        AudioOutputType.Bluetooth,
+        AudioOutputType.Speaker,
+        AudioOutputType.WiredHeadset,
+        AudioOutputType.Earpiece,
+    )
 
 internal data class CallScreenCalls(val primary: PhoneCall, val secondary: PhoneCall?)
 
 internal data class Keypad(val isShown: Boolean = false, val digits: String = "")
 
 internal data class CallScreenKeypad(val digits: String, val toneCallId: Int?)
+
+internal data class CallScreenAudioOutputs(
+    val outputs: List<AudioOutput>,
+    val selected: AudioOutput?,
+)
 
 internal enum class CallScreenSurface {
     Ongoing,
@@ -41,7 +56,11 @@ internal sealed interface CallScreenEntry {
 internal sealed interface CallScreenView {
     val shownCall: PhoneCall
 
-    data class InCall(val calls: CallScreenCalls, val keypad: CallScreenKeypad?) : CallScreenView {
+    data class InCall(
+        val calls: CallScreenCalls,
+        val keypad: CallScreenKeypad?,
+        val isAudioOutputsShown: Boolean,
+    ) : CallScreenView {
         override val shownCall: PhoneCall
             get() = calls.primary
     }
@@ -60,6 +79,10 @@ internal sealed interface CallAction {
     data class PlayDtmfTone(val id: Int, val digit: Char) : CallAction
 
     data object StopDtmfTone : CallAction
+
+    data class SetAudioOutputsShown(val isShown: Boolean) : CallAction
+
+    data class SelectAudioOutput(val output: AudioOutput) : CallAction
 
     data class Hold(val id: Int) : CallAction
 
@@ -84,9 +107,12 @@ internal data class CallButton(
     val isChecked: Boolean = false,
 )
 
+internal data class SoundButton(val button: CallButton, val icon: AudioOutputType)
+
 internal data class CallScreenButtons(
     val mute: CallButton?,
     val keypad: CallButton,
+    val sound: SoundButton,
     val holdOrMerge: CallButton?,
     val swap: CallButton?,
     val end: CallAction,
@@ -138,11 +164,17 @@ internal fun reconciledKeypad(
     calls: List<PhoneCall>,
 ): Keypad {
     if (calls.isEmpty()) return Keypad()
-    val startsRinging = calls.any { call ->
-        call.status == CallStatus.Ringing &&
-            previous.none { it.id == call.id && it.status == CallStatus.Ringing }
-    }
-    return if (startsRinging) keypad.copy(isShown = false) else keypad
+    return if (callStartsRinging(previous, calls)) keypad.copy(isShown = false) else keypad
+}
+
+internal fun reconciledAudioOutputsShown(
+    isShown: Boolean,
+    previous: List<PhoneCall>,
+    calls: List<PhoneCall>,
+): Boolean = isShown && calls.isNotEmpty() && !callStartsRinging(previous, calls)
+
+internal fun audioOutputsInOrder(outputs: List<AudioOutput>): List<AudioOutput> = outputs.sortedBy {
+    AUDIO_OUTPUT_ORDER.indexOf(it.type)
 }
 
 internal fun callScreenSurfaces(
@@ -168,12 +200,17 @@ internal fun callScreenView(
     entry: CallScreenEntry?,
     calls: List<PhoneCall>,
     keypad: Keypad,
+    isAudioOutputsShown: Boolean,
 ): CallScreenView? =
     when (entry) {
         null -> null
         CallScreenEntry.InCall ->
             callScreenCalls(calls)?.let { screenCalls ->
-                CallScreenView.InCall(screenCalls, callScreenKeypad(screenCalls, calls, keypad))
+                CallScreenView.InCall(
+                    screenCalls,
+                    callScreenKeypad(screenCalls, calls, keypad),
+                    isAudioOutputsShown && screenCalls.primary.status.isLive,
+                )
             }
         is CallScreenEntry.Ringing ->
             calls
@@ -187,7 +224,7 @@ internal fun canAnswerAndRelease(calls: List<PhoneCall>, ringing: PhoneCall): Bo
 
 internal fun callScreenButtons(
     calls: CallScreenCalls,
-    isMuted: Boolean,
+    audio: CallAudio,
     isKeypadShown: Boolean,
 ): CallScreenButtons {
     val primary = calls.primary
@@ -198,7 +235,7 @@ internal fun callScreenButtons(
     val canSwapConference = can(Call.Details.CAPABILITY_SWAP_CONFERENCE)
     val mute =
         if (can(Call.Details.CAPABILITY_MUTE)) {
-            CallButton(CallAction.SetMuted(!isMuted), isEnabled, isChecked = isMuted)
+            CallButton(CallAction.SetMuted(!audio.isMuted), isEnabled, isChecked = audio.isMuted)
         } else {
             null
         }
@@ -227,7 +264,32 @@ internal fun callScreenButtons(
         }
     val keypad =
         CallButton(CallAction.SetKeypadShown(!isKeypadShown), isEnabled, isChecked = isKeypadShown)
-    return CallScreenButtons(mute, keypad, holdOrMerge, swap, CallAction.Disconnect(primary.id))
+    return CallScreenButtons(
+        mute,
+        keypad,
+        soundButton(audio, isEnabled),
+        holdOrMerge,
+        swap,
+        CallAction.Disconnect(primary.id),
+    )
+}
+
+private fun callStartsRinging(previous: List<PhoneCall>, calls: List<PhoneCall>): Boolean =
+    calls.any { call ->
+        call.status == CallStatus.Ringing &&
+            previous.none { it.id == call.id && it.status == CallStatus.Ringing }
+    }
+
+private fun soundButton(audio: CallAudio, isEnabled: Boolean): SoundButton {
+    val selected = audio.output?.type
+    return SoundButton(
+        CallButton(
+            CallAction.SetAudioOutputsShown(true),
+            isEnabled && audio.outputs.isNotEmpty(),
+            isChecked = selected != null && selected != AudioOutputType.Bluetooth,
+        ),
+        selected ?: AudioOutputType.Speaker,
+    )
 }
 
 private fun callScreenKeypad(

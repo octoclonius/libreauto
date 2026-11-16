@@ -3,6 +3,7 @@ package io.github.octoclonius.libreauto.car.calls
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -51,6 +52,8 @@ import io.github.octoclonius.libreauto.car.designsystem.theme.CALL_NOTIFICATION_
 import io.github.octoclonius.libreauto.car.designsystem.theme.CALL_NOTIFICATION_DECLINE_COLOR
 import io.github.octoclonius.libreauto.car.designsystem.theme.CarSpacing
 import io.github.octoclonius.libreauto.car.rail.RAIL_ICON_SIZE
+import io.github.octoclonius.libreauto.projection.calls.AudioOutput
+import io.github.octoclonius.libreauto.projection.calls.AudioOutputType
 import io.github.octoclonius.libreauto.projection.calls.Caller
 
 internal val CALL_SCREEN_AVATAR_SIZE = 104.dp
@@ -70,10 +73,17 @@ private const val KEYS = "0123456789*#"
 private val KEY_TO_CHARS =
     listOf("+", "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "", "")
 
+private val AUDIO_OUTPUT_ROW_HEIGHT = 72.dp
+
 private class ButtonSpot(val width: Dp, val content: @Composable () -> Unit)
 
 @Composable
 internal fun CallScreen(uiState: CallScreenUiState, onAction: (CallAction) -> Unit) {
+    val audioOutputs = (uiState as? CallScreenUiState.InCall)?.audioOutputs
+    if (audioOutputs != null) {
+        AudioOutputs(audioOutputs, onAction)
+        return
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         val inCall = uiState as? CallScreenUiState.InCall
         HeldCallRow(inCall?.heldCaller)
@@ -292,6 +302,91 @@ private fun KeypadKey(
 }
 
 @Composable
+private fun AudioOutputs(audioOutputs: CallScreenAudioOutputs, onAction: (CallAction) -> Unit) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        Row(
+            Modifier.fillMaxWidth()
+                .height(HELD_CALL_ROW_HEIGHT)
+                .padding(horizontal = CarSpacing.large),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlainButton(
+                CallButton(CallAction.SetAudioOutputsShown(false), isEnabled = true),
+                R.drawable.ic_arrow_back,
+                R.string.back,
+                onAction,
+            )
+            Spacer(Modifier.width(CarSpacing.large))
+            Text(
+                stringResource(R.string.audio_output),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        audioOutputs.outputs.forEach { output ->
+            AudioOutputRow(output, output == audioOutputs.selected) {
+                onAction(CallAction.SelectAudioOutput(output))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioOutputRow(output: AudioOutput, isSelected: Boolean, onClick: () -> Unit) {
+    val color =
+        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    Row(
+        Modifier.fillMaxWidth()
+            .height(AUDIO_OUTPUT_ROW_HEIGHT)
+            .clickable(onClick = onClick)
+            .padding(horizontal = SCREEN_MARGIN),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painterResource(audioOutputIcon(output.type)),
+            contentDescription = null,
+            Modifier.size(MEDIUM_ICON_BUTTON_ICON_SIZE),
+            tint = color,
+        )
+        Spacer(Modifier.width(CarSpacing.large))
+        Text(
+            audioOutputName(output),
+            Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (isSelected) {
+            Icon(
+                painterResource(R.drawable.ic_check),
+                contentDescription = null,
+                Modifier.size(MEDIUM_ICON_BUTTON_ICON_SIZE),
+                tint = color,
+            )
+        }
+    }
+}
+
+@DrawableRes
+private fun audioOutputIcon(type: AudioOutputType): Int =
+    when (type) {
+        AudioOutputType.Bluetooth -> R.drawable.ic_bluetooth_audio
+        AudioOutputType.Speaker -> R.drawable.ic_speaker_phone
+        AudioOutputType.WiredHeadset -> R.drawable.ic_headset_mic
+        AudioOutputType.Earpiece -> R.drawable.ic_phone_android
+    }
+
+@Composable
+private fun audioOutputName(output: AudioOutput): String =
+    when (output.type) {
+        AudioOutputType.Bluetooth -> output.name.ifBlank { stringResource(R.string.bluetooth) }
+        AudioOutputType.Speaker -> stringResource(R.string.speaker_phone)
+        AudioOutputType.WiredHeadset -> stringResource(R.string.wired_headset)
+        AudioOutputType.Earpiece -> stringResource(R.string.handset)
+    }
+
+@Composable
 private fun CallButtons(buttons: CallScreenButtons, onAction: (CallAction) -> Unit) {
     val beforeEnd =
         listOf(
@@ -302,6 +397,14 @@ private fun CallButtons(buttons: CallScreenButtons, onAction: (CallAction) -> Un
             },
             ButtonSpot(BUTTON_SIZE) {
                 ToggleButton(buttons.keypad, R.drawable.ic_dialpad, R.string.keypad, onAction)
+            },
+            ButtonSpot(BUTTON_SIZE) {
+                ToggleButton(
+                    buttons.sound.button,
+                    audioOutputIcon(buttons.sound.icon),
+                    R.string.audio_output,
+                    onAction,
+                )
             },
         )
     val fromEnd =

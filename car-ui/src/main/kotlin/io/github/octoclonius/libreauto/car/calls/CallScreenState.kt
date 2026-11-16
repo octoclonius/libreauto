@@ -1,5 +1,6 @@
 package io.github.octoclonius.libreauto.car.calls
 
+import io.github.octoclonius.libreauto.projection.calls.CallAudio
 import io.github.octoclonius.libreauto.projection.calls.CallRepository
 import io.github.octoclonius.libreauto.projection.calls.Caller
 import io.github.octoclonius.libreauto.projection.calls.PhoneCall
@@ -24,6 +25,7 @@ internal sealed interface CallScreenUiState {
         val heldCaller: Caller?,
         val buttons: CallScreenButtons,
         val keypad: CallScreenKeypad?,
+        val audioOutputs: CallScreenAudioOutputs?,
     ) : CallScreenUiState
 
     data class Ringing(override val call: CallUiState, val canAnswerAndRelease: Boolean) :
@@ -38,6 +40,7 @@ internal class CallScreenState(
 
     private val stack = MutableStateFlow<List<CallScreenEntry>>(emptyList())
     private val keypad = MutableStateFlow(Keypad())
+    private val isAudioOutputsShown = MutableStateFlow(false)
     private var toneCallId: Int? = null
 
     private val _surfaces = MutableStateFlow(CallScreenSurfaces())
@@ -58,19 +61,27 @@ internal class CallScreenState(
             repository.calls.collect { calls ->
                 stack.update { reconciledCallScreen(it, calls) }
                 keypad.update { reconciledKeypad(it, previous, calls) }
+                isAudioOutputsShown.update { reconciledAudioOutputsShown(it, previous, calls) }
                 previous = calls
                 updateSurfaces()
             }
         }
         scope.launch { popUpCall.collect { updateSurfaces() } }
         val ongoingView =
-            combine(repository.calls, keypad) { calls, keypad ->
-                callScreenView(CallScreenEntry.InCall, calls, keypad)
+            combine(repository.calls, keypad, isAudioOutputsShown) { calls, keypad, isShown ->
+                callScreenView(CallScreenEntry.InCall, calls, keypad, isShown)
             }
         val ringingCallId = surfaces.map { it.ringingCallId }.distinctUntilChanged()
         val ringingView =
             combine(ringingCallId, repository.calls, keypad) { id, calls, keypad ->
-                id?.let { callScreenView(CallScreenEntry.Ringing(it), calls, keypad) }
+                id?.let {
+                    callScreenView(
+                        CallScreenEntry.Ringing(it),
+                        calls,
+                        keypad,
+                        isAudioOutputsShown = false,
+                    )
+                }
             }
         collectScreen(scope, ongoingView, _ongoingScreen)
         collectScreen(scope, ringingView, _ringingScreen)
@@ -84,7 +95,17 @@ internal class CallScreenState(
     fun back(): Boolean {
         val entries = stack.value
         if (entries.isEmpty()) return false
-        val view = callScreenView(entries.last(), repository.calls.value, keypad.value)
+        val view =
+            callScreenView(
+                entries.last(),
+                repository.calls.value,
+                keypad.value,
+                isAudioOutputsShown.value,
+            )
+        if (view is CallScreenView.InCall && view.isAudioOutputsShown) {
+            isAudioOutputsShown.value = false
+            return true
+        }
         if (view is CallScreenView.InCall && view.keypad != null) {
             keypad.update { it.copy(isShown = false) }
             return true
@@ -112,6 +133,11 @@ internal class CallScreenState(
             CallAction.StopDtmfTone -> {
                 toneCallId?.let(repository::stopDtmfTone)
                 toneCallId = null
+            }
+            is CallAction.SetAudioOutputsShown -> isAudioOutputsShown.value = action.isShown
+            is CallAction.SelectAudioOutput -> {
+                isAudioOutputsShown.value = false
+                repository.requestAudioOutput(action.output)
             }
             is CallAction.Hold -> repository.hold(action.id)
             is CallAction.Unhold -> repository.unhold(action.id)
@@ -144,12 +170,10 @@ internal class CallScreenState(
                 CALL_SCREEN_AVATAR_SIZE,
             )
         scope.launch {
-            combine(shownCall, distinctView, repository.audio) { call, shown, audio ->
-                    Triple(call, shown, audio.isMuted)
-                }
+            combine(shownCall, distinctView, repository.audio, ::Triple)
                 .filter { (call, shown, _) -> call?.call?.id == shown?.shownCall?.id }
-                .collect { (call, shown, isMuted) ->
-                    uiState(call, shown, isMuted)?.let { screen.value = it }
+                .collect { (call, shown, audio) ->
+                    uiState(call, shown, audio)?.let { screen.value = it }
                 }
         }
     }
@@ -157,7 +181,7 @@ internal class CallScreenState(
     private fun uiState(
         call: CallUiState?,
         shown: CallScreenView?,
-        isMuted: Boolean,
+        audio: CallAudio,
     ): CallScreenUiState? {
         if (call == null || shown == null) return null
         return when (shown) {
@@ -165,8 +189,13 @@ internal class CallScreenState(
                 CallScreenUiState.InCall(
                     call,
                     shown.calls.secondary?.caller,
-                    callScreenButtons(shown.calls, isMuted, isKeypadShown = shown.keypad != null),
+                    callScreenButtons(shown.calls, audio, isKeypadShown = shown.keypad != null),
                     shown.keypad,
+                    if (shown.isAudioOutputsShown) {
+                        CallScreenAudioOutputs(audioOutputsInOrder(audio.outputs), audio.output)
+                    } else {
+                        null
+                    },
                 )
             is CallScreenView.Ringing -> CallScreenUiState.Ringing(call, shown.canAnswerAndRelease)
         }

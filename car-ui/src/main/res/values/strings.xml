@@ -20,6 +20,11 @@
     <string name="call_held_caller">%1$s • On hold</string>
     <string name="mute">Mute</string>
     <string name="keypad">Keypad</string>
+    <string name="audio_output">Audio output</string>
+    <string name="speaker_phone">Speaker phone</string>
+    <string name="handset">Handset</string>
+    <string name="wired_headset">Wired headset</string>
+    <string name="back">Back</string>
     <string name="hold">Hold</string>
     <string name="merge">Merge</string>
     <string name="swap">Swap</string>
