@@ -36,6 +36,7 @@ internal class VideoEncoder(
     private val sentActions = FrameSentActions()
     @Volatile private var isClosed = false
     @Volatile private var mediaCodec: MediaCodec? = null
+    @Volatile private var bitRate = 0
 
     fun acknowledge(count: Int) {
         lock.withLock {
@@ -63,6 +64,7 @@ internal class VideoEncoder(
             current.setParameters(
                 Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, bitRate) }
             )
+            this.bitRate = bitRate
             Log.i(TAG, "Changed the bit rate of session $session to $bitRate bit/s")
         } catch (e: IllegalStateException) {
             Log.w(TAG, "Changing the bit rate of session $session failed", e)
@@ -75,6 +77,7 @@ internal class VideoEncoder(
         val height = format.frameHeight
         val framesPerSecond = format.framesPerSecond
         val bitRate = EncoderSettings.bitRate(codec, format.pixelsOutsideCutouts, framesPerSecond)
+        this.bitRate = bitRate
         val encoderFormat =
             EncoderSettings.format(VideoMode(codec, width, height, framesPerSecond), bitRate)
         val name = findEncoder(encoderFormat)?.name
@@ -108,7 +111,7 @@ internal class VideoEncoder(
             )
             profiler.onStart(session, layout, name, bitRate)
             compositor.attach(input)
-            drain(encoder, compositor)
+            drain(encoder, compositor, framesPerSecond)
         } catch (e: IllegalStateException) {
             Log.w(TAG, "The $codec encoder or the compositor failed", e)
         } catch (e: IllegalArgumentException) {
@@ -128,7 +131,7 @@ internal class VideoEncoder(
         }
     }
 
-    private fun drain(encoder: MediaCodec, compositor: VideoCompositor) {
+    private fun drain(encoder: MediaCodec, compositor: VideoCompositor, framesPerSecond: Int) {
         val info = MediaCodec.BufferInfo()
         while (!isClosed) {
             val index = encoder.dequeueOutputBuffer(info, DEQUEUE_TIMEOUT_US)
@@ -149,12 +152,19 @@ internal class VideoEncoder(
                     }
                     profiler.onSent(info.presentationTimeUs)
                     sentActions.onFrameSent(info.presentationTimeUs)
-                    compositor.onFrameSent(info.presentationTimeUs)
+                    compositor.onFrameSent(
+                        info.presentationTimeUs,
+                        data.size * Byte.SIZE_BITS.toLong(),
+                        shareBits(framesPerSecond),
+                    )
                 }
-                else -> compositor.onFrameSent(info.presentationTimeUs)
+                else ->
+                    compositor.onFrameSent(info.presentationTimeUs, 0, shareBits(framesPerSecond))
             }
         }
     }
+
+    private fun shareBits(framesPerSecond: Int): Long = bitRate.toLong() / framesPerSecond
 
     private fun takePermit(): Boolean = lock.withLock {
         while (unacked >= maxUnacked && !isClosed) permitFreed.await()

@@ -28,7 +28,7 @@ internal class VideoCompositor(
     private val format: VideoFormat,
     private val areas: List<Area>,
     overlayCount: Int,
-    private val decoderDepth: Int,
+    decoderDepth: Int,
     private val profiler: VideoProfiler,
     private val onOverlaysShown: (Set<Int>) -> Unit,
     private val onFailed: () -> Unit,
@@ -63,7 +63,6 @@ internal class VideoCompositor(
         private val QUAD = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         private val TEXTURE_QUAD = floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)
 
-        private const val FRAME_TIME_DEVIATION = 0.2
         internal const val MAX_PENDING_FRAMES = 3
     }
 
@@ -83,8 +82,8 @@ internal class VideoCompositor(
     private val handler = Handler(thread.looper)
     private val quad = floatBuffer(QUAD)
     private val textureQuad = floatBuffer(TEXTURE_QUAD)
-    private val intervalNanos = TimeUnit.SECONDS.toNanos(1) / format.framesPerSecond
-    private val deviationNanos = (intervalNanos * FRAME_TIME_DEVIATION).toLong()
+    private val pacer = FramePacer(format.framesPerSecond)
+    private val topOff = TopOff(decoderDepth)
     private val onVsync = Choreographer.FrameCallback(::onVsync)
     private val firstOverlay = areas.size - overlayCount
     private val overlaySwitch = OverlaySwitch(overlayCount)
@@ -101,10 +100,7 @@ internal class VideoCompositor(
     private var program = 0
     private var layers: List<Layer> = emptyList()
     private val pendingFrames = PendingFrames(MAX_PENDING_FRAMES)
-    private var dueNanos = 0L
     private var lastFrameNanos: Long? = null
-    private var hasNewPicture = false
-    private var repeats = 0
     private var isScheduled = false
     private var isReleased = false
     private var isFailed = false
@@ -134,8 +130,7 @@ internal class VideoCompositor(
                 layer.texture.setDefaultBufferSize(area.width, area.height)
             }
             onApplied(lastFrameNanos)
-            hasNewPicture = true
-            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+            onNewPicture()
         }
         if (!isPosted) onApplied(null)
     }
@@ -182,11 +177,11 @@ internal class VideoCompositor(
                 EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext),
                 "eglMakeCurrent",
             )
-            dueNanos = 0L
+            pacer.reset()
+            topOff.reset()
             lastFrameNanos = null
             pendingFrames.clear()
-            hasNewPicture = true
-            schedule()
+            onNewPicture()
         }
     }
 
@@ -194,10 +189,11 @@ internal class VideoCompositor(
         onThread(::detachOutput)
     }
 
-    fun onFrameSent(presentationMicros: Long) {
+    fun onFrameSent(presentationMicros: Long, sizeBits: Long, shareBits: Long) {
         handler.post {
             pendingFrames.onSent(presentationMicros)
-            if (eglSurface != EGL14.EGL_NO_SURFACE && (hasNewPicture || repeats > 0)) schedule()
+            topOff.onEncoded(sizeBits, shareBits)
+            if (eglSurface != EGL14.EGL_NO_SURFACE && topOff.isNeeded) schedule()
         }
     }
 
@@ -221,8 +217,6 @@ internal class VideoCompositor(
         if (eglSurface == EGL14.EGL_NO_SURFACE) return
         choreographer.removeFrameCallback(onVsync)
         isScheduled = false
-        hasNewPicture = false
-        repeats = 0
         lastFrameNanos = null
         EGL14.eglMakeCurrent(eglDisplay, idleSurface, idleSurface, eglContext)
         EGL14.eglDestroySurface(eglDisplay, eglSurface)
@@ -363,9 +357,7 @@ internal class VideoCompositor(
             ) {
                 applyShownOverlays()
             }
-            if (layer.isHidden) return@guarded
-            hasNewPicture = true
-            if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
+            if (!layer.isHidden) onNewPicture()
         }
     }
 
@@ -376,33 +368,32 @@ internal class VideoCompositor(
             layer.isHidden = overlay !in shown
         }
         onOverlaysShown(shown)
-        hasNewPicture = true
+        onNewPicture()
+    }
+
+    private fun onNewPicture() {
+        topOff.onNewPicture()
         if (eglSurface != EGL14.EGL_NO_SURFACE) schedule()
     }
 
     private fun schedule() {
         if (isScheduled) return
         isScheduled = true
-        choreographer.postFrameCallback(onVsync)
+        choreographer.postFrameCallbackDelayed(onVsync, pacer.delayMillis(System.nanoTime()))
     }
 
     private fun onVsync(vsyncNanos: Long) {
         isScheduled = false
         if (isReleased || isFailed || eglSurface == EGL14.EGL_NO_SURFACE) return
-        if (!hasNewPicture && repeats == 0) return
-        if (!pendingFrames.hasRoom) return
-        if (vsyncNanos < dueNanos - deviationNanos) {
-            schedule()
-            return
+        if (!topOff.isNeeded) return
+        if (pacer.isDue(vsyncNanos)) {
+            if (!pendingFrames.hasRoom) return
+            pacer.onDrawn(vsyncNanos)
+            topOff.onDrawn()
+            guarded { drawFrame(vsyncNanos) }
+            if (isFailed) return
         }
-        val frameNanos = if (vsyncNanos > dueNanos + deviationNanos) vsyncNanos else dueNanos
-        dueNanos = frameNanos + intervalNanos
-        repeats = if (hasNewPicture) decoderDepth else repeats - 1
-        hasNewPicture = false
-        guarded {
-            drawFrame(vsyncNanos)
-            if (repeats > 0) schedule()
-        }
+        schedule()
     }
 
     private fun guarded(block: () -> Unit) {
