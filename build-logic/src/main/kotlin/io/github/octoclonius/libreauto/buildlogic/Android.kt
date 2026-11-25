@@ -19,4 +19,5 @@ internal fun Project.configureAndroid(android: CommonExtension) {
         compilerOptions { allWarningsAsErrors.set(true) }
     }
     configureTests()
+    configureDependencyLocking()
 }

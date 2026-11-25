@@ -13,6 +13,14 @@ pluginManagement {
     }
 }
 
+buildscript {
+    dependencyLocking {
+        lockAllConfigurations()
+        lockMode.set(LockMode.STRICT)
+        lockFile.set(settingsDir.resolve("settings-buildscript-gradle.lockfile"))
+    }
+}
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }

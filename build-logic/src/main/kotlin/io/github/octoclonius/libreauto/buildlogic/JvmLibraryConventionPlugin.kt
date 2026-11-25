@@ -15,6 +15,7 @@ class JvmLibraryConventionPlugin : Plugin<Project> {
                 compilerOptions { allWarningsAsErrors.set(true) }
             }
             configureTests()
+            configureDependencyLocking()
         }
     }
 }
