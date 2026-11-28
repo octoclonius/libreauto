@@ -4,8 +4,8 @@
 # To regenerate this file, run: ./gradlew :protocol:dependencies --write-locks
 com.squareup.okio:okio-jvm:3.18.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 com.squareup.okio:okio:3.18.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
-com.squareup.wire:wire-runtime-jvm:7.1.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
-com.squareup.wire:wire-runtime:7.1.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
+com.squareup.wire:wire-runtime-jvm:7.2.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
+com.squareup.wire:wire-runtime:7.2.2=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 org.apiguardian:apiguardian-api:1.1.2=testCompileClasspath
 org.jetbrains.kotlin:kotlin-build-tools-api:2.4.0=kotlinAbiValidationCompatClasspath
 org.jetbrains.kotlin:kotlin-build-tools-api:2.4.21=kotlinBuildToolsApiClasspath,kotlinCompilerClasspath,kotlinKlibCommonizerClasspath
